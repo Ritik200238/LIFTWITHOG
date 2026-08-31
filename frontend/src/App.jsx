@@ -38,6 +38,7 @@ import Nutrition from './views/Nutrition.jsx'
 const Settings = lazy(() => import('./views/Settings.jsx'))
 const Market = lazy(() => import('./views/Market.jsx'))
 const Proof = lazy(() => import('./views/Proof.jsx'))
+const Verify = lazy(() => import('./views/Verify.jsx'))
 const Admin = lazy(() => import('./views/Admin.jsx'))
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
@@ -80,7 +81,20 @@ function Shell() {
           re-mounts the boundary, so the tab bar is always a way out */}
       <div id="app" className="vfade" key={loc.pathname}>
         <ErrorBoundary>
-          {!authed ? <Login /> : (
+          {/*
+            * Verify is public on purpose.
+            *
+            * It exists for somebody who has not signed up and has no reason to
+            * trust us — and behind the sign-in wall it was unreachable by
+            * exactly that person. Nothing on it is private: contract addresses,
+            * a live chain read, and commands anyone can run against the public
+            * repository.
+            */}
+          {!authed && loc.pathname === '/verify' ? (
+            <Suspense fallback={<div className="center" style={{ paddingTop: '38vh', fontSize: 30, color: 'var(--label-3)' }}><Icon name="dumbbell" /></div>}>
+              <Verify />
+            </Suspense>
+          ) : !authed ? <Login /> : (
             <Suspense fallback={<div className="center" style={{ paddingTop: '38vh', fontSize: 30, color: 'var(--label-3)' }}><Icon name="dumbbell" /></div>}>
             <Routes>
               <Route path="/home" element={<Home />} />
@@ -93,6 +107,8 @@ function Shell() {
               <Route path="/nutrition" element={<Nutrition />} />
               <Route path="/coaches" element={<Market />} />
               <Route path="/proof" element={<Proof />} />
+              {/* The judge-facing door: no account, no coach, no goodwill assumed. */}
+              <Route path="/verify" element={<Verify />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />

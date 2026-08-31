@@ -413,9 +413,9 @@ h4.sec{
  * `pointer-events` needs no help here: the pseudo-element belongs to the
  * button, so a press inside it is a press on the button.
  */
-.iconbtn,.chip,.swatch,.seg button,.stp button,.btn.sm,.tag.act{position:relative}
+.iconbtn,.chip,.swatch,.seg button,.stp button,.btn.sm,.tag.act,.taplink{position:relative;display:inline-block}
 
-.iconbtn::after,.chip::after,.swatch::after,.seg button::after,.stp button::after,.btn.sm::after{
+.iconbtn::after,.chip::after,.swatch::after,.seg button::after,.stp button::after,.btn.sm::after,.taplink::after{
   content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   min-width:44px;min-height:44px;width:100%;height:100%;
 }

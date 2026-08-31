@@ -1,0 +1,219 @@
+/**
+ * The page for somebody who does not believe us.
+ *
+ * Proof is personal: it shows *your* coach, *your* device, and to a stranger
+ * with no coach it says "you have not created one yet" — which proves nothing
+ * to the one person most worth convincing. This page assumes no account, no
+ * coach, and no goodwill.
+ *
+ * Every claim here is one of three things: read live from 0G while you watch,
+ * a link to a public explorer, or a command you can run against this repository
+ * yourself. Nothing is asserted that cannot be checked from outside.
+ */
+
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { COACH_ADDRESS } from '../lib/coachConfig.js'
+import { t } from '../lib/i18n.js'
+import Icon from '../components/Icon.jsx'
+import { Button } from '../components/ui.jsx'
+
+const EXPLORER = 'https://chainscan-galileo.0g.ai'
+const REPO = 'https://github.com/Ritik200238/LIFTWITHOG'
+
+/** A claim, and the thing that settles it. */
+function Claim({ title, children, evidence }) {
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <div className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+        <Icon name="checkCircle" style={{ color: 'var(--acc)', marginTop: 2, flexShrink: 0 }} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>{title}</div>
+          <div className="muted small" style={{ lineHeight: 1.45 }}>{children}</div>
+          {evidence && (
+            <div className="small" style={{ marginTop: 8, wordBreak: 'break-all' }}>{evidence}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Something to copy and run. */
+function Command({ children }) {
+  return (
+    <pre
+      className="small"
+      style={{
+        background: 'var(--surface-2)',
+        padding: '10px 12px',
+        borderRadius: 8,
+        overflowX: 'auto',
+        margin: '8px 0 0',
+        whiteSpace: 'pre',
+      }}
+    >
+      <code>{children}</code>
+    </pre>
+  )
+}
+
+/*
+ * `.taplink` rather than a bare anchor: a 17px-tall line of text is a link a
+ * thumb misses, and these are the links the whole page exists to be clicked.
+ */
+const Link = ({ href, children }) => (
+  <a className="taplink" href={href} target="_blank" rel="noreferrer noopener">{children}</a>
+)
+
+export default function Verify() {
+  const nav = useNavigate()
+  const [chain, setChain] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        /*
+         * Loaded on demand rather than imported at the top, so opening any
+         * other screen in this app never pays for ethers. This page is the one
+         * place that genuinely needs a chain connection to do its job.
+         */
+        const { readProvider } = await import('../lib/marketplace.js')
+        const { coachContract } = await import('../lib/ogCoach.js')
+
+        const provider = readProvider()
+        const [network, block] = await Promise.all([provider.getNetwork(), provider.getBlockNumber()])
+
+        const state = { chainId: Number(network.chainId), block }
+
+        if (COACH_ADDRESS) {
+          const contract = coachContract(provider)
+          // How many coaches exist right now. A number that moves as people
+          // use the app is harder to fake than a screenshot.
+          state.minted = Number(await contract.totalMinted())
+        }
+
+        if (!cancelled) setChain(state)
+      } catch (e) {
+        if (!cancelled) setError(e.shortMessage || e.message || t('Could not reach 0G.'))
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <div className="narrow">
+      <div className="hdr">
+        <button className="iconbtn" onClick={() => nav('/home')} aria-label={t('Home')}>
+          <Icon name="chevronLeft" />
+        </button>
+        <div style={{ flex: 1, marginLeft: 12 }}>
+          <h1>{t('Verify')}</h1>
+          <div className="sub">{t('Every claim, and how to check it without us.')}</div>
+        </div>
+      </div>
+
+      {/* Live, before anything else: this page proves itself as it loads. */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h3 style={{ margin: '0 0 8px' }}>{t('0G Galileo, read live just now')}</h3>
+        {error ? (
+          <div className="muted small">
+            {t('Could not reach 0G right now:')} {error}
+            <div style={{ height: 8 }} />
+            <Link href={`${EXPLORER}/address/${COACH_ADDRESS}`}>{t('Check the contract on the explorer instead')}</Link>
+          </div>
+        ) : !chain ? (
+          <div className="skel" style={{ height: 68 }} />
+        ) : (
+          <div className="tiles" style={{ textAlign: 'left' }}>
+            <div className="tile">
+              <div className="l">{t('Chain')}</div>
+              <div className="v" style={{ fontSize: 20 }}>{chain.chainId}</div>
+            </div>
+            <div className="tile">
+              <div className="l">{t('Block')}</div>
+              <div className="v" style={{ fontSize: 20 }}>{chain.block?.toLocaleString?.() ?? chain.block}</div>
+            </div>
+            <div className="tile">
+              <div className="l">{t('Coaches minted')}</div>
+              <div className="v" style={{ fontSize: 20 }}>{chain.minted ?? '—'}</div>
+            </div>
+          </div>
+        )}
+        <div className="dim small" style={{ marginTop: 8 }}>
+          {t('Read from the public 0G RPC by your browser, not by our server.')}
+        </div>
+      </div>
+
+      <h4 className="sec">{t('The contract')}</h4>
+
+      <Claim
+        title={t('CoachAgent is deployed and anyone can read it')}
+        evidence={<Link href={`${EXPLORER}/address/${COACH_ADDRESS}`}>{COACH_ADDRESS}</Link>}
+      >
+        {t('An ERC-721 where each token is one person’s coach: its owner, its version, and the address of its encrypted brain on 0G Storage.')}
+      </Claim>
+
+      <Claim
+        title={t('Owning a coach needs no wallet, and no crypto')}
+        evidence={<span className="muted">{t('EIP-712 signature from a key made in your browser; the app pays the gas.')}</span>}
+      >
+        {t('A key is generated on your device and never leaves it. It signs; our relayer pays the fee. The owning address can hold nothing at all and still own the coach — open Proof on a device that has one and the balance reads 0.')}
+      </Claim>
+
+      <Claim
+        title={t('Payment and access are the same transaction')}
+        evidence={<span className="muted">{t('rent() in CoachAgent.sol — the payout is the last statement in the function.')}</span>}
+      >
+        {t('Renting a trainer’s coach forwards the whole payment to them inside the same call that grants access. The contract has no withdraw function and never holds a balance — an invariant test asserts exactly that across random sequences of calls.')}
+      </Claim>
+
+      <Claim
+        title={t('Selling a coach takes every rental with it')}
+        evidence={<span className="muted">{t('An epoch counter invalidates all grants on transfer.')}</span>}
+      >
+        {t('Otherwise a trainer could rent access widely, sell the coach, and hand the buyer something a crowd still has keys to.')}
+      </Claim>
+
+      <h4 className="sec">{t('Check it yourself')}</h4>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="muted small">{t('The contract tests, including fuzz and invariant runs:')}</div>
+        <Command>{`git clone ${REPO}
+cd LIFTWITHOG/contracts && forge test`}</Command>
+
+        <div className="muted small" style={{ marginTop: 14 }}>
+          {t('The app’s own tests:')}
+        </div>
+        <Command>{`npm --prefix frontend test
+npm --prefix api test`}</Command>
+
+        <div className="muted small" style={{ marginTop: 14 }}>
+          {t('And the one that matters most — it breaks the code on purpose and fails if the tests do not notice:')}
+        </div>
+        <Command>node scripts/mutate.mjs</Command>
+      </div>
+
+      <h4 className="sec">{t('What we are not claiming')}</h4>
+
+      <div className="card">
+        <div className="muted small" style={{ lineHeight: 1.5 }}>
+          {t('0G Galileo is a test network, so rentals move test tokens rather than money.')}{' '}
+          {t('A signature proves a device agreed to something; it cannot prove the person holding that device lifted what they typed.')}{' '}
+          {t('Attested inference proves where a model ran and that nobody could read the input — not that its advice is good.')}{' '}
+          {t('This project is built on the open-source openGym tracker; the training, nutrition and 0G work described here is ours.')}
+        </div>
+      </div>
+
+      <div style={{ height: 14 }} />
+      <Button icon="link" onClick={() => window.open(REPO, '_blank', 'noopener')}>
+        {t('Read the source')}
+      </Button>
+      <div style={{ height: 24 }} />
+    </div>
+  )
+}

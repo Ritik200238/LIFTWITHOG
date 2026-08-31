@@ -184,6 +184,15 @@ export default function Settings() {
         accessory="chevron"
         onClick={() => nav('/proof')} />
       {/*
+        * Proof answers "is *my* coach real". Verify answers "is any of this
+        * real" for somebody who has no coach and no account — so it needs its
+        * own way in rather than living behind the personal one.
+        */}
+      <Row icon="shield" iconTint="var(--blue)" title={t('Verify our claims')}
+        subtitle={t('Contract, live chain read, and the commands to check it yourself')}
+        accessory="chevron"
+        onClick={() => nav('/verify')} />
+      {/*
         * Both of these were unusable as written. The backup showed its root
         * hash truncated to ten characters in a toast that vanished, and the
         * restore asked you to type all sixty-six into a native prompt() — a

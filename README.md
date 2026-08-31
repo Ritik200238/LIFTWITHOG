@@ -118,6 +118,46 @@ npm run evidence   # reads 0G live: contract, versions, zero-gas owners, TEE pro
 
 ---
 
+## 📱 Built for the gym, not the desk
+
+Nobody trains at a laptop. LIFTWITHOG is **mobile-first by design** — every screen above is
+shown at phone size because that *is* the product: one-handed, mid-set, with chalk on the glass.
+
+**Install it like an app** (no store, no wallet, ~1.3 MB shell):
+
+| | |
+|---|---|
+| **Android** | open [liftwithog.vercel.app](https://liftwithog.vercel.app) in Chrome → **⋮ → Add to Home screen** |
+| **iPhone / iPad** | open it in Safari → **Share → Add to Home Screen** |
+
+What the installed app does that a tab doesn't:
+
+- ⚡ **Opens with no signal.** The app shell is precached at install — we verified this by
+  killing the server and reloading, not by trusting the service worker's word for it.
+  Log your session in a basement gym; it syncs when you surface.
+- 🔆 **The screen stays awake during a workout** (wake lock, bound to the active session,
+  not the route — checking Stats mid-set won't dim it).
+- ⏱️ **Rest timers beep and vibrate** with the tab in your pocket.
+- 👍 **Every control is ≥44px to a thumb** — measured with `elementFromPoint` across all ten
+  screens, in both themes, not eyeballed.
+- 🔑 **Your coach minted from the phone itself.** The device key that owns your on-chain
+  coach is generated on the phone and never leaves it — the mobile install *is* the wallet.
+
+**Honest limitations, so nothing surprises you:**
+
+- Passkey sign-in and cross-device sync need the hosted site (or your own HTTPS deploy);
+  **guest mode works fully offline-local everywhere**.
+- Scheduled workout reminders (push) fire from the long-lived self-hosted server only —
+  a serverless deployment has no process between requests to run a clock in. Stated in
+  [`server/server.js`](server/server.js), not discovered later.
+- On iOS, web push requires iOS 16.4+ and vibration is not supported by Safari — the
+  timers still beep.
+
+A Capacitor iOS shell lives in [`frontend/ios`](frontend/ios) for a future App Store build;
+the PWA is the shipped path today.
+
+---
+
 ## Which 0G modules, and how
 
 | Module | Where it sits | What it does here |

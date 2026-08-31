@@ -117,18 +117,23 @@ npm start
 LIFTWITHOG maintains rigorous test coverage across all subsystems:
 
 ```bash
-# Run Frontend Tests (510 Vitest tests)
+# Frontend — 510 vitest tests
 npm --prefix frontend test
 
-# Run API & Auth Tests (53 Node.js test runner tests)
-npm --prefix api test
+# Server — 64 node:test tests (auth, storage backends, sync rules)
+npm test
 
-# Run Smart Contract Tests (Foundry)
-npm --prefix contracts test
+# Contract — 67 Foundry tests: 42 unit · 9 fuzz · 5 invariant · 16 ERC-7857
+cd contracts && forge test
 
-# Run Nutrition Engine Mutation Tests (164 code mutations)
+# Mutation testing — 164 seeded faults; fails unless the tests notice
 node scripts/mutate.mjs
 ```
+
+Architecture, flows and the trust model: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+Every claim with the command or explorer link that checks it:
+**[VERIFICATION.md](VERIFICATION.md)** — or the live, in-app version at
+[liftwithog.vercel.app/#/verify](https://liftwithog.vercel.app/#/verify).
 
 ---
 

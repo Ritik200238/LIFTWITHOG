@@ -1,164 +1,232 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="LIFTWITHOG" width="720">
+<img src="assets/app/banner.svg" alt="LIFTWITHOG — the AI coach you own, an ERC-7857 agent on 0G" width="100%"/>
 
-<br><br>
+<br/>
 
-# 🏋️‍♂️ LIFTWITHOG
+[![tests](https://img.shields.io/badge/tests-641%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![mutation](https://img.shields.io/badge/mutation-164%20faults%20·%20159%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
+[![contract](https://img.shields.io/badge/contract-67%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
+[![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
+[![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E)
+[![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
 
-**A sovereign, AI-powered workout, nutrition & health tracking ecosystem built on 0G.**
+**The AI coach you own. Not a subscription — property.**
 
-*Architected & Built by **[Ritik](https://github.com/Ritik200238)***
+*It learns from every workout you finish, and what it learns is recorded on 0G Chain.*
+*Its brain is encrypted on 0G Storage. Its advice runs sealed inside a TEE on 0G Compute.*
+*Delete this app, and your coach — its identity, its history, its rental income — is still there.*
 
-<br>
+### ▶ Live: **[liftwithog.vercel.app](https://liftwithog.vercel.app)** · Prove it yourself: **[/#/verify](https://liftwithog.vercel.app/#/verify)**
 
-[![Author](https://img.shields.io/badge/Author-Ritik-6366f1?style=flat-square&logo=github)](https://github.com/Ritik200238)
-[![License: MIT](https://img.shields.io/badge/License-MIT-emerald?style=flat-square)](LICENSE)
-[![0G Native](https://img.shields.io/badge/0G-Native_AI_OS-a855f7?style=flat-square)](https://0g.ai)
-[![React 19](https://img.shields.io/badge/React-19.2-38bdf8?style=flat-square&logo=react&logoColor=white)](https://react.dev)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Zero Telemetry](https://img.shields.io/badge/Telemetry-None-f43f5e?style=flat-square)](#sovereignty--privacy)
+*The verify page reads 0G from **your** browser — chain id, block height, coaches minted, live.*
 
 </div>
 
-<br>
+---
+
+## Why a coach you own
+
+Every fitness app dies the same way: years of your training, your progress, your coach's
+"knowledge of you" — rows in a company's database, gone when the company goes. LIFTWITHOG
+inverts that. The coach is an **ERC-7857 Agentic ID** on 0G Chain that *your device* controls:
+
+- 🏋️ **It learns for real, and the learning is recorded.** Finish a workout → the coach
+  re-derives its profile from your actual training → re-encrypts → re-uploads to 0G Storage →
+  `evolve()` on chain, in the background. The on-chain `version` climbing is the public record
+  that this coach has genuinely trained with you.
+- 🔑 **No wallet. No gas. Still yours.** A key generated on your phone signs EIP-712 messages;
+  our relayer pays the fee. The signature names the owner, so the relayer **can pay but cannot
+  redirect ownership**. *Proven on chain: coach `#1`'s owner holds `0.0 0G` and owns it anyway.*
+- 🔒 **Advice that can prove where it ran.** Every answer comes from a TEE-attested enclave on
+  0G Compute, attestation verified per response. No attested provider live? The app **refuses**
+  — it never silently falls back to an unattested one. Privacy is a checked property here,
+  not a settings toggle.
+- 💸 **Trainers rent out their method, atomically.** `rent()` grants expiring access and
+  forwards the *entire* payment to the trainer in the same transaction. The contract holds no
+  balance and has no withdraw function — an invariant test drives thousands of random calls
+  and asserts its balance is always zero.
+- 🇮🇳 **And underneath it: a complete tracker people actually need.** 1,324 exercises, plate
+  math on the bar, warm-up ramps, an India-first nutrition engine (IFCT foods, protein by
+  reference weight, hard safety bounds), offline-first PWA, 11 languages, passkey accounts.
+
+Built for the **0G Buildathon**. Designed to outlive it.
+
+---
+
+## The proof — read the chain, not the README
+
+`CoachAgent` v2 is live on 0G Galileo at
+[`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E).
+Ask it — not us — whether it really speaks ERC-7857:
+
+```bash
+$ cast call 0x70c4dE9D0edbE53733821558Bf6b14b64451e56E \
+    "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai
+true    # IERC7857
+
+$ cast call 0x70c4dE9D0edbE53733821558Bf6b14b64451e56E \
+    "supportsInterface(bytes4)(bool)" 0x35d39512 --rpc-url https://evmrpc-testnet.0g.ai
+true    # IERC7857Authorize
+```
+
+And whether gasless ownership is real — coach `#1`, minted from a phone with no wallet:
+
+```text
+totalMinted()            → 5
+ownerOf(1)               → 0xC0a5916D8aCb9260D2435a9b92248fF56399d784
+balance of that owner    → 0.0 0G      ← owns the coach, has never held gas
+getIntelligentDatas(1)   → "AES-256-GCM encrypted coaching profile, version 1,
+                            ciphertext on 0G Storage at 0x…"  ·  dataHash 0xbdaedf…
+```
+
+Every claim in this README has a command, contract call, or explorer link behind it —
+the full list is **[VERIFICATION.md](VERIFICATION.md)**. One shortcut runs most of them:
+
+```bash
+npm run evidence   # reads 0G live: contract, versions, zero-gas owners, TEE provider
+```
+
+---
+
+## The product
 
 <div align="center">
 <table>
-<tr>
-<td align="center"><img src="assets/screenshots/home.png" alt="Home" width="230"><br><sub><b>Home Dashboard</b> — Guided workouts & weekly split</sub></td>
-<td align="center"><img src="assets/screenshots/workout.png" alt="Workout" width="230"><br><sub><b>Active Session</b> — Animated demos & dynamic rest timer</sub></td>
-<td align="center"><img src="assets/screenshots/stats.png" alt="Stats" width="230"><br><sub><b>Analytics & PRs</b> — Muscle heatmaps & progression charts</sub></td>
-</tr>
+  <tr>
+    <td><img src="assets/app/home.png" alt="Home — the week, your coach (token #5, version 1), body-weight trend and streak" width="100%"/></td>
+    <td><img src="assets/app/workout.png" alt="Active workout — plate math on the bar, warm-up ramp, per-set tracking" width="100%"/></td>
+    <td><img src="assets/app/nutrition.png" alt="Nutrition — BMI, maintenance and goal targets computed from your own weigh-ins" width="100%"/></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Your coach on the home screen — token <code>#5</code>, version 1, learning from 7 sessions</em></td>
+    <td align="center"><em>Plate math (<code>25 + 15 /side</code>) and one-tap warm-up ramps, mid-set</em></td>
+    <td align="center"><em>Targets from your weigh-ins — Mifflin-St Jeor, hard safety bounds, IFCT foods</em></td>
+  </tr>
+  <tr>
+    <td><img src="assets/app/coaches.png" alt="Coach market — rent a trainer's coach, payment settles to the trainer atomically" width="100%"/></td>
+    <td><img src="assets/app/verify.png" alt="/verify — chain id, block and coaches minted, read live from the visitor's own browser" width="100%"/></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td align="center"><em>The market — real coaches on the v2 contract, priced in 0G, payment atomic with access</em></td>
+    <td align="center"><em><a href="https://liftwithog.vercel.app/#/verify">/verify</a> — live chain reads from <b>your</b> browser, not our server</em></td>
+    <td></td>
+  </tr>
 </table>
 </div>
 
 ---
 
-## 🌟 Why LIFTWITHOG?
+## Which 0G modules, and how
 
-Traditional fitness apps lock your personal biometrics behind proprietary silos, sell health metrics to advertisers, and lose your data if their servers go down.
+| Module | Where it sits | What it does here |
+|---|---|---|
+| **0G Chain** (Galileo `16602`) | [`contracts/src/CoachAgent.sol`](contracts/src/CoachAgent.sol) | The coach as property: ERC-7857 Agentic ID + ERC-721, versioned intelligent data, open-ended executor grants, expiring rentals with atomic payout, epoch-voided grants on sale, EIP-712 relayed mint/evolve |
+| **0G Compute** | [`server/coach-runtime.js`](server/coach-runtime.js) | TEE-attested inference (`TeeML`), attestation verified per response, **fail-closed** — no attested provider means an honest error, never a downgrade |
+| **0G Storage** | [`server/coach-runtime.js`](server/coach-runtime.js) · [`frontend/src/lib/ogVault.js`](frontend/src/lib/ogVault.js) | Two jobs: the coach's encrypted brain (keccak256-anchored on chain, tamper-checked on every ask) and the user's AES-256-GCM vault backups, encrypted **on the device** |
+| **Agentic ID / ERC-7857** | [`contracts/src/interfaces/`](contracts/src/interfaces) | Interfaces vendored **verbatim** from 0G's `agenticID-examples` so selectors match the ecosystem; `iTransferFrom` gated behind an immutable TEE/ZKP oracle slot — it refuses without one rather than pretending |
+| **Payments on 0G** | [`rent()`](contracts/src/CoachAgent.sol) | Access and payment are one transaction; the trainer is paid in-line; the relayer's gas spend is the product's only operating cost, visible on the explorer |
+| **0G DA** | — | **Deliberately not used.** Nothing here is a high-throughput availability stream, and a decorative integration is worse than an absent one |
 
-**LIFTWITHOG is built differently:**
-- **Your Data Stays Yours**: Runs 100% locally or on your self-hosted instance. All health records, PRs, and bodyweight measurements are encrypted on the client side using ECIES keys before being archived to **0G Decentralized Storage**.
-- **On-Chain AI Coaching**: Your personal coach is a persistent, evolving ERC-721 Agent on **0G Chain** with versioned training history.
-- **Hardware-Enclave Privacy (TEE)**: Inference executes inside confidential Trusted Execution Environments (TEEs) on **0G Compute**, guaranteeing that fitness queries and training methods never leak.
-- **Pure Arithmetic Nutrition**: Calculates BMR, TDEE, macro breakdowns, and real-food meal plans via mathematical proofs rather than hallucinating AI outputs.
+The full picture — diagrams, flows, trust model — is **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
----
+```mermaid
+sequenceDiagram
+    participant P as Phone (no wallet)
+    participant S as API (relayer pays)
+    participant ST as 0G Storage
+    participant C as CoachAgent · 0G Chain
 
-## ⚡ Key Features
-
-- 🧠 **Autonomous 0G Coach**: Gasless on-chain AI agent that evolves as you log workouts, recording permanent training milestones directly to 0G Galileo Testnet.
-- 🔒 **Confidential TEE Inference**: AI workout guidance and form advice processed strictly within verified hardware enclaves on 0G Compute.
-- ⚡ **ECIES Encrypted 0G Vault**: Automated encrypted backup and recovery using 0G Storage & 0G Key-Value storage.
-- 🔑 **Passkey-First Authentication**: WebAuthn biometric login (Touch ID, Face ID, Windows Hello) with zero passwords stored anywhere.
-- 🏋️ **1,324 Exercise Database**: Searchable local library with animations, target muscle group activations, and custom exercise creation.
-- 📊 **Progression Systems**: Built-in linear progression, Greyskull LP, double progression, and bodyweight rep-climb policies.
-- 🍽️ **Calculated Nutrition Engine**: Mifflin-St Jeor metabolic scoring with macro scaling and automated grocery portioning across 4 dietary styles.
-- 📱 **Multi-Platform Deployment**: Seamless PWA installable on iOS/Android, standalone Docker container, or native mobile builds via Capacitor.
-
----
-
-## 🔬 Verifiable 0G Evidence
-
-Every on-chain and decentralized claim in LIFTWITHOG is publicly verifiable on-chain:
-
-```bash
-npm run evidence
+    P->>S: coach profile (from real training)
+    S->>ST: upload encrypted brain
+    P->>P: device key signs EIP-712 MintCoach
+    P->>S: signature
+    S->>C: mintFor(owner, hash, uri, sig)
+    C-->>C: signer == owner? mint to owner
+    C-->>P: CoachMinted · IntelligentDataSet
+    Note over P,C: the relayer paid, and could not have redirected ownership
 ```
 
-| Component | Verification / Proof |
+---
+
+## Engineering guarantees (each one enforced by test)
+
+| Guarantee | Mechanism | Evidence |
+|---|---|---|
+| The contract never holds anyone's money | payout is the last call of `rent()`; no withdraw exists | [`invariant_ContractNeverHoldsFunds`](contracts/test/CoachAgentFuzz.t.sol) across random call sequences |
+| A sale voids every rental, in constant gas | epoch counter bumped in `_update`, grants keyed by epoch | [`testFuzz_SellingClearsEveryGrant`](contracts/test/CoachAgentFuzz.t.sol) |
+| Renewing never steals paid days | renewal extends from current expiry | [`testFuzz_RenewingExtendsAndNeverShortens`](contracts/test/CoachAgentFuzz.t.sol) — fuzzed to the last second of the window |
+| The oracle can't override the owner | ERC-721 auth runs *after* proof verification | [`test_TheOracleCannotOverrideTheOwner`](contracts/test/CoachAgent7857.t.sol) |
+| A tampered brain is detected, not trusted | keccak256 of fetched ciphertext vs on-chain hash | `config_tampered` path, [`server/coach-runtime.js`](server/coach-runtime.js) |
+| Unattested inference never reaches a user | TeeML required, attestation checked per response | [`server/coach-runtime.js`](server/coach-runtime.js) |
+| Corrupt stored data can't invite an overwrite | "no data" and "unreadable" are different answers | [`server/store.test.js`](server/store.test.js) |
+| A leaked session key can't come back | recognised **by hash** at boot, rotated, everyone signed out | [`server/store.js`](server/store.js) |
+| Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
+| Wrong numbers can't reach a diet or a bar | 164 seeded faults must all be caught | `node scripts/mutate.mjs` — 159 caught, 5 proven equivalent |
+
+**641 tests**: 510 frontend · 64 server · 67 contract (42 unit, 9 fuzz, 5 invariant, 16 ERC-7857).
+
+---
+
+## Run it yourself
+
+**Hosted path (what the live site runs):** static PWA + one serverless function, state in Postgres.
+
+```bash
+git clone https://github.com/Ritik200238/LIFTWITHOG && cd LIFTWITHOG
+npm install && npm --prefix frontend install
+
+# server: file-backed by default; set DATABASE_URL for Postgres
+cp server/.env.example server/.env       # add RELAYER_PRIVATE_KEY + COACH_ADDRESS
+node server/server.js                    # API on :3000
+npm --prefix frontend run dev            # app on :5173, /api proxied
+```
+
+**Sovereign path (your data on your box):** one origin, passkeys included, media served locally.
+
+```bash
+docker compose up -d          # nginx + API + 140MB exercise media, one command
+# HTTPS on a fresh VPS:  DOMAIN=gym.example.com docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+```
+
+**Verify everything:** `npm run evidence` · full suites as above · [VERIFICATION.md](VERIFICATION.md).
+
+Deploy your own contract: `cd contracts && PRIVATE_KEY=0x… forge script script/Deploy.s.sol:Deploy --rpc-url og_testnet --broadcast --with-gas-price 3gwei --priority-gas-price 2gwei`
+
+---
+
+## Buildathon requirements, mapped
+
+| Requirement | Where |
 |---|---|
-| **Coach Agent Contract** | [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E) |
-| **Gasless Device Ownership** | Device generates local cryptographic keys; relayer funds on-chain minting |
-| **State Evolution** | Versioned on-chain state anchors (`version 3+`) pushed automatically post-workout |
-| **Atomic Payment & Access** | Direct trainer royalty payments executed in a single atomic transaction |
-| **TEE Attestation** | Real-time enclave cryptographic attestation verified via 0G Compute SDK |
+| 0G contract address + explorer | [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E) on Galileo — mainnet (Aristotle `16661`) ships via the same one-command deploy, this line gains that address the day it lands |
+| On-chain activity | 5 coaches minted, 3 listed for rent, versions climbing — [explorer](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E), or the live [/#/verify](https://liftwithog.vercel.app/#/verify) counter |
+| Proof of 0G integration | `supportsInterface` answered by deployed bytecode, `npm run evidence`, [VERIFICATION.md](VERIFICATION.md) |
+| Architecture | [ARCHITECTURE.md](ARCHITECTURE.md) — diagrams, flows, trust model, honest non-integrations |
+| 0G modules used & how | table above, with file-level links |
+| Reproduction steps | "Run it yourself", above — hosted and sovereign |
 
 ---
 
-## 🚀 Quick Start
+## Repository layout
 
-### 1. Run with Docker Compose (Recommended)
-
-```bash
-# Clone the repository
-git clone https://github.com/Ritik200238/LIFTWITHOG.git
-cd LIFTWITHOG
-
-# Start all services
-docker compose up -d --build
 ```
-Open **`http://localhost:8080`** in your browser, tap **Create profile**, and sign in with your passkey.
-
----
-
-### 2. Manual Development Setup
-
-#### Frontend Setup:
-```bash
-cd frontend
-npm install
-npm run dev
+contracts/        CoachAgent.sol (ERC-7857 + ERC-721) · vendored 0G interfaces · 67 Foundry tests
+server/           the API — auth (passkeys), sync, coach runtime (0G Compute/Storage), relayer
+                  store.js: file backend for self-hosting, Postgres for serverless
+api/              exactly one file: the Vercel entry point wrapping server/
+frontend/         React PWA — workout, nutrition, coach, market, /verify · 510 tests
+scripts/          evidence.mjs (live chain checks) · mutate.mjs (164-fault mutation harness)
+docs/             self-hosting (Docker/HTTPS) · mobile
 ```
 
-#### Backend API Setup:
-```bash
-cd api
-npm install
-npm start
-```
+The workout tracker core builds on the open-source **openGym** project. The 0G integration,
+`CoachAgent`, the coach runtime, the nutrition engine, offline layer, stateless server, and
+everything above `1.0.0` in the [CHANGELOG](CHANGELOG.md) is this project's work.
 
----
+<div align="center">
 
-## 🧪 Testing & Code Quality
+**[Live app](https://liftwithog.vercel.app)** · **[Verify](https://liftwithog.vercel.app/#/verify)** · **[Architecture](ARCHITECTURE.md)** · **[Every claim, checked](VERIFICATION.md)** · **[Changelog](CHANGELOG.md)**
 
-LIFTWITHOG maintains rigorous test coverage across all subsystems:
-
-```bash
-# Frontend — 510 vitest tests
-npm --prefix frontend test
-
-# Server — 64 node:test tests (auth, storage backends, sync rules)
-npm test
-
-# Contract — 67 Foundry tests: 42 unit · 9 fuzz · 5 invariant · 16 ERC-7857
-cd contracts && forge test
-
-# Mutation testing — 164 seeded faults; fails unless the tests notice
-node scripts/mutate.mjs
-```
-
-Architecture, flows and the trust model: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
-Every claim with the command or explorer link that checks it:
-**[VERIFICATION.md](VERIFICATION.md)** — or the live, in-app version at
-[liftwithog.vercel.app/#/verify](https://liftwithog.vercel.app/#/verify).
-
----
-
-## 🛠️ Technology Stack
-
-- **Frontend**: React 19, Zustand, Vite, Capacitor (iOS/Android)
-- **Backend**: Node.js, WebAuthn (@simplewebauthn), Web Push
-- **Web3 & AI**:
-  - `@0gfoundation/0g-compute-ts-sdk` (TEE confidential inference)
-  - `@0gfoundation/0g-storage-ts-sdk` (Encrypted decentralized backup)
-  - `ethers.js` (EIP-712 signing & ERC-721 interactions)
-  - Solidity `0.8.28` / Foundry
-
----
-
-## 👤 Author & Maintainer
-
-**Ritik**
-- GitHub: [@Ritik200238](https://github.com/Ritik200238)
-- Project Repository: [Ritik200238/LIFTWITHOG](https://github.com/Ritik200238/LIFTWITHOG)
-
----
-
-## 📄 License
-
-This project is open-source and licensed under the **[MIT License](LICENSE)**.
-
-Copyright © 2026 **Ritik**. All rights reserved.
+</div>

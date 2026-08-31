@@ -155,7 +155,7 @@ export default function Verify() {
         title={t('CoachAgent is deployed and anyone can read it')}
         evidence={<Link href={`${EXPLORER}/address/${COACH_ADDRESS}`}>{COACH_ADDRESS}</Link>}
       >
-        {t('An ERC-721 where each token is one person’s coach: its owner, its version, and the address of its encrypted brain on 0G Storage.')}
+        {t('A genuine ERC-7857 Agentic ID (and ERC-721): each token is one person’s coach — its encrypted brain’s hash and 0G Storage address, its version, its owner. Ask the bytecode itself: supportsInterface(0x4b396f04) returns true.')}
       </Claim>
 
       <Claim

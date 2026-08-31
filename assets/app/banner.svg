@@ -1,0 +1,26 @@
+<svg width="1200" height="300" viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0a0b"/>
+      <stop offset="1" stop-color="#101a12"/>
+    </linearGradient>
+    <linearGradient id="acc" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#30d158"/>
+      <stop offset="1" stop-color="#a2f2b8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="300" fill="url(#bg)"/>
+  <rect width="1200" height="300" fill="none" stroke="#1d2b20" stroke-width="2"/>
+  <!-- barbell mark -->
+  <g transform="translate(84,150)">
+    <rect x="-44" y="-6" width="88" height="12" rx="6" fill="url(#acc)"/>
+    <rect x="-58" y="-22" width="14" height="44" rx="7" fill="url(#acc)"/>
+    <rect x="44" y="-22" width="14" height="44" rx="7" fill="url(#acc)"/>
+    <rect x="-76" y="-14" width="12" height="28" rx="6" fill="#30d158" opacity=".55"/>
+    <rect x="64" y="-14" width="12" height="28" rx="6" fill="#30d158" opacity=".55"/>
+  </g>
+  <text x="190" y="138" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-1" fill="#ffffff">LIFTWITHOG</text>
+  <text x="192" y="184" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif" font-size="26" fill="#9ae6b0">The AI coach you own — an ERC-7857 agent on 0G that outlives every app.</text>
+  <text x="192" y="222" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif" font-size="17" fill="#8e8e93">0G Chain · 0G Compute (TEE) · 0G Storage · gasless device ownership · 641 tests · offline PWA</text>
+  <rect x="192" y="244" width="330" height="3" rx="1.5" fill="url(#acc)"/>
+</svg>

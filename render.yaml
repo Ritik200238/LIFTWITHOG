@@ -1,6 +1,51 @@
+# The API half of LIFTWITHOG.
+#
+# The frontend is on Vercel and rewrites /api/* here, so the browser only ever
+# sees one hostname. That is not a nicety: passkeys are bound to an origin, and
+# splitting the API onto a second domain stops sign-in working at all.
+#
+# After the first deploy, take this service's URL and put it in vercel.json:
+#   { "source": "/api/:path*", "destination": "https://<this>.onrender.com/api/:path*" }
+
 services:
   - type: web
-    name: workout
+    name: liftwithog-api
     env: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+    envVars:
+      # Where users, passkeys, per-user state and the session secret live.
+      #
+      # On the free plan Render gives no persistent disk, so this directory is
+      # wiped on every restart and every deploy: accounts and synced training
+      # disappear. Fine for a demo, wrong for real users. To fix it, move this
+      # service to a paid plan and attach a disk mounted at /data — then this
+      # value stays exactly as it is.
+      - key: DATA_DIR
+        value: /data
+
+      # Passkeys are bound to this exact hostname. It must be the address in the
+      # browser's bar — the Vercel one — not this service's own URL.
+      - key: RP_ID
+        value: liftwithog.vercel.app
+      - key: ORIGIN
+        value: https://liftwithog.vercel.app
+      - key: RP_NAME
+        value: LIFTWITHOG
+
+      # The deployed CoachAgent on 0G Galileo.
+      - key: COACH_ADDRESS
+        value: "0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A"
+
+      # Set by hand in the Render dashboard, never in this file: the key that
+      # pays gas so nobody using the app needs a wallet, and the key the coach
+      # service signs with. A private key in a public repo is a funded wallet
+      # anybody can drain.
+      - key: RELAYER_PRIVATE_KEY
+        sync: false
+      - key: COACH_SERVICE_KEY
+        sync: false

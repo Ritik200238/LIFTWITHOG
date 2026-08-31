@@ -16,9 +16,10 @@ the address the day it does.
 
 | Claim | Check |
 |---|---|
-| `CoachAgent` v1 is deployed and readable | [`0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A`](https://chainscan-galileo.0g.ai/address/0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A) on the 0G explorer |
+| `CoachAgent` v2 (ERC-7857) is deployed and readable | [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E) on the 0G explorer |
+| v2 answers for both 7857 interfaces **on chain** | `cast call 0x70c4dE9D0edbE53733821558Bf6b14b64451e56E "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
+| v1, the pre-7857 deployment, remains readable | [`0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A`](https://chainscan-galileo.0g.ai/address/0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A) — its coaches and versions are the project's on-chain history |
 | Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc-testnet.0g.ai` — non-zero, and grows as the app is used |
-| v2 speaks ERC-7857 | `cast call <v2> "supportsInterface(bytes4)(bool)" <interfaceId> …` returns true for `IERC7857` and `IERC7857Authorize`; the ids are computed in `contracts/test/CoachAgent7857.t.sol` |
 | The brain is hash-anchored | `getIntelligentDatas(tokenId)` returns the keccak256 the server verifies ciphertext against before every answer |
 | The contract never holds funds | read its balance on the explorer — zero — then see the invariant that keeps it so: `invariant_ContractNeverHoldsFunds` in `contracts/test/CoachAgentFuzz.t.sol` |
 | No admin can touch your coach | read the source: no owner role, no pause, no upgrade hook, `transferVerifier` immutable |

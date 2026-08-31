@@ -70,7 +70,7 @@ npm run evidence
 
 | Component | Verification / Proof |
 |---|---|
-| **Coach Agent Contract** | [`0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A`](https://chainscan-galileo.0g.ai/address/0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A) |
+| **Coach Agent Contract** | [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E) |
 | **Gasless Device Ownership** | Device generates local cryptographic keys; relayer funds on-chain minting |
 | **State Evolution** | Versioned on-chain state anchors (`version 3+`) pushed automatically post-workout |
 | **Atomic Payment & Access** | Direct trainer royalty payments executed in a single atomic transaction |

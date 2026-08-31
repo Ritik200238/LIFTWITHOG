@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="assets/banner.svg" alt="OG_FITNESS" width="720">
+<img src="assets/banner.svg" alt="LIFTWITHOG" width="720">
 
 <br><br>
 
-# 🏋️‍♂️ OG_FITNESS
+# 🏋️‍♂️ LIFTWITHOG
 
 **A sovereign, AI-powered workout, nutrition & health tracking ecosystem built on 0G.**
 
@@ -35,11 +35,11 @@
 
 ---
 
-## 🌟 Why OG_FITNESS?
+## 🌟 Why LIFTWITHOG?
 
 Traditional fitness apps lock your personal biometrics behind proprietary silos, sell health metrics to advertisers, and lose your data if their servers go down.
 
-**OG_FITNESS is built differently:**
+**LIFTWITHOG is built differently:**
 - **Your Data Stays Yours**: Runs 100% locally or on your self-hosted instance. All health records, PRs, and bodyweight measurements are encrypted on the client side using ECIES keys before being archived to **0G Decentralized Storage**.
 - **On-Chain AI Coaching**: Your personal coach is a persistent, evolving ERC-721 Agent on **0G Chain** with versioned training history.
 - **Hardware-Enclave Privacy (TEE)**: Inference executes inside confidential Trusted Execution Environments (TEEs) on **0G Compute**, guaranteeing that fitness queries and training methods never leak.
@@ -62,7 +62,7 @@ Traditional fitness apps lock your personal biometrics behind proprietary silos,
 
 ## 🔬 Verifiable 0G Evidence
 
-Every on-chain and decentralized claim in OG_FITNESS is publicly verifiable on-chain:
+Every on-chain and decentralized claim in LIFTWITHOG is publicly verifiable on-chain:
 
 ```bash
 npm run evidence
@@ -114,7 +114,7 @@ npm start
 
 ## 🧪 Testing & Code Quality
 
-OG_FITNESS maintains rigorous test coverage across all subsystems:
+LIFTWITHOG maintains rigorous test coverage across all subsystems:
 
 ```bash
 # Run Frontend Tests (510 Vitest tests)

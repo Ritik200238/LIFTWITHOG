@@ -127,6 +127,8 @@ export const SIGNATURE_TTL_SECONDS = 15 * 60
  */
 export function coachDomain(contractAddress, chainId = OG_NETWORK.chainId) {
   return {
+    // Frozen to match the deployed contract's EIP-712 domain, not the app's
+    // current name. See the constructor note in CoachAgent.sol.
     name: 'OG_FITNESS Coach',
     version: '1',
     chainId,

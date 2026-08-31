@@ -16,7 +16,7 @@
 
 /** Must match `challengeFor` in api/coach.js, exactly. */
 export function challengeFor(tokenId, issuedAt) {
-  return ['OG_FITNESS coach request', `coach: ${tokenId}`, `issued: ${issuedAt}`].join('\n')
+  return ['LIFTWITHOG coach request', `coach: ${tokenId}`, `issued: ${issuedAt}`].join('\n')
 }
 
 export class CoachAskError extends Error {

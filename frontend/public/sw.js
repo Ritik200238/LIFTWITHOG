@@ -1,5 +1,5 @@
 /*
- * OG_FITNESS service worker.
+ * LIFTWITHOG service worker.
  *
  * Three caches, because they have three different lifetimes:
  *
@@ -64,7 +64,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('push', e => {
   const data = e.data ? e.data.json() : {}
-  e.waitUntil(self.registration.showNotification(data.title || 'OG_FITNESS', {
+  e.waitUntil(self.registration.showNotification(data.title || 'LIFTWITHOG', {
     body: data.body || '',
     icon: 'icon-512.png',
     badge: 'icon-180.png',

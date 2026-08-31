@@ -298,7 +298,7 @@ test('the challenge string is exactly what the browser signs', () => {
    */
   assert.equal(
     challengeFor('42', 1_700_000_000_000),
-    'OG_FITNESS coach request\ncoach: 42\nissued: 1700000000000',
+    'LIFTWITHOG coach request\ncoach: 42\nissued: 1700000000000',
   );
 });
 

@@ -1,6 +1,6 @@
-# Contributing to OG_FITNESS
+# Contributing to LIFTWITHOG
 
-OG_FITNESS is a self-hosted, sovereign local application built with React 19, Node.js, and the 0G Decentralized AI Operating System.
+LIFTWITHOG is a self-hosted, sovereign local application built with React 19, Node.js, and the 0G Decentralized AI Operating System.
 
 ## Development Workflow
 

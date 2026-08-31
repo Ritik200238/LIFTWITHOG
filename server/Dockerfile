@@ -8,7 +8,7 @@ RUN npm install --omit=dev && npm cache clean --force
 # reaches relayer.js. The old line copied server.js alone, so the container
 # started and died on "Cannot find module './coach.js'" — a broken image that
 # only shows itself at run time, never at build time.
-COPY server.js coach.js coach-runtime.js relayer.js sync.js ./
+COPY server.js store.js coach.js coach-runtime.js relayer.js sync.js ./
 
 # Where users, passkeys, per-user state and the session secret live. On Render
 # this is a mounted disk when one is attached, and ephemeral when it is not —

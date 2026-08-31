@@ -5,21 +5,46 @@
   "installCommand": "echo skip",
   "framework": null,
   "rewrites": [
-    { "source": "/img/:file", "destination": "https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@main/images/:file" },
-    { "source": "/gif/:file", "destination": "https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@main/videos/:file" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/img/:file",
+      "destination": "https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@main/images/:file"
+    },
+    {
+      "source": "/gif/:file",
+      "destination": "https://cdn.jsdelivr.net/gh/hasaneyldrm/exercises-dataset@main/videos/:file"
+    }
   ],
   "headers": [
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/sw.js",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/index.html",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,275 @@
+/**
+ * Where the server keeps things, and why there are two answers.
+ *
+ * Everything durable this server owns is small and JSON-shaped: the account
+ * list, one blob of training per user, the key that signs session cookies, and
+ * the push keypair. That fitted a directory of files perfectly for as long as
+ * the server was one long-lived process with a disk under it.
+ *
+ * It stops fitting the moment the server is a serverless function. There the
+ * filesystem is read-only apart from a scratch directory that is thrown away,
+ * so every account created would survive exactly until the next request landed
+ * on a different instance. Not slowly degraded — gone.
+ *
+ * So the same four operations get two implementations behind one interface:
+ *
+ *   files     — a self-hosted instance with a disk, which is still the setup
+ *               the compose file describes and the one that owns its own data.
+ *   postgres  — a managed database, which is what makes the server stateless
+ *               enough to run anywhere, serverless included.
+ *
+ * The backend is chosen by whether DATABASE_URL is set, so neither deployment
+ * has to know the other exists.
+ */
+
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+
+/** The four things worth keeping, as keys both backends agree on. */
+const DB = 'db';
+const SECRET = 'secret';
+const VAPID = 'vapid';
+const stateKey = (uid) => `state:${uid}`;
+
+/** An account list that has every field the server reads. */
+const emptyDb = () => ({ users: [], creds: [], subs: [], invites: [] });
+
+/**
+ * Is this a push keypair the push library will actually accept?
+ *
+ * Stored keys are read back and handed straight to `setVapidDetails`, which
+ * throws on anything malformed — at boot, before the server listens. That
+ * turns one bad row into a service that will not start, with a stack trace
+ * about byte lengths rather than about storage.
+ *
+ * A public key is an uncompressed P-256 point: 65 bytes, base64url-encoded.
+ * Anything else is not a key that got slightly damaged, it is not a key, and
+ * the only way forward is a new pair.
+ */
+function usableVapid(value) {
+  if (!value || typeof value.publicKey !== 'string' || typeof value.privateKey !== 'string') return false;
+  try {
+    return Buffer.from(value.publicKey, 'base64url').length === 65;
+  } catch {
+    return false;
+  }
+}
+
+const freshSecret = () => crypto.randomBytes(32).toString('hex');
+
+/**
+ * The session key that was committed to this repository by mistake.
+ *
+ * It signs every session cookie, so anyone who read that commit could mint one
+ * for any account on any instance still using it. Recorded as a hash, because
+ * writing the value here to detect the value would put it back in the
+ * repository it is being removed from.
+ */
+export const LEAKED_SECRET_SHA256 =
+  '72bb661b20b167f89ff7bc4e6e5a08a27e8359dc48877a5843e9c05a64ba7534';
+
+const sha256 = (text) => crypto.createHash('sha256').update(String(text).trim()).digest('hex');
+
+/**
+ * A session key, replacing the published one on sight.
+ *
+ * Replaced rather than warned about: a warning in a log is read by nobody, and
+ * the failure it describes is silent account takeover. Everybody signed in is
+ * signed out once, which is the cheap half of this.
+ */
+function usableSecret(stored, onRotate) {
+  if (!stored) {
+    const made = freshSecret();
+    onRotate(made);
+    return made;
+  }
+
+  if (sha256(stored) === LEAKED_SECRET_SHA256) {
+    const made = freshSecret();
+    onRotate(made);
+    console.warn(
+      '[security] The session key in storage is the one committed to this repository. ' +
+        'It has been replaced with a fresh one and everybody has been signed out.',
+    );
+    return made;
+  }
+
+  return stored;
+}
+
+/* ------------------------------------------------------------------ files */
+
+function fileStore(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+
+  const file = (name) => path.join(dir, name);
+  const stateFile = (uid) => file('state-' + String(uid).replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
+
+  /** Write through a temporary file, so a crash mid-write cannot truncate the real one. */
+  const atomicWrite = (target, content, mode) => {
+    const tmp = target + '.tmp';
+    fs.writeFileSync(tmp, content, mode ? { mode } : undefined);
+    fs.renameSync(tmp, target);
+  };
+
+  return {
+    kind: 'files',
+
+    async init() {},
+
+    async getSecret() {
+      const secretFile = file('secret');
+      const stored = fs.existsSync(secretFile) ? fs.readFileSync(secretFile, 'utf8').trim() : null;
+      return usableSecret(stored, (made) => atomicWrite(secretFile, made, 0o600));
+    },
+
+    async getVapid(generate) {
+      const vapidFile = file('vapid.json');
+      let stored = null;
+      try { stored = JSON.parse(fs.readFileSync(vapidFile, 'utf8')); } catch {}
+      if (usableVapid(stored)) return stored;
+
+      // Regenerating signs everybody out of push notifications, which is the
+      // lesser loss: the alternative is a server that cannot start at all.
+      if (stored) console.warn('[push] The stored VAPID keypair is unusable; generating a new one.');
+      const made = generate();
+      atomicWrite(vapidFile, JSON.stringify(made), 0o600);
+      return made;
+    },
+
+    async loadDb() {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(file('db.json'), 'utf8'));
+        return { ...emptyDb(), ...parsed };
+      } catch {
+        return emptyDb();
+      }
+    },
+
+    async saveDb(db) {
+      atomicWrite(file('db.json'), JSON.stringify(db, null, 2));
+    },
+
+    /**
+     * Someone's stored training: null when there genuinely is none, a throw
+     * when it cannot be read.
+     *
+     * This used to swallow every failure and return null, which made "this
+     * account is new" and "this account's file is unreadable" the same answer.
+     * They call for opposite responses: the first invites the client to push,
+     * the second must stop it, because pushing is what replaces the data that
+     * could not be read.
+     */
+    async readState(uid) {
+      const target = stateFile(uid);
+      if (!fs.existsSync(target)) return null;
+      return JSON.parse(fs.readFileSync(target, 'utf8'));
+    },
+
+    async writeState(uid, state) {
+      atomicWrite(stateFile(uid), JSON.stringify(state));
+    },
+  };
+}
+
+/* --------------------------------------------------------------- postgres */
+
+/**
+ * One table of JSON, deliberately.
+ *
+ * A schema per record type would be the textbook answer, and it would buy
+ * nothing here: nothing is queried by field, nothing is joined, and the server
+ * already reads and writes each of these as one whole document. A key-value
+ * table keeps the two backends the same shape, so the file store stays a real
+ * option rather than a legacy path nobody tests.
+ */
+function postgresStore(databaseUrl) {
+  let sql = null;
+
+  const connect = async () => {
+    if (sql) return sql;
+    const { neon } = await import('@neondatabase/serverless');
+    sql = neon(databaseUrl);
+    return sql;
+  };
+
+  const read = async (key) => {
+    const q = await connect();
+    const rows = await q`select v from kv where k = ${key}`;
+    return rows.length ? rows[0].v : null;
+  };
+
+  const write = async (key, value) => {
+    const q = await connect();
+    await q`
+      insert into kv (k, v, updated_at) values (${key}, ${JSON.stringify(value)}, now())
+      on conflict (k) do update set v = excluded.v, updated_at = now()
+    `;
+  };
+
+  return {
+    kind: 'postgres',
+
+    async init() {
+      const q = await connect();
+      await q`
+        create table if not exists kv (
+          k text primary key,
+          v jsonb not null,
+          updated_at timestamptz not null default now()
+        )
+      `;
+    },
+
+    async getSecret() {
+      const stored = await read(SECRET);
+      let rotated = null;
+      const value = usableSecret(stored, (made) => { rotated = made; });
+      if (rotated !== null) await write(SECRET, rotated);
+      return value;
+    },
+
+    async getVapid(generate) {
+      const stored = await read(VAPID);
+      if (usableVapid(stored)) return stored;
+
+      if (stored) console.warn('[push] The stored VAPID keypair is unusable; generating a new one.');
+      const made = generate();
+      await write(VAPID, made);
+      return made;
+    },
+
+    async loadDb() {
+      const stored = await read(DB);
+      return stored ? { ...emptyDb(), ...stored } : emptyDb();
+    },
+
+    async saveDb(db) {
+      await write(DB, db);
+    },
+
+    /**
+     * Same contract as the file backend: null for "no data", a throw for
+     * "could not read it". A failed query throws on its own, which is exactly
+     * the behaviour wanted — the caller must not treat a database outage as an
+     * empty account and invite the client to overwrite it.
+     */
+    async readState(uid) {
+      return await read(stateKey(uid));
+    },
+
+    async writeState(uid, state) {
+      await write(stateKey(uid), state);
+    },
+  };
+}
+
+/**
+ * The store this process should use.
+ *
+ * DATABASE_URL decides. Nothing else in the server knows which one it got.
+ */
+export function createStore({ databaseUrl = process.env.DATABASE_URL, dataDir } = {}) {
+  return databaseUrl ? postgresStore(databaseUrl) : fileStore(dataDir || process.env.DATA_DIR || '/data');
+}

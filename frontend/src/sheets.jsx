@@ -695,7 +695,7 @@ function PlanTools({ close }) {
     <h3>{t('Plan files')}</h3>
     <div className="muted small" style={{ marginBottom: 16 }}>{t('Send your routines to a friend, put your week on paper, or bring in a plan somebody sent you.')}</div>
     <Button variant="primary" icon="upload" onClick={exportFile} disabled={!hasRoutines}>{t('Export plan file')}</Button>
-    <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A small file a friend imports into their own OG_FITNESS — routines only, none of your workouts or weigh-ins.')}</div>
+    <div className="dim small" style={{ margin: '7px 2px 0', lineHeight: 1.4 }}>{t('A small file a friend imports into their own LIFTWITHOG — routines only, none of your workouts or weigh-ins.')}</div>
     {!MOBILE && <>
       <div style={{ height: 12 }} />
       <Button variant="tinted" icon="download" onClick={() => { close(); printPlan(st, user?.name || '') }} disabled={!hasRoutines}>{t('Print / Save as PDF')}</Button>

@@ -94,6 +94,17 @@ contract CoachAgent is ERC721, EIP712 {
     error BadDuration();
     error PayoutFailed();
 
+    /**
+     * @dev These two strings are frozen, not stale.
+     *
+     *      The app is called LIFTWITHOG now, and renaming them here would not
+     *      rename anything on chain — it would change the EIP-712 domain
+     *      separator this source computes, so every signature the app produces
+     *      would stop verifying against the contract already deployed at
+     *      0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A. The name a contract was
+     *      born with is part of its identity; changing it means redeploying and
+     *      migrating every coach.
+     */
     constructor() ERC721("OG_FITNESS Coach", "COACH") EIP712("OG_FITNESS Coach", "1") {}
 
     // ------------------------------------------------------------- relayed

@@ -60,7 +60,7 @@ export class CoachError extends Error {
  */
 export function challengeFor(tokenId, issuedAt) {
   return [
-    'OG_FITNESS coach request',
+    'LIFTWITHOG coach request',
     `coach: ${tokenId}`,
     `issued: ${issuedAt}`,
   ].join('\n');

@@ -1,4 +1,4 @@
-/* og-fitness-api — passkey (WebAuthn) auth + per-user state storage for OG_FITNESS
+/* og-fitness-api — passkey (WebAuthn) auth + per-user state storage for LIFTWITHOG
    No framework, JSON-file storage, signed session cookies.               */
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -19,12 +19,13 @@ import {
 } from './relayer.js';
 import { loadConfigFromStorage, runOn0GCompute, storeForDevice } from './coach-runtime.js';
 import { isStaleWrite, stampFor } from './sync.js';
+import { createStore } from './store.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
-const RP_NAME = process.env.RP_NAME || 'OG_FITNESS';
+const RP_NAME = process.env.RP_NAME || 'LIFTWITHOG';
 // Admin dashboard (issue): admins are matched by uid; INVITE_ONLY gates new signups behind a
 // code the admin generates. Both default off so a fresh self-hosted instance stays open.
 const ADMIN_UIDS = (process.env.ADMIN_UIDS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -38,85 +39,47 @@ const MAX_BODY = 5 * 1024 * 1024;
 // Secure cookies require HTTPS; over plain http://localhost the flag would drop the cookie
 const SECURE = /^https:/i.test(ORIGIN) ? ' Secure;' : '';
 
-fs.mkdirSync(DATA, { recursive: true });
-
-/* ---------- secret + db ---------- */
-const secretFile = path.join(DATA, 'secret');
-
-/**
- * The session key that was committed to this repository by mistake.
- *
- * It signs every session cookie, so anyone who read that commit could mint a
- * cookie for any account on any instance still using it. It was untracked
- * later, but git history is permanent and the file on disk does not change
- * just because the repo stopped listing it — so every instance cloned before
- * the fix is still running on a key that is published.
- *
- * Stored as a hash: recording the value here to detect the value would put it
- * back in the repository it is being removed from.
- */
-const LEAKED_SECRET_SHA256 =
-  '72bb661b20b167f89ff7bc4e6e5a08a27e8359dc48877a5843e9c05a64ba7534';
-
-const freshSecret = () => crypto.randomBytes(32).toString('hex');
-const sha256 = (text) => crypto.createHash('sha256').update(String(text).trim()).digest('hex');
-
-if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, freshSecret(), { mode: 0o600 });
-
-let secretValue = fs.readFileSync(secretFile, 'utf8').trim();
-
-if (sha256(secretValue) === LEAKED_SECRET_SHA256) {
-  /*
-   * Replaced rather than merely warned about. A warning in a log is read by
-   * nobody, and the failure mode here is silent account takeover — there is no
-   * version of "carry on with the published key" that is the right default.
-   * Everyone signed in is signed out once; that is the cheap half of this.
-   */
-  secretValue = freshSecret();
-  fs.writeFileSync(secretFile, secretValue, { mode: 0o600 });
-  console.warn(
-    '[security] The session key on disk is the one committed to this repository. ' +
-      'It has been replaced with a fresh one and everybody has been signed out.',
-  );
-}
-
-const SECRET = secretValue;
-
-const dbFile = path.join(DATA, 'db.json');
-let db = { users: [], creds: [], subs: [], invites: [] };
-try { db = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch {}
-db.subs = db.subs || [];
-db.invites = db.invites || [];
-const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
-function saveDb() { atomicWrite(dbFile, JSON.stringify(db, null, 2)); }
-function atomicWrite(file, content) {
-  const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, content);
-  fs.renameSync(tmp, file);
-}
-const stateFile = uid => path.join(DATA, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
-/**
- * Someone's stored state: null when there genuinely is none, a throw when it
- * cannot be read.
- *
- * This used to swallow every failure and return null, which made "this account
- * is new" and "this account's file is unreadable" the same answer. They call
- * for opposite responses: the first invites the client to push, the second must
- * stop it, because pushing is what replaces the file that could not be read.
- */
-function readState(uid) {
-  const file = stateFile(uid);
-  if (!fs.existsSync(file)) return null;
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
-}
-
-/* ---------- push notifications (Web Push / VAPID) ---------- */
-const vapidFile = path.join(DATA, 'vapid.json');
-let vapid;
-try { vapid = JSON.parse(fs.readFileSync(vapidFile, 'utf8')); }
-catch { vapid = webpush.generateVAPIDKeys(); fs.writeFileSync(vapidFile, JSON.stringify(vapid), { mode: 0o600 }); }
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || (SECURE ? ORIGIN : 'mailto:admin@localhost');
-webpush.setVapidDetails(VAPID_SUBJECT, vapid.publicKey, vapid.privateKey);
+
+/*
+ * Storage lives behind `store` now — files when this runs on a machine with a
+ * disk, Postgres when DATABASE_URL is set and the disk is a lie (serverless).
+ * See store.js for why both exist.
+ */
+const store = createStore({ dataDir: DATA });
+
+let db = { users: [], creds: [], subs: [], invites: [] };
+let SECRET = null;
+let vapid = null;
+
+const isAdmin = user => !!user && (user.admin === true || ADMIN_UIDS.includes(user.id));
+const saveDb = () => store.saveDb(db);
+const readState = uid => store.readState(uid);
+const writeState = (uid, state) => store.writeState(uid, state);
+
+/**
+ * Everything this process needs before it can answer anything.
+ *
+ * Awaited once per cold start by the long-lived server, and once per instance
+ * by a serverless one. `db` is re-read on every request there instead — see
+ * `ready()` — because two functions serving two requests do not share memory,
+ * and a stale copy would silently drop whatever the other one wrote.
+ */
+let booted = null;
+async function boot() {
+  await store.init();
+  SECRET = await store.getSecret();
+  vapid = await store.getVapid(() => webpush.generateVAPIDKeys());
+  db = await store.loadDb();
+  webpush.setVapidDetails(VAPID_SUBJECT, vapid.publicKey, vapid.privateKey);
+}
+
+/** Called at the top of every request. Cheap when already warm. */
+export async function ready({ reloadDb = false } = {}) {
+  if (!booted) booted = boot();
+  await booted;
+  if (reloadDb) db = await store.loadDb();
+}
 
 async function sendPush(userId, payload) {
   const subs = db.subs.filter(s => s.userId === userId);
@@ -137,7 +100,7 @@ async function sendPush(userId, payload) {
       }
     }
   }));
-  if (dirty) saveDb();
+  if (dirty) await saveDb();
 }
 
 // Rest-timer alerts: client schedules on start/extend, cancels on skip or on-screen completion —
@@ -177,12 +140,20 @@ function userNow(tz) {
     return { date: `${g('year')}-${g('month')}-${g('day')}`, hhmm: `${g('hour')}:${g('minute')}` };
   } catch { return null; } // unknown/invalid tz string — skip this user rather than guess
 }
-setInterval(() => {
+/*
+ * The reminder sweep. Async now because storage is: it reads each user's plan
+ * to decide whether today is a training day.
+ *
+ * Only the long-lived server runs this — a serverless deployment has no
+ * process between requests to run a timer in, and would need a scheduled
+ * invocation instead.
+ */
+setInterval(async () => {
   for (const user of db.users) {
     if (!db.subs.some(s => s.userId === user.id)) continue;
     let S;
     // One unreadable file must not stop reminders for everybody else.
-    try { S = readState(user.id); } catch { continue; }
+    try { S = await readState(user.id); } catch { continue; }
     if (!S?.reminder?.on) continue;
     const now = userNow(S.reminder.tz || 'UTC');
     if (!now || S.reminder.time !== now.hhmm) continue;
@@ -193,7 +164,7 @@ setInterval(() => {
     const routine = (S.routines || []).find(r => r.id === rid);
     console.log('reminder firing', user.id, rid);
     user.lastReminder = now.date;
-    saveDb();
+    await saveDb();
     sendPush(user.id, {
       title: routine ? `${routine.emoji || '🏋️'} ${routine.name} today` : 'Workout planned today',
       body: "It's on your plan — let's go 💪",
@@ -375,7 +346,7 @@ const routes = {
       counter: credential.counter || 0,
       transports: body.credential?.response?.transports || []
     });
-    saveDb();
+    await saveDb();
     json(res, 200, { user: { id: user.id, name: user.name, admin: isAdmin(user) } }, { 'Set-Cookie': sessionCookie(user) });
   },
 
@@ -411,7 +382,7 @@ const routes = {
     } catch (e) { return json(res, 400, { error: 'verification failed: ' + e.message }); }
     if (!verification.verified) return json(res, 400, { error: 'not verified' });
     cred.counter = verification.authenticationInfo.newCounter;
-    saveDb();
+    await saveDb();
     const user = db.users.find(u => u.id === cred.userId);
     if (!user) return json(res, 500, { error: 'user missing' });
     if (user.disabled) return json(res, 403, { error: 'this account has been disabled' });
@@ -428,7 +399,7 @@ const routes = {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     user.sv = sessionVersion(user) + 1;
-    saveDb();
+    await saveDb();
     json(res, 200, { ok: true }, { 'Set-Cookie': clearCookie });
   },
 
@@ -436,7 +407,7 @@ const routes = {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
     try {
-      json(res, 200, { state: readState(user.id) });
+      json(res, 200, { state: await readState(user.id) });
     } catch (e) {
       /*
        * Not `{ state: null }`. Telling a client with a year of training that
@@ -471,7 +442,7 @@ const routes = {
      */
     let existing;
     try {
-      existing = readState(user.id);
+      existing = await readState(user.id);
     } catch (e) {
       // Same reasoning as the read: an unreadable file is not an absent one,
       // and accepting a write here is what overwrites it.
@@ -491,7 +462,7 @@ const routes = {
      */
     body.state._ts = stampFor(body.state);
 
-    atomicWrite(stateFile(user.id), JSON.stringify(body.state));
+    await writeState(user.id, body.state);
     json(res, 200, { ok: true, ts: body.state._ts || null });
   },
 
@@ -505,7 +476,7 @@ const routes = {
     if (!sub?.endpoint || !sub?.keys?.p256dh || !sub?.keys?.auth) return json(res, 400, { error: 'invalid subscription' });
     db.subs = db.subs.filter(s => s.endpoint !== sub.endpoint);
     db.subs.push({ userId: user.id, endpoint: sub.endpoint, keys: sub.keys, created: new Date().toISOString() });
-    saveDb();
+    await saveDb();
     json(res, 200, { ok: true });
   },
 
@@ -514,14 +485,14 @@ const routes = {
     if (!user) return json(res, 401, { error: 'not signed in' });
     const body = await readBody(req);
     db.subs = db.subs.filter(s => !(s.userId === user.id && s.endpoint === body.endpoint));
-    saveDb();
+    await saveDb();
     json(res, 200, { ok: true });
   },
 
   'POST /api/push/test': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    await sendPush(user.id, { title: 'OG_FITNESS', body: 'Test notification ✅ — this is what alerts look like.', tag: 'test' });
+    await sendPush(user.id, { title: 'LIFTWITHOG', body: 'Test notification ✅ — this is what alerts look like.', tag: 'test' });
     json(res, 200, { ok: true });
   },
 
@@ -563,8 +534,10 @@ const routes = {
   // One row per user, cheap enough for a personal instance (reads each state file once).
   'GET /api/admin/users': async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const users = db.users.map(u => {
-      const S = readState(u.id) || {};
+    // Reads run together rather than one after another: on Postgres each is a
+    // round trip, and serially that is one dashboard load per user.
+    const users = await Promise.all(db.users.map(async u => {
+      const S = await readState(u.id) || {};
       const workouts = S.workouts || [];
       const last = workouts[workouts.length - 1];
       return {
@@ -576,7 +549,7 @@ const routes = {
         hasPush: db.subs.some(s => s.userId === u.id),
         live: livePresence(u.id)
       };
-    });
+    }));
     json(res, 200, { users, invite_only: INVITE_ONLY, now: Date.now() });
   },
 
@@ -586,7 +559,7 @@ const routes = {
     const id = new URL(req.url, 'http://x').searchParams.get('id');
     const u = db.users.find(x => x.id === id);
     if (!u) return json(res, 404, { error: 'no such user' });
-    const S = readState(u.id) || {};
+    const S = await readState(u.id) || {};
     json(res, 200, {
       user: { id: u.id, name: u.name, created: u.created || null, disabled: !!u.disabled, admin: isAdmin(u), invitedBy: u.invitedBy || null },
       unit: S.unit || 'kg',
@@ -605,7 +578,7 @@ const routes = {
     if (isAdmin(u)) return json(res, 400, { error: 'cannot disable an admin' });
     u.disabled = !!body.disabled;
     if (u.disabled) presence.delete(u.id);   // drop them off "training now" at once
-    saveDb();
+    await saveDb();
     json(res, 200, { ok: true, id: u.id, disabled: u.disabled });
   },
 
@@ -629,7 +602,7 @@ const routes = {
     do { code = crypto.randomBytes(8).toString('hex').toUpperCase(); } while (db.invites.some(i => i.code === code));
     const invite = { code, note: String(body.note || '').slice(0, 60), createdBy: admin.id, created: new Date().toISOString() };
     db.invites.push(invite);
-    saveDb();
+    await saveDb();
     json(res, 200, { invite });
   },
 
@@ -770,19 +743,45 @@ const routes = {
     if (!inv) return json(res, 404, { error: 'no such code' });
     if (inv.usedBy) return json(res, 400, { error: 'already used — cannot revoke' });
     db.invites = db.invites.filter(i => i.code !== inv.code);
-    saveDb();
+    await saveDb();
     json(res, 200, { ok: true });
   }
 };
 
-http.createServer(async (req, res) => {
+/**
+ * One request, whoever is calling.
+ *
+ * Exported so a serverless function can hand it a request without this module
+ * opening a port — the two deployments differ only in who owns the socket.
+ */
+export async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const key = req.method + ' ' + url.pathname;
   const handler = routes[key];
   if (!handler) return json(res, 404, { error: 'not found' });
-  try { await handler(req, res); }
-  catch (e) {
+
+  try {
+    /*
+     * Re-read the account list per request when the store is shared, because
+     * another instance may have written since this one last looked. On a
+     * single long-lived process the in-memory copy is already the truth, and
+     * re-reading it every request would be a query for nothing.
+     */
+    await ready({ reloadDb: store.kind === 'postgres' });
+    await handler(req, res);
+  } catch (e) {
     console.error(key, e);
     if (!res.headersSent) json(res, 500, { error: 'server error' });
   }
-}).listen(PORT, () => console.log(`gym-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN})`));
+}
+
+/*
+ * Only listen when started directly. Imported — by the serverless entry point,
+ * or by a test — this module defines the handler and opens nothing.
+ */
+if (process.argv[1] && process.argv[1].endsWith('server.js')) {
+  await ready();
+  http.createServer(handle).listen(PORT, () =>
+    console.log(`liftwithog-api on :${PORT} (rpID=${RP_ID}, origin=${ORIGIN}, store=${store.kind})`),
+  );
+}

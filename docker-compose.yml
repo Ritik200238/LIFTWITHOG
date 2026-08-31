@@ -24,7 +24,7 @@ services:
   # image: prebuilt (docker compose pull). build: from source (docker compose up --build).
   api:
     image: og-fitness-api:latest
-    build: ./api
+    build: ./server
     restart: unless-stopped
     env_file: .env
     environment:

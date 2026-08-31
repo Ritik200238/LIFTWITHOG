@@ -18,7 +18,7 @@ import { askCoach, challengeFor, CoachAskError } from './coachAsk.js'
  * "signature invalid" — which looks like a wallet problem, a network problem,
  * or an expired subscription, and is none of them.
  */
-const VECTOR = 'OG_FITNESS coach request\ncoach: 42\nissued: 1700000000000'
+const VECTOR = 'LIFTWITHOG coach request\ncoach: 42\nissued: 1700000000000'
 
 describe('the signed challenge', () => {
   it('matches the server byte for byte', () => {

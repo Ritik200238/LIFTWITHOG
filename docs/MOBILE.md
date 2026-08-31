@@ -1,6 +1,6 @@
 # Building the mobile app (iOS / Android)
 
-OG_FITNESS ships in two flavors from the same codebase:
+LIFTWITHOG ships in two flavors from the same codebase:
 
 | | **Self-hosted** (this repo's default) | **Mobile app** (`VITE_MOBILE=1`) |
 |---|---|---|
@@ -22,7 +22,7 @@ OS share sheet instead of a browser download.
 - **Android:** Android Studio (bundles the SDK). Java 21 for Gradle.
 - **iOS:** a Mac with Xcode 15+ and CocoaPods (`brew install cocoapods`). A free Apple ID
   is enough to run the app on your own iPhone (see below); paid membership is only needed
-  for App Store distribution, which OG_FITNESS doesn't do.
+  for App Store distribution, which LIFTWITHOG doesn't do.
 
 ## Build & run
 
@@ -56,7 +56,7 @@ npx @capacitor/assets generate --iconBackgroundColor '#0c0e12' --splashBackgroun
 
 ## Distribution — deliberately no app stores
 
-OG_FITNESS's mobile app is not on the Play Store or App Store, and that's a choice: no store
+LIFTWITHOG's mobile app is not on the Play Store or App Store, and that's a choice: no store
 accounts, no store rules, no yearly fees between you and an open-source app.
 
 ### Android — sideload the APK
@@ -75,7 +75,7 @@ keytool -genkeypair -keystore my.keystore -alias workout -keyalg RSA -validity 1
 
 # align + sign (zipalign/apksigner ship with the Android SDK build-tools)
 zipalign -f -p 4 app-release-unsigned.apk aligned.apk
-apksigner sign --ks my.keystore --ks-key-alias workout --out OG_FITNESS.apk aligned.apk
+apksigner sign --ks my.keystore --ks-key-alias workout --out LIFTWITHOG.apk aligned.apk
 ```
 
 ### iPhone — what's actually possible

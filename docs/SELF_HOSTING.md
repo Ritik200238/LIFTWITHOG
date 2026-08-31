@@ -1,6 +1,6 @@
-# Self-hosting OG_FITNESS
+# Self-hosting LIFTWITHOG
 
-OG_FITNESS is two small containers (a web server and an API) plus a folder of your data.
+LIFTWITHOG is two small containers (a web server and an API) plus a folder of your data.
 This guide takes you from "just cloned it" to "using it from my phone over the internet".
 
 ## 1. Run it locally (5 minutes)
@@ -30,20 +30,20 @@ Logs: `docker compose logs -f`. Stop: `docker compose down`.
 
 ## 2. Understand the passkey requirement (important)
 
-OG_FITNESS signs you in with **passkeys** (WebAuthn). Browsers enforce two rules:
+LIFTWITHOG signs you in with **passkeys** (WebAuthn). Browsers enforce two rules:
 
 1. Passkeys are bound to an exact **hostname** (`RP_ID`).
 2. They only work over **HTTPS** — with one exception: `http://localhost`.
 
 So `http://localhost:8080` works on the machine running Docker, but **another device (your
 phone) cannot use `http://<your-LAN-ip>:8080`** — that's neither localhost nor HTTPS, so the
-passkey prompt won't appear. To use OG_FITNESS from your phone you need a real HTTPS hostname.
+passkey prompt won't appear. To use LIFTWITHOG from your phone you need a real HTTPS hostname.
 
 (You can still open it over LAN in **guest mode**, which stores data only in that browser.)
 
 ## 3. Expose it over HTTPS on your own domain
 
-Put OG_FITNESS behind something that terminates TLS for a hostname you control, then point it at
+Put LIFTWITHOG behind something that terminates TLS for a hostname you control, then point it at
 the `web` container. Pick whichever you already run:
 
 ### Option A — Cloudflare Tunnel (no open ports)
@@ -81,7 +81,7 @@ gym.example.com {
 ### Option C — Traefik / nginx / Nginx Proxy Manager
 
 Route `gym.example.com` (HTTPS) → `web:80` (or `<docker-host>:8080`). Any reverse proxy works —
-OG_FITNESS only needs the browser to reach it over `https://gym.example.com`.
+LIFTWITHOG only needs the browser to reach it over `https://gym.example.com`.
 
 Then set your domain in `.env` and restart:
 
@@ -90,7 +90,7 @@ Then set your domain in `.env` and restart:
 RP_ID=gym.example.com
 ORIGIN=https://gym.example.com
 WEB_PORT=8080
-RP_NAME=OG_FITNESS
+RP_NAME=LIFTWITHOG
 ```
 
 ```bash
@@ -138,7 +138,7 @@ into the project folder. (Individual users can also export their own data as JSO
 
 ## 6. Notifications
 
-OG_FITNESS can push two kinds of alert to your phone/desktop, even when the app isn't open:
+LIFTWITHOG can push two kinds of alert to your phone/desktop, even when the app isn't open:
 rest-timer-over, and a reminder on days you have a workout planned but haven't logged one yet.
 Turn it on per-profile in **Settings → Notifications** (requires a signed-in passkey profile and
 HTTPS — see section 3).

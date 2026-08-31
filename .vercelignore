@@ -6,9 +6,9 @@
 # Uploading them here would cost minutes per deploy and change nothing.
 media/
 
-# The API, the contracts and the mobile shell are deployed elsewhere — the VPS,
-# 0G Galileo, and the app stores respectively.
-api/
+# The API now runs here as a function (api/index.js), so server/ has to ship.
+# The contracts and the mobile shell are still deployed elsewhere — 0G Galileo
+# and the app stores respectively.
 contracts/
 frontend/ios/
 web/

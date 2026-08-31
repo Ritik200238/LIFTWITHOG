@@ -4,7 +4,7 @@
   "author": "Ritik",
   "license": "MIT",
   "private": true,
-  "description": "0G Chain contracts for OG_FITNESS — coach ownership and rental.",
+  "description": "0G Chain contracts for LIFTWITHOG — coach ownership and rental.",
   "scripts": {
     "build": "forge build",
     "test": "forge test",

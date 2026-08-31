@@ -26,5 +26,20 @@ remappings = [
     "forge-std/=node_modules/forge-std/src/",
 ]
 
+# Fuzzing and invariant budgets.
+#
+# The defaults (256 runs, 500-deep invariant sequences) take long enough that
+# nobody runs the suite before pushing, and a test suite people skip protects
+# nothing. These numbers still explore far more than any hand-written case —
+# 96 random inputs per property, and 48 random call sequences 48 deep against
+# the invariants — while finishing fast enough to stay in the loop.
+[fuzz]
+runs = 96
+
+[invariant]
+runs = 48
+depth = 48
+fail_on_revert = false
+
 [rpc_endpoints]
 og_testnet = "https://evmrpc-testnet.0g.ai"

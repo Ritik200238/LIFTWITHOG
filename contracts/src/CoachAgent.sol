@@ -4,6 +4,11 @@ pragma solidity 0.8.28;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC7857} from "./interfaces/IERC7857.sol";
+import {IERC7857Authorize} from "./interfaces/IERC7857Authorize.sol";
+import {ITransferProofVerifier} from "./interfaces/ITransferProofVerifier.sol";
 
 /**
  * @title CoachAgent
@@ -41,7 +46,9 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  *      Stated plainly because the difference is the entire product claim, and a
  *      contract comment that overstates it would be the worst place to be wrong.
  */
-contract CoachAgent is ERC721, EIP712 {
+contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     /// @notice A coach's encrypted brain, as it stands right now.
     struct Coach {
         /// @dev keccak256 of the ciphertext. What integrity is checked against.
@@ -78,6 +85,28 @@ contract CoachAgent is ERC721, EIP712 {
      */
     mapping(uint256 tokenId => uint256) private _pricePerDay;
 
+    /**
+     * @dev Everyone ever granted access to a coach, for `authorizedUsersOf`.
+     *
+     *      Validity still lives in `_access` under the current epoch — this set
+     *      is only the enumeration the 7857 extension asks for. Entries whose
+     *      grant expired or predates a transfer are filtered out by the view
+     *      rather than deleted, because deleting them would put a loop over
+     *      renters inside `_update` and hand back the unbounded-transfer
+     *      problem the epoch design exists to avoid.
+     */
+    mapping(uint256 tokenId => EnumerableSet.AddressSet) private _grantees;
+
+    /**
+     * @dev The TEE/ZKP oracle behind iTransferFrom, or zero for none yet.
+     *      Immutable on purpose — see ITransferProofVerifier for the argument.
+     */
+    address public immutable transferVerifier;
+
+    /// @dev A grant that outlives any subscription: 7857 authorization is
+    ///      open-ended by definition, revoked rather than expiring.
+    uint64 private constant OPEN_ENDED = type(uint64).max;
+
     event CoachMinted(uint256 indexed tokenId, address indexed owner, bytes32 configHash);
     event CoachEvolved(uint256 indexed tokenId, uint64 indexed version, bytes32 configHash);
     event AccessGranted(uint256 indexed tokenId, address indexed user, uint64 expiresAt);
@@ -95,17 +124,19 @@ contract CoachAgent is ERC721, EIP712 {
     error PayoutFailed();
 
     /**
-     * @dev These two strings are frozen, not stale.
+     * @dev The v1 deployment at 0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A was
+     *      born "OG_FITNESS Coach" and keeps that name forever — an EIP-712
+     *      domain is part of a contract's identity, not a label. This is v2:
+     *      a fresh deployment under the product's real name, adding the
+     *      ERC-7857 surface. The app's signing domain moves with the address,
+     *      in the same commit, so the two can never disagree.
      *
-     *      The app is called LIFTWITHOG now, and renaming them here would not
-     *      rename anything on chain — it would change the EIP-712 domain
-     *      separator this source computes, so every signature the app produces
-     *      would stop verifying against the contract already deployed at
-     *      0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A. The name a contract was
-     *      born with is part of its identity; changing it means redeploying and
-     *      migrating every coach.
+     * @param verifier The TEE/ZKP transfer oracle, or zero to deploy with
+     *        intelligent transfers honestly disabled until one exists.
      */
-    constructor() ERC721("OG_FITNESS Coach", "COACH") EIP712("OG_FITNESS Coach", "1") {}
+    constructor(address verifier) ERC721("LIFTWITHOG Coach", "COACH") EIP712("LIFTWITHOG Coach", "1") {
+        transferVerifier = verifier;
+    }
 
     // ------------------------------------------------------------- relayed
 
@@ -133,6 +164,8 @@ contract CoachAgent is ERC721, EIP712 {
 
     error SignatureExpired();
     error WrongSignature();
+    error VerifierNotConfigured();
+    error TransferProofRejected();
 
     /// @notice The nonce this address must sign its next message with.
     function nonceOf(address signer) external view returns (uint256) {
@@ -236,6 +269,7 @@ contract CoachAgent is ERC721, EIP712 {
         coach.updatedAt = uint64(block.timestamp);
 
         emit CoachEvolved(tokenId, coach.version, configHash);
+        emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
     }
 
     /**
@@ -285,6 +319,7 @@ contract CoachAgent is ERC721, EIP712 {
         });
 
         emit CoachMinted(tokenId, msg.sender, configHash);
+        emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
     }
 
     // ---------------------------------------------------------------- evolve
@@ -328,6 +363,7 @@ contract CoachAgent is ERC721, EIP712 {
         if (expiresAt <= block.timestamp) revert ExpiryInPast();
 
         _access[_grantKey(tokenId, user)] = expiresAt;
+        _grantees[tokenId].add(user);
         emit AccessGranted(tokenId, user, expiresAt);
     }
 
@@ -336,6 +372,7 @@ contract CoachAgent is ERC721, EIP712 {
         _requireOwner(tokenId);
 
         delete _access[_grantKey(tokenId, user)];
+        _grantees[tokenId].remove(user);
         emit AccessRevoked(tokenId, user);
     }
 
@@ -398,6 +435,7 @@ contract CoachAgent is ERC721, EIP712 {
         uint64 expiresAt = startFrom + uint64(dayCount * 1 days);
 
         _access[key] = expiresAt;
+        _grantees[tokenId].add(msg.sender);
         emit Rented(tokenId, msg.sender, expiresAt, msg.value);
         emit AccessGranted(tokenId, msg.sender, expiresAt);
 
@@ -420,6 +458,11 @@ contract CoachAgent is ERC721, EIP712 {
      */
     function hasAccess(uint256 tokenId, address user) external view returns (bool) {
         if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+        return _hasAccess(tokenId, user);
+    }
+
+    /// @dev Shared by hasAccess and the ERC-7857 authorization views.
+    function _hasAccess(uint256 tokenId, address user) private view returns (bool) {
         if (_ownerOf(tokenId) == user) return true;
 
         // Same reasoning: a few seconds either side of a month-long grant is not
@@ -450,6 +493,147 @@ contract CoachAgent is ERC721, EIP712 {
     /// @notice How many coaches exist. Ids run from 1 to this number.
     function totalMinted() external view returns (uint256) {
         return _nextId - 1;
+    }
+
+    // -------------------------------------------------- ERC-7857 Agentic ID
+
+    /**
+     * @notice The coach's encrypted brain, in the words of the standard.
+     *
+     * @dev This is not an adapter bolted on for a checklist: the coach was
+     *      already an ERC-7857-shaped thing — a token whose value is encrypted
+     *      data at a URI, with a hash to hold the ciphertext to, and usage
+     *      grants that let others run it without owning it. This surface says
+     *      so in the vocabulary the rest of the 0G ecosystem indexes.
+     */
+    function getIntelligentDatas(uint256 tokenId) external view returns (IntelligentData[] memory) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+        return _intelligentDataOf(tokenId);
+    }
+
+    /// @dev Shared by the view and the two events that announce data changes.
+    function _intelligentDataOf(uint256 tokenId) private view returns (IntelligentData[] memory data) {
+        Coach storage coach = _coaches[tokenId];
+        data = new IntelligentData[](1);
+        data[0] = IntelligentData({
+            dataDescription: string.concat(
+                "AES-256-GCM encrypted coaching profile, version ",
+                Strings.toString(coach.version),
+                ", ciphertext on 0G Storage at ",
+                coach.configURI
+            ),
+            dataHash: coach.configHash
+        });
+    }
+
+    /**
+     * @notice Transfer with proof that the brain was re-encrypted for the buyer.
+     *
+     * @dev Verification is delegated to the immutable oracle. Deployed with
+     *      none, this reverts rather than pretending: an iTransferFrom that
+     *      checks nothing would look identical on the surface and be a lie
+     *      underneath. Plain transferFrom keeps working either way — it hands
+     *      over the token and voids every grant, it just cannot promise the
+     *      buyer a re-encrypted brain.
+     */
+    function iTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        TransferValidityProof[] calldata proofs
+    ) external {
+        if (transferVerifier == address(0)) revert VerifierNotConfigured();
+        if (!ITransferProofVerifier(transferVerifier).verifyTransfer(from, to, tokenId, proofs)) {
+            revert TransferProofRejected();
+        }
+
+        // Ordinary ERC-721 authorization still applies — the oracle attests to
+        // re-encryption, it does not replace the owner's consent.
+        transferFrom(from, to, tokenId);
+        emit IntelligentTransfer(from, to, tokenId);
+    }
+
+    /**
+     * @notice Let an executor use this coach without owning it, until revoked.
+     *
+     * @dev 7857 authorization is open-ended where a rental expires: it is the
+     *      grant for your own devices and agents, not the subscription. Both
+     *      end the moment the coach is sold — the epoch bump voids them
+     *      together.
+     */
+    function authorizeUsage(uint256 tokenId, address user) external {
+        _requireOwner(tokenId);
+
+        _access[_grantKey(tokenId, user)] = OPEN_ENDED;
+        _grantees[tokenId].add(user);
+        emit UsageAuthorized(tokenId, user);
+        emit AccessGranted(tokenId, user, OPEN_ENDED);
+    }
+
+    /// @notice Take an executor's usage back.
+    function revokeAuthorization(uint256 tokenId, address user) external {
+        _requireOwner(tokenId);
+
+        delete _access[_grantKey(tokenId, user)];
+        _grantees[tokenId].remove(user);
+        emit UsageRevoked(tokenId, user);
+        emit AccessRevoked(tokenId, user);
+    }
+
+    /// @notice May this address run the coach right now? Owner, renter or authorized.
+    function isAuthorizedUser(uint256 tokenId, address user) external view returns (bool) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+        return _hasAccess(tokenId, user);
+    }
+
+    /**
+     * @notice Everyone whose grant is good right now.
+     *
+     * @dev A view that filters rather than storage that prunes: expired
+     *      rentals and grants voided by a sale simply stop appearing. The set
+     *      they linger in costs nothing to read past, and leaving it unpruned
+     *      is what keeps transfers constant-gas.
+     */
+    function authorizedUsersOf(uint256 tokenId) external view returns (address[] memory users) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+
+        EnumerableSet.AddressSet storage all = _grantees[tokenId];
+        uint256 total = all.length();
+
+        uint256 live = 0;
+        address[] memory scratch = new address[](total);
+        for (uint256 i = 0; i < total; i++) {
+            address user = all.at(i);
+            // forge-lint: disable-next-line(block-timestamp)
+            if (_access[_grantKey(tokenId, user)] > block.timestamp) {
+                scratch[live++] = user;
+            }
+        }
+
+        users = new address[](live);
+        for (uint256 i = 0; i < live; i++) {
+            users[i] = scratch[i];
+        }
+    }
+
+    /// @notice The same open-ended grant, across several coaches at once.
+    function batchAuthorizeUsage(uint256[] calldata tokenIds, address user) external {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uint256 tokenId = tokenIds[i];
+            _requireOwner(tokenId);
+
+            _access[_grantKey(tokenId, user)] = OPEN_ENDED;
+            _grantees[tokenId].add(user);
+            emit UsageAuthorized(tokenId, user);
+            emit AccessGranted(tokenId, user, OPEN_ENDED);
+        }
+    }
+
+    /// @notice This token speaks ERC-721 and ERC-7857, core and authorization.
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == type(IERC7857).interfaceId
+            || interfaceId == type(IERC7857Authorize).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     // -------------------------------------------------------------- internal

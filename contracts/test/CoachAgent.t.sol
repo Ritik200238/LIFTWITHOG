@@ -23,7 +23,7 @@ contract CoachAgentTest is Test {
     string private constant URI = "og://storage/root/abc123";
 
     function setUp() public {
-        coach = new CoachAgent();
+        coach = new CoachAgent(address(0));
         // Grants are compared against the clock, so a chain that starts at zero
         // makes every expiry look like the distant future.
         vm.warp(1_700_000_000);

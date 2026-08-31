@@ -120,16 +120,17 @@ export const SIGNATURE_TTL_SECONDS = 15 * 60
 /**
  * The EIP-712 domain the contract verifies against.
  *
- * Every field has to match `EIP712("OG_FITNESS Coach", "1")` and the deployed
+ * Every field has to match `EIP712("LIFTWITHOG Coach", "1")` and the deployed
  * address exactly. A mismatch does not fail loudly — it produces a signature
  * that recovers to a different address, which the contract rejects as a
  * forgery, and the cause is invisible from either side.
  */
 export function coachDomain(contractAddress, chainId = OG_NETWORK.chainId) {
   return {
-    // Frozen to match the deployed contract's EIP-712 domain, not the app's
-    // current name. See the constructor note in CoachAgent.sol.
-    name: 'OG_FITNESS Coach',
+    // Must match the deployed contract's EIP-712 domain exactly. The v2
+    // contract was born "LIFTWITHOG Coach"; this string and COACH_ADDRESS
+    // always change in the same commit, so they cannot disagree.
+    name: 'LIFTWITHOG Coach',
     version: '1',
     chainId,
     verifyingContract: contractAddress,

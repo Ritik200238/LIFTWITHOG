@@ -18,7 +18,7 @@ contract Deploy is Script {
         uint256 key = vm.envUint("PRIVATE_KEY");
 
         vm.startBroadcast(key);
-        coach = new CoachAgent();
+        coach = new CoachAgent(address(0));
         vm.stopBroadcast();
 
         console.log("CoachAgent deployed at:", address(coach));

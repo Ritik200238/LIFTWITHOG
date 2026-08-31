@@ -26,7 +26,7 @@ contract CoachAgentFuzzTest is Test {
     string private constant URI = "og://storage/root/abc123";
 
     function setUp() public {
-        coach = new CoachAgent();
+        coach = new CoachAgent(address(0));
         vm.warp(1_700_000_000);
     }
 
@@ -186,6 +186,8 @@ contract CoachAgentFuzzTest is Test {
 
         uint256 previous;
         for (uint256 i = 0; i < howMany; i++) {
+            // i is bounded to 40, so this can never truncate.
+            // forge-lint: disable-next-line(unsafe-typecast)
             address owner = address(uint160(0x1000 + i));
             uint256 id = _mint(owner);
 
@@ -232,6 +234,8 @@ contract CoachAgentFuzzTest is Test {
 
         address[] memory renters = new address[](renterCount);
         for (uint256 i = 0; i < renterCount; i++) {
+            // i is bounded to 12, so this can never truncate.
+            // forge-lint: disable-next-line(unsafe-typecast)
             renters[i] = address(uint160(0x2000 + i));
             vm.deal(renters[i], 1e6);
             vm.prank(renters[i]);
@@ -279,6 +283,8 @@ contract CoachHandler is Test {
     constructor(CoachAgent target) {
         coach = target;
         for (uint256 i = 0; i < 5; i++) {
+            // i is bounded to 5, so this can never truncate.
+            // forge-lint: disable-next-line(unsafe-typecast)
             address a = address(uint160(0x5000 + i));
             actors.push(a);
             vm.deal(a, 100 ether);
@@ -365,7 +371,7 @@ contract CoachAgentInvariantTest is Test {
 
     function setUp() public {
         vm.warp(1_700_000_000);
-        coach = new CoachAgent();
+        coach = new CoachAgent(address(0));
         handler = new CoachHandler(coach);
         targetContract(address(handler));
     }
@@ -422,6 +428,8 @@ contract CoachAgentInvariantTest is Test {
                 if (who == owner) continue; // the owner needs no grant
 
                 bool has = coach.hasAccess(id, who);
+                // The invariant is exactly that these two clocks agree.
+                // forge-lint: disable-next-line(block-timestamp)
                 bool unexpired = coach.accessExpiry(id, who) > block.timestamp;
                 assertEq(has, unexpired, "access and expiry disagree");
             }

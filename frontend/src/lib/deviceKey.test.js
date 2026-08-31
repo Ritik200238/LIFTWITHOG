@@ -167,12 +167,12 @@ describe('what gets signed', () => {
     /*
      * Pinned, because a mismatch here is silent: the signature recovers to a
      * different address and the contract calls it a forgery, with nothing on
-     * either side saying why. These strings are `EIP712("OG_FITNESS Coach", "1")`
+     * either side saying why. These strings are `EIP712("LIFTWITHOG Coach", "1")`
      * in CoachAgent.sol.
      */
     const domain = coachDomain(CONTRACT)
 
-    expect(domain.name).toBe('OG_FITNESS Coach')
+    expect(domain.name).toBe('LIFTWITHOG Coach')
     expect(domain.version).toBe('1')
     expect(domain.chainId).toBe(16602)
     expect(domain.verifyingContract).toBe(CONTRACT)

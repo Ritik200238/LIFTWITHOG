@@ -43,3 +43,4 @@ fail_on_revert = false
 
 [rpc_endpoints]
 og_testnet = "https://evmrpc-testnet.0g.ai"
+og_mainnet = "https://evmrpc.0g.ai"

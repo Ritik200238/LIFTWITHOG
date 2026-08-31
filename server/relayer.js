@@ -12,7 +12,10 @@
 import { ethers } from 'ethers';
 
 export const OG_RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
-export const OG_CHAIN_ID = 16602;
+// Mainnet (Aristotle) is 16661, Galileo testnet 16602. The id must move with
+// the RPC or every signature is for a chain nobody is on — so it defaults by
+// looking at which RPC was chosen, and OG_CHAIN_ID overrides for anything else.
+export const OG_CHAIN_ID = +(process.env.OG_CHAIN_ID || (OG_RPC === 'https://evmrpc.0g.ai' ? 16661 : 16602));
 export const COACH_ADDRESS = process.env.COACH_ADDRESS || '';
 
 /**

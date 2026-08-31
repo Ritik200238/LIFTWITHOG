@@ -10,7 +10,9 @@
 services:
   - type: web
     name: liftwithog-api
-    env: docker
+    # `runtime`, not `env`: Render replaced that field, and a blueprint using
+    # the old name fails to create the service at all.
+    runtime: docker
     dockerfilePath: ./api/Dockerfile
     dockerContext: ./api
     plan: free

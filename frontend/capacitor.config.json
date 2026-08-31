@@ -1,0 +1,9 @@
+{
+  "appId": "com.workout.app",
+  "appName": "OG_FITNESS",
+  "webDir": "dist",
+  "backgroundColor": "#0c0e12",
+  "android": {
+    "allowMixedContent": false
+  }
+}

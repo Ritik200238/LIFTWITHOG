@@ -1,0 +1,49 @@
+# HTTPS in one command, for a VPS with a domain pointed at it.
+#
+#   DOMAIN=gym.example.com EMAIL=you@example.com \
+#     docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
+#
+# The base compose file publishes the app on :8080 and leaves TLS to whatever
+# you already run. That is right for a homelab and wrong for a fresh VPS, where
+# "whatever you already run" is nothing — and without HTTPS there are no
+# passkeys, because WebAuthn refuses to work over plain HTTP.
+#
+# Caddy gets a certificate from Let's Encrypt on first boot and renews it on its
+# own. Ports 80 and 443 must be reachable for that to happen.
+#
+# Set RP_ID and ORIGIN in .env to the same domain, or passkey verification fails
+# on a hostname mismatch:
+#
+#   RP_ID=gym.example.com
+#   ORIGIN=https://gym.example.com
+#
+# And close the plain-HTTP door the base file opens, by binding its published
+# port to the loopback instead of every interface:
+#
+#   WEB_PORT=127.0.0.1:8080
+#
+# (Compose expands that straight into the base file's `${WEB_PORT:-8080}:80`.
+# Overriding the `ports` list from this overlay would append rather than
+# replace it, which is the opposite of what it looks like.)
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"      # HTTP/3
+    environment:
+      - DOMAIN=${DOMAIN:?set DOMAIN to the hostname this is served on}
+      - EMAIL=${EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data          # certificates — keep this, or every restart re-issues
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

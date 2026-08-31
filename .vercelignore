@@ -1,0 +1,16 @@
+# What Vercel does not need to build the frontend.
+#
+# The exercise media is 140 MB of images and GIFs. On a self-hosted instance
+# nginx serves them from disk; on Vercel there is no such volume, so vercel.json
+# rewrites /img and /gif to the same public dataset the compose file downloads.
+# Uploading them here would cost minutes per deploy and change nothing.
+media/
+
+# The API, the contracts and the mobile shell are deployed elsewhere — the VPS,
+# 0G Galileo, and the app stores respectively.
+api/
+contracts/
+frontend/ios/
+web/
+docs/
+assets/

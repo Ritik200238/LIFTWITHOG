@@ -1,0 +1,18 @@
+{
+  "name": "og-fitness-contracts",
+  "version": "1.0.0",
+  "author": "Ritik",
+  "license": "MIT",
+  "private": true,
+  "description": "0G Chain contracts for OG_FITNESS — coach ownership and rental.",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "coverage": "forge coverage --report summary",
+    "deploy": "forge script script/Deploy.s.sol:Deploy --rpc-url og_testnet --broadcast"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "5.1.0",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4"
+  }
+}

@@ -1,0 +1,37 @@
+# There was no .gitignore here at all, which means a single `git add .` would
+# have committed every dependency and any secret sitting in a .env.
+
+node_modules/
+dist/
+build/
+
+# Runtime state, and the secret that signs session cookies.
+#
+# `data/secret` was committed. It is the HMAC key for every session cookie this
+# server issues, so anybody with the repository could forge one against a
+# deployment still using it. The server writes a fresh one when the file is
+# absent, which is what makes untracking it the fix rather than a loss.
+data/
+
+# Local configuration. `.env.example` is the one that belongs in the repo.
+.env
+.env.local
+.env.*.local
+
+# Foundry build output.
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# OS and editor noise.
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+.gstack/
+
+# Added by the Vercel CLI: the local project link, and its pulled env file.
+# Not `.env*` as the CLI writes it — that would also hide `.env.example`, which
+# is the one env file that belongs in the repo.
+.vercel
+.env.local

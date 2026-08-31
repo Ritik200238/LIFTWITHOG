@@ -1,0 +1,39 @@
+{
+  "name": "og-fitness-frontend",
+  "version": "1.2.4",
+  "author": "Ritik",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:mobile": "VITE_MOBILE=1 VITE_IMG_BASE=img/ VITE_GIF_BASE=gif/ vite build && cap sync",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.6.8",
+    "@capacitor/filesystem": "^7.1.8",
+    "@capacitor/local-notifications": "^7.0.7",
+    "@capacitor/share": "^7.0.4",
+    "@0gfoundation/0g-compute-ts-sdk": "^0.9.0",
+    "@0gfoundation/0g-storage-ts-sdk": "^1.2.11",
+    "ethers": "^6.13.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.2",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.8",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.6.8",
+    "@capacitor/ios": "^7.6.8",
+    "@vitejs/plugin-react": "^6.0.3",
+    "vite": "^8.1.5",
+    "vite-plugin-node-polyfills": "^0.28.0",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: workout
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .

@@ -1,0 +1,27 @@
+# TLS for OG_FITNESS. Used by docker-compose.https.yml; DOMAIN comes from the
+# environment so this file needs no editing.
+#
+# One origin for the whole app — the static frontend, /api and the exercise
+# media all arrive on the same hostname. Passkeys are bound to that hostname,
+# so splitting the API onto a second domain breaks sign-in.
+
+{
+	email {$EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Everything goes to the web container, which already serves the app and
+	# proxies /api to the API container internally.
+	reverse_proxy web:80
+
+	header {
+		# HTTPS only, for a year, once this is confirmed working.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# The app is not meant to be framed by anyone.
+		X-Frame-Options "DENY"
+	}
+}

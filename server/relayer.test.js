@@ -56,8 +56,8 @@ function fakeContract(overrides = {}) {
 
 const ok = () => true;
 
-beforeEach(() => {
-  resetRateLimit();
+beforeEach(async () => {
+  await resetRateLimit();
 });
 
 // ------------------------------------------------------------------- minting
@@ -136,10 +136,10 @@ test('one address cannot drain the wallet', async () => {
   const now = 1_700_000_000_000;
 
   for (let i = 0; i < MAX_RELAYS_PER_HOUR; i += 1) {
-    assert.equal(withinRateLimit(OWNER, now + i), true, `relay ${i} should be allowed`);
+    assert.equal(await withinRateLimit(OWNER, now + i), true, `relay ${i} should be allowed`);
   }
 
-  assert.equal(withinRateLimit(OWNER, now + MAX_RELAYS_PER_HOUR), false, 'and then it stops');
+  assert.equal(await withinRateLimit(OWNER, now + MAX_RELAYS_PER_HOUR), false, 'and then it stops');
 });
 
 test('the limit is per address, not global', async () => {
@@ -147,18 +147,18 @@ test('the limit is per address, not global', async () => {
   const now = 1_700_000_000_000;
   const other = ethers.Wallet.createRandom().address;
 
-  for (let i = 0; i < MAX_RELAYS_PER_HOUR; i += 1) withinRateLimit(OWNER, now + i);
+  for (let i = 0; i < MAX_RELAYS_PER_HOUR; i += 1) await withinRateLimit(OWNER, now + i);
 
-  assert.equal(withinRateLimit(OWNER, now + 100), false);
-  assert.equal(withinRateLimit(other, now + 100), true);
+  assert.equal(await withinRateLimit(OWNER, now + 100), false);
+  assert.equal(await withinRateLimit(other, now + 100), true);
 });
 
 test('the limit lets go after an hour', async () => {
   const now = 1_700_000_000_000;
-  for (let i = 0; i < MAX_RELAYS_PER_HOUR; i += 1) withinRateLimit(OWNER, now + i);
+  for (let i = 0; i < MAX_RELAYS_PER_HOUR; i += 1) await withinRateLimit(OWNER, now + i);
 
-  assert.equal(withinRateLimit(OWNER, now + 100), false);
-  assert.equal(withinRateLimit(OWNER, now + 60 * 60 * 1000 + 1), true);
+  assert.equal(await withinRateLimit(OWNER, now + 100), false);
+  assert.equal(await withinRateLimit(OWNER, now + 60 * 60 * 1000 + 1), true);
 });
 
 test('a rate-limited request never reaches the chain', async () => {
@@ -256,32 +256,32 @@ test('the storage endpoint cannot be used to drain the wallet', async () => {
    * spend the wallet a megabyte at a time, and unlike the relay endpoints there
    * is no signature to key on.
    */
-  resetStoreLimit();
+  await resetStoreLimit();
   const caller = '203.0.113.7';
   const now = 1_700_000_000_000;
 
   for (let i = 0; i < MAX_STORES_PER_HOUR; i += 1) {
-    assert.equal(withinStoreLimit(caller, now + i), true, `upload ${i} should be allowed`);
+    assert.equal(await withinStoreLimit(caller, now + i), true, `upload ${i} should be allowed`);
   }
 
-  assert.equal(withinStoreLimit(caller, now + MAX_STORES_PER_HOUR), false, 'and then it stops');
+  assert.equal(await withinStoreLimit(caller, now + MAX_STORES_PER_HOUR), false, 'and then it stops');
 });
 
 test('one noisy caller does not lock everybody else out of storage', async () => {
-  resetStoreLimit();
+  await resetStoreLimit();
   const now = 1_700_000_000_000;
 
-  for (let i = 0; i < MAX_STORES_PER_HOUR; i += 1) withinStoreLimit('203.0.113.7', now + i);
+  for (let i = 0; i < MAX_STORES_PER_HOUR; i += 1) await withinStoreLimit('203.0.113.7', now + i);
 
-  assert.equal(withinStoreLimit('203.0.113.7', now + 100), false);
-  assert.equal(withinStoreLimit('198.51.100.4', now + 100), true);
+  assert.equal(await withinStoreLimit('203.0.113.7', now + 100), false);
+  assert.equal(await withinStoreLimit('198.51.100.4', now + 100), true);
 });
 
 test('the storage limit lets go after an hour', async () => {
-  resetStoreLimit();
+  await resetStoreLimit();
   const now = 1_700_000_000_000;
-  for (let i = 0; i < MAX_STORES_PER_HOUR; i += 1) withinStoreLimit('203.0.113.7', now + i);
+  for (let i = 0; i < MAX_STORES_PER_HOUR; i += 1) await withinStoreLimit('203.0.113.7', now + i);
 
-  assert.equal(withinStoreLimit('203.0.113.7', now + 100), false);
-  assert.equal(withinStoreLimit('203.0.113.7', now + 60 * 60 * 1000 + 1), true);
+  assert.equal(await withinStoreLimit('203.0.113.7', now + 100), false);
+  assert.equal(await withinStoreLimit('203.0.113.7', now + 60 * 60 * 1000 + 1), true);
 });

@@ -103,6 +103,9 @@ function usableSecret(stored, onRotate) {
 function fileStore(dir) {
   fs.mkdirSync(dir, { recursive: true });
 
+  /** Rate-limit windows, keyed `bucket:key`. See `limit` below. */
+  const windows = new Map();
+
   const file = (name) => path.join(dir, name);
   const stateFile = (uid) => file('state-' + String(uid).replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
 
@@ -170,6 +173,35 @@ function fileStore(dir) {
     async writeState(uid, state) {
       atomicWrite(stateFile(uid), JSON.stringify(state));
     },
+
+    /**
+     * A sliding window, held in memory.
+     *
+     * Correct here precisely because this backend implies one long-lived
+     * process: there is exactly one copy of the counter, and a restart
+     * resetting it is the same event as the server being unable to spend
+     * anything anyway.
+     */
+    async limit({ bucket, key, max, windowMs, now = Date.now() }) {
+      const id = `${bucket}:${key}`;
+
+      for (const [k, times] of windows) {
+        const live = times.filter((t) => now - t < windowMs);
+        if (live.length === 0) windows.delete(k);
+        else windows.set(k, live);
+      }
+
+      const times = (windows.get(id) ?? []).filter((t) => now - t < windowMs);
+      if (times.length >= max) return false;
+
+      times.push(now);
+      windows.set(id, times);
+      return true;
+    },
+
+    async resetLimits() {
+      windows.clear();
+    },
   };
 }
 
@@ -220,6 +252,15 @@ function postgresStore(databaseUrl) {
           updated_at timestamptz not null default now()
         )
       `;
+      await q`
+        create table if not exists rate_counter (
+          bucket text not null,
+          k text not null,
+          window_start timestamptz not null,
+          n integer not null default 0,
+          primary key (bucket, k, window_start)
+        )
+      `;
     },
 
     async getSecret() {
@@ -261,6 +302,49 @@ function postgresStore(databaseUrl) {
 
     async writeState(uid, state) {
       await write(stateKey(uid), state);
+    },
+
+    /**
+     * A counter every instance shares, incremented atomically.
+     *
+     * This is the reason the whole limiter moved into the store. Held in
+     * process memory it was correct on a long-lived server and useless on a
+     * serverless one: each cold instance starts at zero, so the relayer's
+     * spending cap was really "twelve per hour, per instance somebody can
+     * cause to be created" — and the wallet it protects holds real money on
+     * mainnet.
+     *
+     * One statement, so concurrent requests serialise on the row rather than
+     * racing between a read and a write. Fixed windows rather than sliding:
+     * sliding needs read-then-write, which is exactly the race being removed
+     * here. The honest cost is the boundary — someone can spend a window's
+     * worth at 10:59 and another at 11:00. Sustained throughput is still
+     * capped at `max` per window, which is what protects the balance.
+     */
+    async limit({ bucket, key, max, windowMs, now = Date.now() }) {
+      const q = await connect();
+      const windowStart = new Date(Math.floor(now / windowMs) * windowMs);
+
+      const rows = await q`
+        insert into rate_counter (bucket, k, window_start, n)
+        values (${bucket}, ${String(key)}, ${windowStart.toISOString()}, 1)
+        on conflict (bucket, k, window_start)
+          do update set n = rate_counter.n + 1
+        returning n
+      `;
+
+      // Old windows are dead weight; clearing them opportunistically avoids a
+      // scheduled job for a table that is small by construction.
+      if (Math.random() < 0.02) {
+        await q`delete from rate_counter where window_start < now() - interval '2 hours'`;
+      }
+
+      return Number(rows[0].n) <= max;
+    },
+
+    async resetLimits() {
+      const q = await connect();
+      await q`delete from rate_counter`;
     },
   };
 }

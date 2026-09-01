@@ -221,7 +221,7 @@ export async function advise(request, deps) {
    * marketplace stops working — checked after access so that somebody with no
    * rental is refused for the right reason.
    */
-  if (deps.withinQuestionLimit && !deps.withinQuestionLimit(address)) {
+  if (deps.withinQuestionLimit && !(await deps.withinQuestionLimit(address))) {
     throw new CoachError(429, 'too_many', 'That is a lot of questions in an hour. Try again later.');
   }
 

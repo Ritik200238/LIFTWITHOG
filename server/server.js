@@ -649,7 +649,7 @@ const routes = {
       req.socket?.remoteAddress ||
       'unknown';
 
-    if (!withinStoreLimit(caller)) {
+    if (!(await withinStoreLimit(caller))) {
       return json(res, 429, {
         error: 'too_many',
         message: 'That is more storage than anybody needs in an hour.',

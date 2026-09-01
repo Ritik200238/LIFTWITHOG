@@ -162,6 +162,33 @@ test('both backends answer the same way', async () => {
   assert.equal(await files.readState('nobody'), null);
 });
 
+test('a spending cap holds, and lets go when its window does', async () => {
+  // The cap exists to stop somebody draining the relayer's wallet, so the
+  // property is exact: the nth call is allowed and the (n+1)th is not.
+  const store = createStore({ dataDir: tmpDir() });
+  const now = Date.now();
+  const call = (key, at = now) => store.limit({ bucket: 'relay', key, max: 3, windowMs: 60_000, now: at });
+
+  assert.equal(await call('a'), true);
+  assert.equal(await call('a'), true);
+  assert.equal(await call('a'), true);
+  assert.equal(await call('a'), false, 'the cap did not hold');
+
+  assert.equal(await call('b'), true, 'one caller locked out everybody else');
+  assert.equal(await call('a', now + 60_001), true, 'the window never let go');
+});
+
+test('resetting limits is a clean slate, not a partial one', async () => {
+  const store = createStore({ dataDir: tmpDir() });
+  const now = Date.now();
+  const call = () => store.limit({ bucket: 'relay', key: 'a', max: 1, windowMs: 60_000, now });
+
+  assert.equal(await call(), true);
+  assert.equal(await call(), false);
+  await store.resetLimits();
+  assert.equal(await call(), true, 'a reset left the counter behind');
+});
+
 test('the backend is chosen by DATABASE_URL alone', async () => {
   // Neither deployment should have to know the other exists, and a stray
   // dataDir must not pull a configured database back onto local disk.

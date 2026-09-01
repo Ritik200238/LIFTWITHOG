@@ -10,6 +10,7 @@
  */
 
 import { ethers } from 'ethers';
+import { createStore } from './store.js';
 
 export const OG_RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
 // Mainnet (Aristotle) is 16661, Galileo testnet 16602. The id must move with
@@ -67,36 +68,6 @@ const HOUR_MS = 60 * 60 * 1000;
  */
 export const MAX_STORES_PER_HOUR = 20;
 
-const stores = new Map();
-
-/**
- * Rate limit by whatever identifies the caller.
- *
- * An address when one is known, an IP otherwise. The storage endpoint has no
- * address to key on — the upload happens before there is anything signed — so
- * this is deliberately coarse: it is a cost control, not an authorisation.
- */
-export function withinStoreLimit(caller, now = Date.now()) {
-  const key = String(caller || 'unknown');
-
-  for (const [k, times] of stores) {
-    const live = times.filter((t) => now - t < HOUR_MS);
-    if (live.length === 0) stores.delete(k);
-    else stores.set(k, live);
-  }
-
-  const times = (stores.get(key) ?? []).filter((t) => now - t < HOUR_MS);
-  if (times.length >= MAX_STORES_PER_HOUR) return false;
-
-  times.push(now);
-  stores.set(key, times);
-  return true;
-}
-
-export function resetStoreLimit() {
-  stores.clear();
-}
-
 /**
  * Questions we will pay a model to answer, per address, per hour.
  *
@@ -107,56 +78,39 @@ export function resetStoreLimit() {
  */
 export const MAX_QUESTIONS_PER_HOUR = 60;
 
-const questions = new Map();
+/**
+ * The counters live in the store, not in this process.
+ *
+ * They used to be module-level Maps, which was correct for exactly one
+ * deployment shape and quietly wrong for the one actually running. On
+ * serverless every cold instance began at zero, so the cap protecting the
+ * relayer's balance was really "twelve per hour per instance an attacker can
+ * cause to exist". That is a wallet-draining bug the moment the wallet holds
+ * real money — which mainnet makes true.
+ */
+const limiter = createStore();
 
-export function withinQuestionLimit(address, now = Date.now()) {
-  const key = String(address).toLowerCase();
+/** `now` stays injectable so a test can cross a window boundary without waiting an hour. */
+const allow = (bucket, key, max, now = Date.now()) =>
+  limiter.limit({ bucket, key: String(key ?? 'unknown').toLowerCase(), max, windowMs: HOUR_MS, now });
 
-  for (const [k, times] of questions) {
-    const live = times.filter((t) => now - t < HOUR_MS);
-    if (live.length === 0) questions.delete(k);
-    else questions.set(k, live);
-  }
+/**
+ * Rate limit by whatever identifies the caller.
+ *
+ * An address when one is known, an IP otherwise. The storage endpoint has no
+ * address to key on — the upload happens before there is anything signed — so
+ * this is deliberately coarse: it is a cost control, not an authorisation.
+ */
+export const withinStoreLimit = (caller, now) => allow('store', caller, MAX_STORES_PER_HOUR, now);
 
-  const times = (questions.get(key) ?? []).filter((t) => now - t < HOUR_MS);
-  if (times.length >= MAX_QUESTIONS_PER_HOUR) return false;
+export const withinQuestionLimit = (caller, now) => allow('question', caller, MAX_QUESTIONS_PER_HOUR, now);
 
-  times.push(now);
-  questions.set(key, times);
-  return true;
-}
+export const withinRateLimit = (caller, now) => allow('relay', caller, MAX_RELAYS_PER_HOUR, now);
 
-export function resetQuestionLimit() {
-  questions.clear();
-}
-
-const recent = new Map();
-
-/** Kept small: entries older than the window are of no further use. */
-function prune(now) {
-  for (const [address, times] of recent) {
-    const live = times.filter((t) => now - t < HOUR_MS);
-    if (live.length === 0) recent.delete(address);
-    else recent.set(address, live);
-  }
-}
-
-export function withinRateLimit(address, now = Date.now()) {
-  prune(now);
-  const key = String(address).toLowerCase();
-  const times = (recent.get(key) ?? []).filter((t) => now - t < HOUR_MS);
-
-  if (times.length >= MAX_RELAYS_PER_HOUR) return false;
-
-  times.push(now);
-  recent.set(key, times);
-  return true;
-}
-
-/** For tests, and for a restart to be a clean slate. */
-export function resetRateLimit() {
-  recent.clear();
-}
+/** For tests, and for a fresh instance to start from a known state. */
+export const resetRateLimit = () => limiter.resetLimits();
+export const resetStoreLimit = () => limiter.resetLimits();
+export const resetQuestionLimit = () => limiter.resetLimits();
 
 export function relayerWallet() {
   const key = process.env.RELAYER_PRIVATE_KEY || process.env.COACH_SERVICE_KEY;
@@ -216,7 +170,7 @@ export async function relayMint({ owner, configHash, configURI, deadline, signat
     throw new RelayError(400, 'bad_request', 'That is not a config location.');
   }
 
-  if (!(deps.withinRateLimit ?? withinRateLimit)(address)) {
+  if (!(await (deps.withinRateLimit ?? withinRateLimit)(address))) {
     throw new RelayError(429, 'too_many', 'That is more coaches than anybody needs in an hour.');
   }
 
@@ -261,7 +215,7 @@ export async function relayEvolve(
   const address = requireOwner(owner);
   requireSignature(signature);
 
-  if (!(deps.withinRateLimit ?? withinRateLimit)(address)) {
+  if (!(await (deps.withinRateLimit ?? withinRateLimit)(address))) {
     throw new RelayError(429, 'too_many', 'That coach has learned enough for one hour.');
   }
 

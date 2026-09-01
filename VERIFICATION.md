@@ -16,8 +16,8 @@ the address the day it does.
 
 | Claim | Check |
 |---|---|
-| `CoachAgent` v2 (ERC-7857) is deployed and readable | [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E) on the 0G explorer |
-| v2 answers for both 7857 interfaces **on chain** | `cast call 0x70c4dE9D0edbE53733821558Bf6b14b64451e56E "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
+| `CoachAgent` v2 (ERC-7857) is deployed and readable | [`0x640eecC824D54d7ECF05fa423E18673E70342809`](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809) on the 0G explorer |
+| v2 answers for both 7857 interfaces **on chain** | `cast call 0x640eecC824D54d7ECF05fa423E18673E70342809 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
 | v1, the pre-7857 deployment, remains readable | [`0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A`](https://chainscan-galileo.0g.ai/address/0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A) — its coaches and versions are the project's on-chain history |
 | Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc-testnet.0g.ai` — non-zero, and grows as the app is used |
 | The brain is hash-anchored | `getIntelligentDatas(tokenId)` returns the keccak256 the server verifies ciphertext against before every answer |

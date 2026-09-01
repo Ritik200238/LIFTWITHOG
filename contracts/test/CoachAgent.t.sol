@@ -521,6 +521,108 @@ contract CoachAgentTest is Test {
             );
     }
 
+    function _priceStruct(address owner, uint256 tokenId, uint256 pricePerDay, uint256 nonce, uint256 deadline)
+        private
+        pure
+        returns (bytes32)
+    {
+        return
+            keccak256(
+                abi.encode(
+                    keccak256(
+                        "SetRentalPrice(address owner,uint256 tokenId,uint256 pricePerDay,uint256 nonce,uint256 deadline)"
+                    ),
+                    owner,
+                    tokenId,
+                    pricePerDay,
+                    nonce,
+                    deadline
+                )
+            );
+    }
+
+    // ---------------------------------------------- listing without gas
+
+    /**
+     * The gap this closes: a trainer whose coach was minted from a phone owns
+     * it with a key that has never held a token, so the one action that earns
+     * them money — naming a price — was the one the gasless design made
+     * impossible.
+     */
+    function test_ADeviceWithNoGasCanListItsCoachForRent() public {
+        address device = _deviceAddress();
+        uint256 deadline = block.timestamp + 1 hours;
+
+        uint256 id = coach.mintFor(device, CONFIG, URI, deadline, _sign(DEVICE_KEY, _mintStruct(device, 0, deadline)));
+        assertEq(device.balance, 0, "the device was supposed to be broke");
+
+        // Nonce 1: the mint consumed 0.
+        vm.prank(stranger); // anybody may submit and pay
+        coach.setRentalPriceFor(device, id, 3 ether, deadline, _sign(DEVICE_KEY, _priceStruct(device, id, 3 ether, 1, deadline)));
+
+        assertEq(coach.rentalPrice(id), 3 ether, "the coach was not listed");
+        assertEq(device.balance, 0, "the owner somehow needed gas after all");
+    }
+
+    function test_ARelayerCannotPriceSomebodyElsesCoach() public {
+        address device = _deviceAddress();
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = _mint(trainer); // owned by the trainer, not the device
+
+        // A perfectly valid signature from the device, naming itself as owner,
+        // aimed at a coach it does not own. Signed before expectRevert: the
+        // vm.sign inside _sign is itself a call, and would consume the
+        // expectation before the call under test ever ran.
+        bytes memory signature = _sign(DEVICE_KEY, _priceStruct(device, id, 1 ether, 0, deadline));
+
+        vm.expectRevert(CoachAgent.NotCoachOwner.selector);
+        coach.setRentalPriceFor(device, id, 1 ether, deadline, signature);
+
+        assertEq(coach.rentalPrice(id), 0, "somebody else's coach got priced");
+    }
+
+    function test_AListingSignatureCannotBeReplayed() public {
+        address device = _deviceAddress();
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = coach.mintFor(device, CONFIG, URI, deadline, _sign(DEVICE_KEY, _mintStruct(device, 0, deadline)));
+
+        bytes memory signature = _sign(DEVICE_KEY, _priceStruct(device, id, 5 ether, 1, deadline));
+        coach.setRentalPriceFor(device, id, 5 ether, deadline, signature);
+
+        // Re-listing at the same price is harmless; the point is that a
+        // captured signature cannot be replayed to overwrite a later price.
+        vm.prank(device);
+        coach.setRentalPrice(id, 9 ether);
+
+        vm.expectRevert(CoachAgent.WrongSignature.selector);
+        coach.setRentalPriceFor(device, id, 5 ether, deadline, signature);
+        assertEq(coach.rentalPrice(id), 9 ether, "a replayed signature reset the price");
+    }
+
+    function test_AnExpiredListingSignatureIsRefused() public {
+        address device = _deviceAddress();
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = coach.mintFor(device, CONFIG, URI, deadline, _sign(DEVICE_KEY, _mintStruct(device, 0, deadline)));
+
+        bytes memory signature = _sign(DEVICE_KEY, _priceStruct(device, id, 2 ether, 1, deadline));
+        vm.warp(deadline + 1);
+
+        vm.expectRevert(CoachAgent.SignatureExpired.selector);
+        coach.setRentalPriceFor(device, id, 2 ether, deadline, signature);
+    }
+
+    /// Delisting is the same path with a price of zero — it must work gaslessly too.
+    function test_ADeviceCanDelistWithoutGas() public {
+        address device = _deviceAddress();
+        uint256 deadline = block.timestamp + 1 hours;
+        uint256 id = coach.mintFor(device, CONFIG, URI, deadline, _sign(DEVICE_KEY, _mintStruct(device, 0, deadline)));
+
+        coach.setRentalPriceFor(device, id, 4 ether, deadline, _sign(DEVICE_KEY, _priceStruct(device, id, 4 ether, 1, deadline)));
+        coach.setRentalPriceFor(device, id, 0, deadline, _sign(DEVICE_KEY, _priceStruct(device, id, 0, 2, deadline)));
+
+        assertEq(coach.rentalPrice(id), 0, "the coach could not be taken off the market");
+    }
+
     function test_ADeviceWithNoGasGetsACoachItOwns() public {
         address device = _deviceAddress();
         uint256 deadline = block.timestamp + 1 hours;

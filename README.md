@@ -8,7 +8,7 @@
 [![mutation](https://img.shields.io/badge/mutation-164%20faults%20·%20159%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-67%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
-[![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E)
+[![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809)
 [![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
 
 **The AI coach you own. Not a subscription — property.**
@@ -57,15 +57,15 @@ Built for the **0G Buildathon**. Designed to outlive it.
 ## The proof — read the chain, not the README
 
 `CoachAgent` v2 is live on 0G Galileo at
-[`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E).
+[`0x640eecC824D54d7ECF05fa423E18673E70342809`](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809).
 Ask it — not us — whether it really speaks ERC-7857:
 
 ```bash
-$ cast call 0x70c4dE9D0edbE53733821558Bf6b14b64451e56E \
+$ cast call 0x640eecC824D54d7ECF05fa423E18673E70342809 \
     "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai
 true    # IERC7857
 
-$ cast call 0x70c4dE9D0edbE53733821558Bf6b14b64451e56E \
+$ cast call 0x640eecC824D54d7ECF05fa423E18673E70342809 \
     "supportsInterface(bytes4)(bool)" 0x35d39512 --rpc-url https://evmrpc-testnet.0g.ai
 true    # IERC7857Authorize
 ```
@@ -240,8 +240,8 @@ Deploy your own contract: `cd contracts && PRIVATE_KEY=0x… forge script script
 
 | Requirement | Where |
 |---|---|
-| 0G contract address + explorer | [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E) on Galileo — mainnet (Aristotle `16661`) ships via the same one-command deploy, this line gains that address the day it lands |
-| On-chain activity | 5 coaches minted, 3 listed for rent, versions climbing — [explorer](https://chainscan-galileo.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E), or the live [/#/verify](https://liftwithog.vercel.app/#/verify) counter |
+| 0G contract address + explorer | [`0x640eecC824D54d7ECF05fa423E18673E70342809`](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809) on Galileo — mainnet (Aristotle `16661`) ships via the same one-command deploy, this line gains that address the day it lands |
+| On-chain activity | 5 coaches minted, 3 listed for rent, versions climbing — [explorer](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809), or the live [/#/verify](https://liftwithog.vercel.app/#/verify) counter |
 | Proof of 0G integration | `supportsInterface` answered by deployed bytecode, `npm run evidence`, [VERIFICATION.md](VERIFICATION.md) |
 | Architecture | [ARCHITECTURE.md](ARCHITECTURE.md) — diagrams, flows, trust model, honest non-integrations |
 | 0G modules used & how | table above, with file-level links |

@@ -25,6 +25,7 @@ import { buildCoachProfile, canonicalise, hasLearned } from './coachProfile.js'
 import {
   EVOLVE_TYPES,
   MINT_TYPES,
+  PRICE_TYPES,
   coachDomain,
   deadlineFromNow,
   deviceSigner,
@@ -41,6 +42,7 @@ export const COACH_ABI = [
   'function evolveFor(address owner, uint256 tokenId, bytes32 configHash, string configURI, uint256 deadline, bytes signature)',
   'function rent(uint256 tokenId, uint256 dayCount) payable',
   'function setRentalPrice(uint256 tokenId, uint256 pricePerDay)',
+  'function setRentalPriceFor(address owner, uint256 tokenId, uint256 pricePerDay, uint256 deadline, bytes signature)',
   'function rentalPrice(uint256 tokenId) view returns (uint256)',
   'function nonceOf(address signer) view returns (uint256)',
   'function evolve(uint256 tokenId, bytes32 configHash, string configURI)',
@@ -172,6 +174,40 @@ export async function mintCoachRelayed(state, opts = {}) {
   })
 
   return { tokenId: result.tokenId, version: 1, profile, address }
+}
+
+/**
+ * List a coach for rent, or take it off, from a device holding no gas.
+ *
+ * A price of zero delists. Same relayed shape as mint and evolve: the device
+ * signs, the app pays the fee, and the signature names the owner — so the
+ * relayer can spend on a trainer's behalf and can never price a coach that is
+ * not theirs.
+ */
+export async function setRentalPriceRelayed(tokenId, pricePerDayWei, opts = {}) {
+  const { signer, address } = await deviceSigner()
+
+  const deadline = deadlineFromNow(opts.now ?? Date.now())
+  const nonce = await currentNonce(address)
+  const price = BigInt(pricePerDayWei)
+
+  const signature = await signer.signTypedData(coachDomain(COACH_ADDRESS), PRICE_TYPES, {
+    owner: address,
+    tokenId,
+    pricePerDay: price,
+    nonce,
+    deadline,
+  })
+
+  await post('/api/coach/price', {
+    owner: address,
+    tokenId: String(tokenId),
+    pricePerDay: price.toString(),
+    deadline: deadline.toString(),
+    signature,
+  })
+
+  return { tokenId, pricePerDay: price }
 }
 
 /**

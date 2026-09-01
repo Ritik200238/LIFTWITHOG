@@ -158,6 +158,24 @@ export const EVOLVE_TYPES = {
   ],
 }
 
+/**
+ * Listing a coach for rent, signed by the device that owns it.
+ *
+ * The action a trainer needs to earn, made possible without a wallet: the
+ * owner of a phone-minted coach has never held gas, so `setRentalPrice` —
+ * owner-only and on-chain — was unreachable to exactly the person it exists
+ * for.
+ */
+export const PRICE_TYPES = {
+  SetRentalPrice: [
+    { name: 'owner', type: 'address' },
+    { name: 'tokenId', type: 'uint256' },
+    { name: 'pricePerDay', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },
+  ],
+}
+
 /** A deadline for a signature about to be handed to a relayer. */
 export function deadlineFromNow(now = Date.now()) {
   return BigInt(Math.floor(now / 1000) + SIGNATURE_TTL_SECONDS)

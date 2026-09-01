@@ -122,6 +122,31 @@ export const useCoach = create((set, get) => ({
   },
 
   /**
+   * Put this coach on the market, or take it off with a price of zero.
+   *
+   * The trainer half of the product, and the reason `setRentalPriceFor` exists
+   * on chain: a coach minted from a phone is owned by a key with no gas, so
+   * listing it had to be relayed like everything else the device signs.
+   */
+  setPrice: async (pricePerDayWei) => {
+    const { tokenId, busy } = get()
+    if (!tokenId) throw new Error('There is no coach to list yet.')
+    if (busy) return { alreadyRunning: true }
+
+    set({ busy: true, error: null })
+    try {
+      await (await chain()).setRentalPriceRelayed(tokenId, pricePerDayWei)
+      const listedFor = BigInt(pricePerDayWei).toString()
+      save({ ...get(), listedFor })
+      set({ listedFor, busy: false })
+      return { listedFor }
+    } catch (error) {
+      set({ busy: false, error: error.message || String(error) })
+      throw error
+    }
+  },
+
+  /**
    * Record what the coach has learned.
    *
    * Quietly does nothing when there is nothing new. Every version costs a fee,

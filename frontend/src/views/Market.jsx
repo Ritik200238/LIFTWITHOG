@@ -104,6 +104,65 @@ export default function Market() {
     }
   }
 
+  const listedFor = useCoach((s) => s.listedFor)
+  const setPrice = useCoach((s) => s.setPrice)
+
+  const [priceInput, setPriceInput] = useState('')
+  const [listing, setListing] = useState(false)
+  const [listError, setListError] = useState(null)
+
+  /**
+   * List, or change the price.
+   *
+   * Parsed as 0G rather than wei: a trainer thinks in the token, and asking
+   * anybody to type 200000000000000 is how a marketplace stays empty.
+   */
+  const list = async () => {
+    setListError(null)
+    let wei
+    try {
+      wei = ethers.parseEther(priceInput.trim())
+    } catch {
+      setListError(t('That is not a price. Try something like 0.0002.'))
+      return
+    }
+    if (wei <= 0n) {
+      setListError(t('A price has to be more than nothing — use “take it off the market” instead.'))
+      return
+    }
+
+    setListing(true)
+    try {
+      await setPrice(wei.toString())
+      toast(t('Your coach is on the market.'))
+      await load()
+    } catch (e) {
+      setListError(e.shortMessage || e.message || t('That could not be listed.'))
+    } finally {
+      setListing(false)
+    }
+  }
+
+  const delist = () =>
+    confirmSheet({
+      title: t('Take it off the market?'),
+      message: t('Nobody new can rent it. Rentals already paid for run to their end — taking a listing down does not take back access somebody bought.'),
+      confirmText: t('Take it off'),
+      onConfirm: async () => {
+        setListing(true)
+        try {
+          await setPrice('0')
+          setPriceInput('')
+          toast(t('It is off the market.'))
+          await load()
+        } catch (e) {
+          setListError(e.shortMessage || e.message || t('That could not be changed.'))
+        } finally {
+          setListing(false)
+        }
+      },
+    })
+
   useEffect(() => {
     void load()
   }, [load])
@@ -161,6 +220,72 @@ export default function Market() {
           <div className="sub">{t('Rent a trainer’s method. It stays theirs.')}</div>
         </div>
       </div>
+
+      {/*
+        * The trainer half of the marketplace, and the reason it can exist at
+        * all: listing used to be a script somebody at this company ran,
+        * because `setRentalPrice` is owner-only and a phone-minted coach owns
+        * itself with a key holding no gas. Relayed, any trainer lists from the
+        * device that already holds their coach.
+        */}
+      {myTokenId && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <h3 style={{ margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="sparkles" /> {t('Your coach, on the market')}
+          </h3>
+          <div className="muted small" style={{ marginBottom: 10 }}>
+            {listedFor && listedFor !== '0'
+              ? t('Listed at {0} 0G a day. Renters pay you directly — the payment never touches us.', formatPrice(listedFor))
+              : t('Coach #{0} is yours. Name a day rate and other people can train with your method — they pay you, in the same transaction that grants them access.', myTokenId)}
+          </div>
+
+          <label className="row between" style={{ gap: 12, alignItems: 'center' }}>
+            <span className="muted small">{t('Price per day (0G)')}</span>
+            <input
+              className="inp"
+              inputMode="decimal"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              placeholder="0.0002"
+              style={{ maxWidth: 140, textAlign: 'right' }}
+              aria-label={t('Price per day in 0G')}
+            />
+          </label>
+
+          <div style={{ height: 10 }} />
+          <Button
+            variant="primary"
+            icon="sparkles"
+            disabled={listing || !priceInput.trim()}
+            onClick={list}
+          >
+            {listing
+              ? t('Listing…')
+              : listedFor && listedFor !== '0'
+                ? t('Update my price')
+                : t('List my coach')}
+          </Button>
+
+          {listedFor && listedFor !== '0' && (
+            <>
+              <div style={{ height: 8 }} />
+              <Button className="dim" disabled={listing} onClick={delist}>
+                {t('Take it off the market')}
+              </Button>
+            </>
+          )}
+
+          {listError && (
+            <div className="muted small" role="alert" style={{ marginTop: 8 }}>
+              {listError}
+            </div>
+          )}
+
+          <div className="dim small" style={{ marginTop: 8, lineHeight: 1.4 }}>
+            {t('No wallet and no gas needed — your device signs, we pay the fee. Renting is what pays you.')}
+          </div>
+        </div>
+      )}
 
       {/*
         * A skeleton, not "Reading the chain…". What somebody is waiting for is

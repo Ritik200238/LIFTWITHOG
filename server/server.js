@@ -14,6 +14,7 @@ import {
   RelayError,
   relayEvolve,
   relayMint,
+  relaySetPrice,
   withinQuestionLimit,
   withinStoreLimit,
 } from './relayer.js';
@@ -691,6 +692,18 @@ const routes = {
     } catch (e) {
       if (e instanceof RelayError) return json(res, e.status, { error: e.code, message: e.message });
       console.error('relay mint failed:', e);
+      return json(res, 502, { error: 'relay_failed', message: 'That could not be submitted.' });
+    }
+  },
+
+  /** Put a coach on the market, or take it off. Signed by its owner's device. */
+  'POST /api/coach/price': async (req, res) => {
+    const body = await readBody(req);
+    try {
+      return json(res, 200, await relaySetPrice(body));
+    } catch (e) {
+      if (e instanceof RelayError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('relay price failed:', e);
       return json(res, 502, { error: 'relay_failed', message: 'That could not be submitted.' });
     }
   },

@@ -154,6 +154,9 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
     bytes32 private constant MINT_TYPEHASH =
         keccak256("MintCoach(address owner,bytes32 configHash,bytes32 configURIHash,uint256 nonce,uint256 deadline)");
 
+    bytes32 private constant PRICE_TYPEHASH =
+        keccak256("SetRentalPrice(address owner,uint256 tokenId,uint256 pricePerDay,uint256 nonce,uint256 deadline)");
+
     bytes32 private constant EVOLVE_TYPEHASH =
         keccak256(
             "EvolveCoach(address owner,uint256 tokenId,bytes32 configHash,bytes32 configURIHash,uint256 nonce,uint256 deadline)"
@@ -292,6 +295,42 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
         if (signer != owner) revert WrongSignature();
 
         _nonces[owner] += 1;
+    }
+
+    /**
+     * @notice List a coach for rent, or take it off, without holding gas.
+     *
+     * @dev The gap this closes: `setRentalPrice` is owner-only, and the owner
+     *      of a coach minted through this contract is a key on somebody's
+     *      phone that has never held a token. Without a relayed path, the one
+     *      thing a trainer needs to do to earn — name a price — was the one
+     *      thing the gasless design made impossible, and listing a coach meant
+     *      installing a wallet and funding it.
+     *
+     *      Same shape as mintFor: the owner is named in the signed message and
+     *      checked against the token's actual owner, so a relayer can pay the
+     *      fee and cannot price somebody else's coach.
+     */
+    function setRentalPriceFor(
+        address owner,
+        uint256 tokenId,
+        uint256 pricePerDay,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
+        address current = _ownerOf(tokenId);
+        if (current == address(0)) revert NoSuchCoach();
+        if (current != owner) revert NotCoachOwner();
+
+        _useSignature(
+            owner,
+            keccak256(abi.encode(PRICE_TYPEHASH, owner, tokenId, pricePerDay, _nonces[owner], deadline)),
+            deadline,
+            signature
+        );
+
+        _pricePerDay[tokenId] = pricePerDay;
+        emit RentalPriceSet(tokenId, pricePerDay);
     }
 
     // ------------------------------------------------------------------ mint

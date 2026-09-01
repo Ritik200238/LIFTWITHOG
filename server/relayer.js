@@ -207,6 +207,34 @@ export async function relayMint({ owner, configHash, configURI, deadline, signat
   return { tokenId: tokenId.toString(), txHash: tx.hash };
 }
 
+/**
+ * Submit a signed listing price — a trainer putting their coach on the market.
+ *
+ * The same relayed shape as mint and evolve, for the same reason: a coach
+ * minted from a phone is owned by a key that has never held gas, so without
+ * this the one action that earns a trainer money needs a funded wallet.
+ */
+export async function relaySetPrice({ owner, tokenId, pricePerDay, deadline, signature }, deps = {}) {
+  const address = requireOwner(owner);
+  requireSignature(signature);
+
+  if (!(await (deps.withinRateLimit ?? withinRateLimit)(address))) {
+    throw new RelayError(429, 'too_many', 'That is a lot of price changes in an hour.');
+  }
+
+  const wallet = deps.wallet ?? relayerWallet();
+  await assertFunded(wallet);
+
+  const contract = deps.contract ?? coachContract(wallet);
+
+  const tx = await contract.setRentalPriceFor(address, tokenId, pricePerDay, deadline, signature, {
+    gasPrice: GAS_PRICE,
+  });
+  await tx.wait();
+
+  return { txHash: tx.hash };
+}
+
 /** Submit a signed evolve — the flywheel, running in the background. */
 export async function relayEvolve(
   { owner, tokenId, configHash, configURI, deadline, signature },

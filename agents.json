@@ -1,0 +1,11 @@
+{
+  "testnet": {
+    "agentId": "382",
+    "agentURI": "https://liftwithog.vercel.app/agent-card.json",
+    "registry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "chainId": 16602,
+    "txHash": "0x540938b91eb7b58301d7dd6da4dbe27deb1f3360515fdd42cdf508441d1a734c",
+    "owner": "0x495FBf0cc100dE43473003A9385651af5363744D",
+    "registeredAt": "2026-09-01T02:29:43.337Z"
+  }
+}

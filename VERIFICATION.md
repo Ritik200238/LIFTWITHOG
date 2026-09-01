@@ -24,6 +24,8 @@ the address the day it does.
 | The contract never holds funds | read its balance on the explorer — zero — then see the invariant that keeps it so: `invariant_ContractNeverHoldsFunds` in `contracts/test/CoachAgentFuzz.t.sol` |
 | A trainer lists without holding a token | list a coach in the app, then `cast call <addr> "rentalPrice(uint256)(uint256)" <id>` — non-zero, set by an owner whose balance is 0 |
 | The coach records what it learned | open **What it knows** in the app: each version's sentences travelled inside the payload whose hash `coachOf(tokenId)` returns |
+| The coach is a registered ERC-8004 Trustless Agent | agent **#382** on 0G's Identity Registry — `cast call 0x8004A818BFB912233c491871b3d84c89A494BD9e "tokenURI(uint256)(string)" 382 --rpc-url https://evmrpc-testnet.0g.ai` returns our agent card, and `ownerOf(382)` returns the wallet that registered it |
+| Its agent card is public and served by the app | [liftwithog.vercel.app/agent-card.json](https://liftwithog.vercel.app/agent-card.json) — capabilities, standards, and the limitations we refuse to hide |
 | No admin can touch your coach | read the source: no owner role, no pause, no upgrade hook, `transferVerifier` immutable |
 
 ## One command, most of the claims

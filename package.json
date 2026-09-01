@@ -7,7 +7,9 @@
   "license": "MIT",
   "scripts": {
     "evidence": "node scripts/evidence.mjs",
-    "test": "node --test server"
+    "test": "node --test server",
+    "register-agent": "node --env-file=server/.env scripts/register-agent.mjs",
+    "go-mainnet": "node --env-file=server/.env scripts/go-mainnet.mjs"
   },
   "dependencies": {
     "@0gfoundation/0g-compute-ts-sdk": "^0.9.0",

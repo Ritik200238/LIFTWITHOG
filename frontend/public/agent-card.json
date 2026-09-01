@@ -1,0 +1,53 @@
+{
+  "name": "LIFTWITHOG Coach",
+  "description": "A strength and nutrition coach that belongs to the person it trains. Each coach is an ERC-7857 Agentic ID on 0G Chain, owned by a key generated on its owner's phone. It learns from every finished workout — recording what moved, what stalled and when — and its encrypted brain lives on 0G Storage. Advice is produced only inside a TEE-attested enclave on 0G Compute; if no attested provider is live, it refuses to answer rather than falling back to an unattested one.",
+  "url": "https://liftwithog.vercel.app",
+  "documentation": "https://github.com/Ritik200238/LIFTWITHOG/blob/main/ARCHITECTURE.md",
+  "verification": "https://liftwithog.vercel.app/#/verify",
+  "provider": {
+    "name": "LIFTWITHOG",
+    "url": "https://github.com/Ritik200238/LIFTWITHOG"
+  },
+  "capabilities": [
+    {
+      "name": "training-guidance",
+      "description": "Answers questions about a specific athlete's training using their own history: progression, deloads, plate loading, warm-up ramps and session structure."
+    },
+    {
+      "name": "nutrition-context",
+      "description": "Reads training in light of the athlete's computed calorie and macro targets. It never invents or revises those numbers — they are derived from published formulas with hard safety bounds and given to the coach as fixed context."
+    },
+    {
+      "name": "rentable-expertise",
+      "description": "A trainer's coach can be rented for a fixed number of days. Payment and access are the same on-chain transaction, and the payment goes entirely to the trainer."
+    }
+  ],
+  "standards": {
+    "erc7857": {
+      "supported": true,
+      "note": "Genuine ERC-7857 Agentic ID. supportsInterface(0x4b396f04) and supportsInterface(0x35d39512) both return true on the deployed contract.",
+      "contract": {
+        "16602": "0x640eecC824D54d7ECF05fa423E18673E70342809"
+      }
+    },
+    "erc721": {
+      "supported": true
+    }
+  },
+  "og": {
+    "chain": "Ownership, versioned learning, expiring rentals with atomic payout, and gasless relayed writes signed by the owner's device.",
+    "storage": "The coach's encrypted brain and each version's memory, hash-anchored on chain and checked before every answer.",
+    "compute": "TEE-attested inference. Attestation is verified per response and the product fails closed without it."
+  },
+  "trust": {
+    "custody": "No owner role, no pause, no upgrade path, and an immutable transfer verifier. Nobody — including the operator — can freeze, reassign or alter a coach.",
+    "funds": "The contract holds no balance and has no withdraw function; an invariant test asserts this across random call sequences.",
+    "limitations": "0G Galileo is a test network today, so rentals move test tokens. Attestation proves where a model ran and that the channel was sealed — not that its advice is wise."
+  },
+  "interfaces": [
+    {
+      "type": "web",
+      "url": "https://liftwithog.vercel.app"
+    }
+  ]
+}

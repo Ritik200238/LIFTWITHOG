@@ -149,11 +149,27 @@ function userNow(tz) {
  * process between requests to run a timer in, and would need a scheduled
  * invocation instead.
  */
-setInterval(async () => {
+/**
+ * Everybody whose reminder is due right now, reminded.
+ *
+ * Extracted from the timer so both deployments can run the same sweep: a
+ * long-lived server ticks it itself, and a serverless one is poked by a
+ * scheduler (see the cron route below). The logic must not fork — a reminder
+ * that fires on one deployment and not the other is a bug nobody can
+ * reproduce.
+ *
+ * `lastReminder` is the guard against sending twice, and it is written before
+ * the push rather than after: a crash between the two costs somebody one
+ * notification, while the other order costs them the same notification every
+ * ten seconds until the day rolls over.
+ */
+export async function sweepReminders() {
+  let sent = 0;
+
   for (const user of db.users) {
     if (!db.subs.some(s => s.userId === user.id)) continue;
     let S;
-    // One unreadable file must not stop reminders for everybody else.
+    // One unreadable record must not stop reminders for everybody else.
     try { S = await readState(user.id); } catch { continue; }
     if (!S?.reminder?.on) continue;
     const now = userNow(S.reminder.tz || 'UTC');
@@ -163,6 +179,7 @@ setInterval(async () => {
     const rid = effectiveRoutineId(S, now.date);
     if (!rid) continue; // rest day — nothing planned
     const routine = (S.routines || []).find(r => r.id === rid);
+
     console.log('reminder firing', user.id, rid);
     user.lastReminder = now.date;
     await saveDb();
@@ -171,10 +188,20 @@ setInterval(async () => {
       body: "It's on your plan — let's go 💪",
       tag: 'day-reminder'
     });
+    sent += 1;
   }
-// Checked every 10s (not 60s) — ticks aren't aligned to the top of the minute, so a 60s
-// interval could sit on your target minute for up to 59s before noticing. 10s caps that at ~9s.
-}, 10000).unref();
+
+  return { sent, checked: db.users.length };
+}
+
+/*
+ * Only a process that stays alive can hold a timer. Checked every 10s rather
+ * than 60s: ticks are not aligned to the top of the minute, so a 60s interval
+ * could sit on the target minute for up to 59 seconds before noticing.
+ */
+if (!process.env.VERCEL) {
+  setInterval(() => { sweepReminders().catch((e) => console.error('reminder sweep failed:', e)); }, 10000).unref();
+}
 
 /* ---------- sessions (signed cookie) ---------- */
 function sign(payload) {
@@ -694,6 +721,41 @@ const routes = {
       console.error('relay mint failed:', e);
       return json(res, 502, { error: 'relay_failed', message: 'That could not be submitted.' });
     }
+  },
+
+  /**
+   * The reminder sweep, for a deployment with no process to run a timer in.
+   *
+   * Serverless has no clock between requests, so the schedule lives outside
+   * and pokes this. Guarded by a shared secret rather than a session: the
+   * caller is a scheduler, not a person, and without the guard anybody could
+   * drive the sweep — which is not catastrophic (the per-day guard still
+   * holds) but is somebody else deciding when our push traffic happens.
+   *
+   * Refuses rather than running unguarded when CRON_SECRET is unset: a
+   * scheduled endpoint that silently accepts everybody is worse than one that
+   * is honestly turned off.
+   *
+   * On the sweep's accuracy, because it differs by deployment and the
+   * difference is visible to users: the self-hosted server ticks this every
+   * ten seconds and hits the requested minute. Vercel's Hobby plan permits one
+   * cron per day with up to an hour of drift, so the hosted app can only
+   * approximate a daily nudge — a Pro plan restores per-minute scheduling with
+   * no code change, and self-hosting has always been exact. The docs say so
+   * rather than leaving somebody to discover it.
+   */
+  'GET /api/cron/reminders': async (req, res) => {
+    const expected = process.env.CRON_SECRET;
+    if (!expected) {
+      return json(res, 503, { error: 'not_configured', message: 'No CRON_SECRET is set, so this endpoint is closed.' });
+    }
+
+    const offered = String(req.headers.authorization || '').replace(/^Bearer /i, '');
+    if (offered.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(offered), Buffer.from(expected))) {
+      return json(res, 401, { error: 'unauthorized' });
+    }
+
+    return json(res, 200, await sweepReminders());
   },
 
   /** Put a coach on the market, or take it off. Signed by its owner's device. */

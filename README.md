@@ -147,9 +147,11 @@ What the installed app does that a tab doesn't:
 
 - Passkey sign-in and cross-device sync need the hosted site (or your own HTTPS deploy);
   **guest mode works fully offline-local everywhere**.
-- Scheduled workout reminders (push) fire from the long-lived self-hosted server only —
-  a serverless deployment has no process between requests to run a clock in. Stated in
-  [`server/server.js`](server/server.js), not discovered later.
+- Scheduled workout reminders are exact when self-hosted (the server ticks every ten
+  seconds and hits your chosen minute). On the hosted app they run from a scheduled
+  invocation instead, and Vercel's free plan permits one a day with up to an hour of
+  drift — so treat the hosted reminder as a daily nudge, not an alarm clock. Same code
+  either way; only the clock differs.
 - On iOS, web push requires iOS 16.4+ and vibration is not supported by Safari — the
   timers still beep.
 

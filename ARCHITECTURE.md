@@ -75,11 +75,55 @@ compounds for years — that history should not be a row in our database that
 disappears with our company. On chain it is property: transferable, rentable,
 verifiable, and older than any app that reads it.
 
-**Why 0G specifically.** The coach needs all three planes at once — a chain
-for ownership, verifiable compute for private inference, and storage for an
-encrypted brain too large and too private for calldata. 0G is the stack where
-those are one ecosystem with one account model, which is what makes an
-*agent that owns its own mind* buildable rather than a diagram.
+**Why 0G specifically — with the arithmetic, because the claim is falsifiable.**
+
+The architecture's bet is that the coach evolves after **every** workout. That
+one decision is what makes the version count mean something, and it is also
+what makes the cost question decisive: an evolve is a storage write plus a
+chain transaction, and somebody training four times a week does ~200 of them a
+year.
+
+Measured on 0G Galileo from this project's own relayer wallet:
+
+| | measured |
+|---|---|
+| gas per mint | ~296,000 |
+| gas per evolve | ~244,000–293,000 |
+| fee per relayed transaction | **~0.00099 0G** (average of four real transactions) |
+| a year of training (200 evolves) | **~0.2 0G** |
+
+Two hundred evolves a year, per athlete, for a fraction of a token. That is
+the number the whole design rests on, and it is why the flywheel can be
+automatic rather than a button somebody presses when they feel it is worth
+paying for.
+
+**"Couldn't this be Ethereum + IPFS + a TEE cloud?"** Technically yes, and it
+would be a different product:
+
+- **The chain.** At Ethereum L1 gas prices, 250,000 gas per evolve is dollars,
+  not fractions of a cent — so evolving on every workout is impossible and the
+  design collapses into "evolve occasionally, when it seems worth it". A
+  version count that only increments when the user can afford it stops being a
+  record of training.
+- **The storage.** IPFS pins what somebody keeps paying to pin. The coach's
+  premise is that it outlives this company; a brain that disappears when our
+  pinning service lapses is not property.
+- **The compute.** A TEE from a cloud vendor is *their* attestation about
+  *their* enclave, verified against *their* endpoint. 0G Compute publishes
+  attested providers as a marketplace the browser can enumerate and the
+  contract can be pointed at — the difference between "trust our vendor" and
+  "check the provider yourself", which is the entire privacy claim.
+- **And the joins.** Those three would be three vendors, three accounts, three
+  billing relationships and no shared identity. On 0G the same key that owns
+  the agent pays for its storage and its inference, which is what makes *an
+  agent that owns its own mind* a thing you can build rather than a diagram
+  with integration work hidden in the arrows.
+
+**What we would need for that argument to fail:** an L2 with 0G-comparable fees
+plus permanent storage plus an enumerable attested-compute market under one
+account model. If that arrives, this architecture ports — the storage and
+compute layers are already behind interfaces. Until it does, the per-evolve
+arithmetic above is the answer.
 
 ---
 
@@ -258,6 +302,25 @@ Same code, two postures: convenience on Vercel, custody on your own box.
 - **Fail-closed defaults**: unattested inference refused; tampered coach
   config refused; unreadable stored state refuses sync (because "no data"
   invites an overwrite); the leaked session key is replaced on sight.
+
+## The frontier, stated rather than implied
+
+Two things in the trust table above are weaker than the product's ambition, and
+naming them is more useful than waiting until somebody notices:
+
+**The coach's brain is encrypted with the server's key, not the user's.** The
+vault is device-encrypted and provably unreadable by us; the coach's profile is
+not, because the server must decrypt it to build the prompt. The honest
+frontier is decryption *inside the TEE* — the enclave receives the ciphertext
+and the key, and the server never holds plaintext at all. 0G Compute's
+attestation is what would make that verifiable rather than a promise. Until it
+ships, the trust table says plainly which artifact has the weaker protection.
+
+**`iTransferFrom` refuses rather than pretending.** ERC-7857's re-encryption
+proofs need a TEE/ZKP oracle; deployed without one, the function reverts. When
+a production verifier exists, pointing at it is a new deployment owners migrate
+to by choice — the verifier address is immutable precisely so nobody, including
+us, can swap what a coach's transfers are checked against underneath its owner.
 
 The workout tracker core builds on the open-source openGym project; the 0G
 integration, contract, coach, nutrition engine, offline layer, stateless

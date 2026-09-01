@@ -28,9 +28,17 @@ export const GAS_PRICE = 5_000_000_000n;
 /** Stop relaying below this, so the wallet cannot be drained to a dead stop. */
 export const MIN_RELAYER_BALANCE = ethers.parseEther('0.05');
 
-const ABI = [
+/**
+ * Exported so a test can hold it against the functions the relay paths call.
+ *
+ * A missing entry here does not fail a build or a unit test — the fakes in the
+ * suite have every method — it fails in production with a 502 the first time a
+ * real user tries the feature. `setRentalPriceFor` shipped that way once.
+ */
+export const ABI = [
   'function mintFor(address owner,bytes32 configHash,string configURI,uint256 deadline,bytes signature) returns (uint256)',
   'function evolveFor(address owner,uint256 tokenId,bytes32 configHash,string configURI,uint256 deadline,bytes signature)',
+  'function setRentalPriceFor(address owner,uint256 tokenId,uint256 pricePerDay,uint256 deadline,bytes signature)',
   'function nonceOf(address signer) view returns (uint256)',
   'function ownerOf(uint256 tokenId) view returns (address)',
   'event CoachMinted(uint256 indexed tokenId,address indexed owner,bytes32 configHash)',

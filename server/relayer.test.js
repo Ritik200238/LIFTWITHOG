@@ -1,5 +1,6 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { ethers } from 'ethers';
 import {
   MAX_RELAYS_PER_HOUR,
@@ -8,6 +9,7 @@ import {
   relayEvolve,
   relayMint,
   MAX_STORES_PER_HOUR,
+  ABI,
   resetRateLimit,
   resetStoreLimit,
   withinRateLimit,
@@ -55,6 +57,28 @@ function fakeContract(overrides = {}) {
 }
 
 const ok = () => true;
+
+/**
+ * The ABI must name every function the relay paths call.
+ *
+ * Every other test here uses a fake contract, which answers to anything — so
+ * an ABI missing an entry passes the whole suite and fails in production with
+ * a 502 the first time somebody uses the feature. That happened to
+ * setRentalPriceFor; this is the test that would have caught it.
+ */
+test('the ABI covers every contract call the relayer makes', async () => {
+  const source = await readFile(new URL('./relayer.js', import.meta.url), 'utf8');
+
+  const called = [...source.matchAll(/contract[.]([a-zA-Z_][a-zA-Z0-9_]*)[(]/g)].map((m) => m[1]);
+  assert.ok(called.length > 0, 'found no contract calls to check — the pattern must have drifted');
+
+  for (const fn of new Set(called)) {
+    assert.ok(
+      ABI.some((entry) => entry.includes(`function ${fn}(`)),
+      `relayer.js calls contract.${fn}() but the ABI does not declare it`,
+    );
+  }
+});
 
 beforeEach(async () => {
   await resetRateLimit();

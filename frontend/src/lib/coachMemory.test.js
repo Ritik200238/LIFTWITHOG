@@ -230,6 +230,28 @@ describe('what the model is told', () => {
     expect(memoryForPrompt(memory, { versions: 4 }).match(/^v\d+:/gm)).toHaveLength(4)
   })
 
+  it('is dramatically smaller than the record it summarises', () => {
+    /*
+     * The reason the digest exists. The config is handed to the model as text,
+     * so a full forty-version record is kilobytes of JSON punctuation
+     * competing with the question somebody actually asked.
+     */
+    const memory = Array.from({ length: 40 }, (_, i) => ({
+      version: 40 - i,
+      at: i,
+      sessions: i,
+      notes: [{ kind: 'progress', text: 'Bench press: 60 kg → 70 kg.' }, { kind: 'stall', text: 'Squat has not moved in 3 sessions at 100 kg.' }],
+    }))
+
+    const digest = memoryForPrompt(memory)
+    const raw = JSON.stringify(memory)
+
+    expect(digest.length).toBeLessThan(raw.length / 3)
+    // And it is the recent end that survives, not an arbitrary slice.
+    expect(digest).toContain('v40:')
+    expect(digest).not.toContain('v1:')
+  })
+
   it('is empty when there is nothing to say', () => {
     // An empty string, not the word "none": the prompt builder decides how to
     // present having no history, and a stray label would become an instruction.

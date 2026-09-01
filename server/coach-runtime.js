@@ -263,9 +263,11 @@ export function systemPrompt(config) {
      * makes "it learns from your training" a thing the answer demonstrates
      * rather than a thing the marketing says.
      */
-    'If the profile carries a memory of earlier versions, use it: it records what moved, ' +
-    'what stalled and when, in the training history itself. Prefer it over guessing about ' +
-    'the past, and refer to it plainly when it explains something. ' +
+    'If the profile carries `memoryDigest`, read it first: it is what this coach noticed at ' +
+    'each earlier version — what moved, what stalled and when — written when it happened. ' +
+    'Prefer it over guessing about the past, and refer to it plainly when it explains ' +
+    'something. The `memory` array is the same record in full; the digest is the part worth ' +
+    'reading. ' +
     'If the profile carries nutrition targets, read the training in light of them — ' +
     'a stall during a deficit means something different from a stall during a surplus. ' +
     'Use those numbers as given. Never invent, revise or extend them, and give no ' +

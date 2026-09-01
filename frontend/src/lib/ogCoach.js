@@ -22,7 +22,7 @@ import { ethers } from 'ethers'
 import { OG_NETWORK, encryptJson } from './ogVault.js'
 import { Indexer, MemData } from '@0gfoundation/0g-storage-ts-sdk'
 import { buildCoachProfile, canonicalise, hasLearned } from './coachProfile.js'
-import { memoryEntry, rememberVersion } from './coachMemory.js'
+import { memoryEntry, memoryForPrompt, rememberVersion } from './coachMemory.js'
 import { EXIDX } from './exercises.js'
 import {
   EVOLVE_TYPES,
@@ -91,7 +91,18 @@ export function coachContract(runner) {
  * what versions 1 to 11 noticed.
  */
 async function publishProfileRelayed(profile, signer, memory) {
-  const record = memory?.length ? { ...profile, memory } : profile
+  /*
+   * Two shapes of the same thing, for two readers.
+   *
+   * `memory` is the record: every version, structured, what the app renders
+   * and what the chain's hash covers. `memoryDigest` is the newest handful as
+   * prose, and it exists because the model reads this config as text — forty
+   * versions of JSON is kilobytes of punctuation competing with the question
+   * somebody actually asked.
+   */
+  const record = memory?.length
+    ? { ...profile, memory, memoryDigest: memoryForPrompt(memory) }
+    : profile
   const ciphertext = await encryptJson(record, signer)
   const configHash = ethers.keccak256(ciphertext)
 

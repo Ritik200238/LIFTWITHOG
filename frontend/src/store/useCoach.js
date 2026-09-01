@@ -100,12 +100,13 @@ export const useCoach = create((set, get) => ({
 
     set({ busy: true, error: null })
     try {
-      const { tokenId, version, profile, address } = await (await chain()).mintCoachRelayed(S)
+      const { tokenId, version, profile, memory, address } = await (await chain()).mintCoachRelayed(S)
 
       const next = {
         tokenId,
         version,
         profile,
+        memory,
         address,
         // Minting records everything known so far, so the count starts here
         // rather than at zero — otherwise the first workout after signing up
@@ -168,7 +169,12 @@ export const useCoach = create((set, get) => ({
 
     set({ busy: true, error: null })
     try {
-      const result = await (await chain()).evolveCoachRelayed(tokenId, S, profile)
+      // The current version and memory go in, so the new entry is numbered to
+      // match the version the chain is about to record.
+      const result = await (await chain()).evolveCoachRelayed(tokenId, S, profile, {
+        version: get().version,
+        memory: get().memory,
+      })
 
       if (!result.evolved) {
         set({ busy: false })
@@ -179,6 +185,7 @@ export const useCoach = create((set, get) => ({
         tokenId,
         version: get().version + 1,
         profile: result.profile,
+        memory: result.memory ?? get().memory,
         sessionsAtLastEvolve: (S.workouts ?? []).length,
         address: get().address,
       }

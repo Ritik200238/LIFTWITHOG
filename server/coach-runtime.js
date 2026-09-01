@@ -256,6 +256,16 @@ export function systemPrompt(config) {
      * training in light of them instead: a stalled lift in a deficit is the plan
      * working, and the same stall in a surplus is the plan failing.
      */
+    /*
+     * The memory is why a coach at version twelve answers differently from a
+     * fresh one. It arrives inside the same config — written by the app at each
+     * evolve, hashed on chain — so pointing the model at it costs nothing and
+     * makes "it learns from your training" a thing the answer demonstrates
+     * rather than a thing the marketing says.
+     */
+    'If the profile carries a memory of earlier versions, use it: it records what moved, ' +
+    'what stalled and when, in the training history itself. Prefer it over guessing about ' +
+    'the past, and refer to it plainly when it explains something. ' +
     'If the profile carries nutrition targets, read the training in light of them — ' +
     'a stall during a deficit means something different from a stall during a surplus. ' +
     'Use those numbers as given. Never invent, revise or extend them, and give no ' +

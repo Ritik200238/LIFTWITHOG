@@ -48,6 +48,9 @@ export default function CoachCard() {
   const sessionsKnown = profile.sessions
   const hasNew = coach.hasSomethingToLearn(S)
 
+  // The newest sentence the coach wrote about this person, if it has written any.
+  const latestNote = coach.memory?.[0]?.notes?.[0]?.text ?? null
+
   const mint = async () => {
     try {
       await coach.mint(S)
@@ -146,6 +149,29 @@ export default function CoachCard() {
               until === 1 ? 'session' : 'sessions'
             }.`
           })()}
+        </div>
+      )}
+
+      {/*
+        * The last thing it learned, on the card.
+        *
+        * "Version 7" is a number; this is the sentence behind it. Showing the
+        * newest memory here is what turns the version counter from a claim
+        * into something the owner can check against their own training —
+        * and it is the reason to open the full record.
+        */}
+      {coach.tokenId && latestNote && (
+        <div
+          className="small"
+          style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--sep)' }}
+        >
+          <div className="dim" style={{ marginBottom: 2 }}>
+            {t('Last thing it learned')}
+          </div>
+          <div>{latestNote}</div>
+          <button type="button" className="quiet" style={{ marginTop: 6 }} onClick={() => nav('/memory')}>
+            {t('Everything it knows about you')}
+          </button>
         </div>
       )}
 

@@ -313,6 +313,22 @@ const TARGETS = {
       ['a week is six days', 'length: 7', 'length: 6'],
     ],
   },
+  coachMemory: {
+    source: path.join(lib, 'coachMemory.js'),
+    tests: 'src/lib/coachMemory.test.js',
+    mutations: [
+      ['a stall is called after one flat session', 'sessionsSince >= STALL_SESSIONS', 'sessionsSince >= 1'],
+      ['extra reps at the same weight read as a stall', 'num(lift.bestReps) > num(was.bestReps)', 'false'],
+      ['a lift going backwards is hidden', 'if (gained < 0) {', 'if (false) {'],
+      ['every scale wobble becomes a memory', 'Math.abs(bwNow - bwWas) >= 0.5', 'Math.abs(bwNow - bwWas) >= 0'],
+      ['the biggest change stops being the headline', 'weight: 10 + gained', 'weight: 10'],
+      ['the memory grows without bound', 'slice(0, MAX_MEMORY)', 'slice(0)'],
+      ['a retried evolve is recorded twice', 'num(m?.version) !== num(entry?.version)', 'true'],
+      ['the record stops being newest-first', 'num(b.version) - num(a.version)', 'num(a.version) - num(b.version)'],
+      ['the prompt is handed the whole history', 'slice(0, versions)', 'slice(0)'],
+      ['notes stop being capped', 'slice(0, MAX_NOTES)', 'slice(0)'],
+    ],
+  },
   swShell: {
     source: path.join(lib, 'swShell.js'),
     tests: 'src/lib/swShell.test.js',

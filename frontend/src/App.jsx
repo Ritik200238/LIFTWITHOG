@@ -39,6 +39,7 @@ const Settings = lazy(() => import('./views/Settings.jsx'))
 const Market = lazy(() => import('./views/Market.jsx'))
 const Proof = lazy(() => import('./views/Proof.jsx'))
 const Verify = lazy(() => import('./views/Verify.jsx'))
+const Memory = lazy(() => import('./views/Memory.jsx'))
 const Admin = lazy(() => import('./views/Admin.jsx'))
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
@@ -109,6 +110,8 @@ function Shell() {
               <Route path="/proof" element={<Proof />} />
               {/* The judge-facing door: no account, no coach, no goodwill assumed. */}
               <Route path="/verify" element={<Verify />} />
+              {/* What the coach has learned, version by version. */}
+              <Route path="/memory" element={<Memory />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
               <Route path="*" element={<Navigate to="/home" replace />} />

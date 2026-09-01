@@ -22,6 +22,8 @@ import { ethers } from 'ethers'
 import { OG_NETWORK, encryptJson } from './ogVault.js'
 import { Indexer, MemData } from '@0gfoundation/0g-storage-ts-sdk'
 import { buildCoachProfile, canonicalise, hasLearned } from './coachProfile.js'
+import { memoryEntry, rememberVersion } from './coachMemory.js'
+import { EXIDX } from './exercises.js'
 import {
   EVOLVE_TYPES,
   MINT_TYPES,
@@ -80,8 +82,17 @@ export function coachContract(runner) {
  * written" — the question that matters when something comes back years later
  * from a network nobody here controls.
  */
-async function publishProfileRelayed(profile, signer) {
-  const ciphertext = await encryptJson(profile, signer)
+/**
+ * What gets encrypted and stored: the profile, and what the coach remembers.
+ *
+ * They travel together on purpose. The hash on chain covers this whole record,
+ * so a version's memory is as fixed as its numbers — and the server hands the
+ * same object to the model, which is what makes advice at version 12 aware of
+ * what versions 1 to 11 noticed.
+ */
+async function publishProfileRelayed(profile, signer, memory) {
+  const record = memory?.length ? { ...profile, memory } : profile
+  const ciphertext = await encryptJson(record, signer)
   const configHash = ethers.keccak256(ciphertext)
 
   // Base64 rather than raw bytes: this rides a JSON body, and a byte array in
@@ -150,9 +161,14 @@ async function publishProfile(profile, signer) {
  * @returns {{tokenId: string, version: number, profile: object, address: string}}
  */
 export async function mintCoachRelayed(state, opts = {}) {
-  const profile = buildCoachProfile(state, { now: opts.now ?? Date.now() })
+  const now = opts.now ?? Date.now()
+  const profile = buildCoachProfile(state, { now })
   const { signer, address } = await deviceSigner()
-  const { configHash, configURI } = await publishProfileRelayed(profile, signer)
+
+  // A coach's first memory: what it knew the day it was made.
+  const memory = rememberVersion([], memoryEntry({ version: 1, at: now, before: null, after: profile, nameOf: liftName }))
+
+  const { configHash, configURI } = await publishProfileRelayed(profile, signer, memory)
 
   const deadline = deadlineFromNow(opts.now ?? Date.now())
   const nonce = await currentNonce(address)
@@ -173,8 +189,11 @@ export async function mintCoachRelayed(state, opts = {}) {
     signature,
   })
 
-  return { tokenId: result.tokenId, version: 1, profile, address }
+  return { tokenId: result.tokenId, version: 1, profile, memory, address }
 }
+
+/** Readable lift names for the memory. Falls back to the id for a custom lift. */
+const liftName = (id) => EXIDX[id]?.n ?? String(id)
 
 /**
  * List a coach for rent, or take it off, from a device holding no gas.
@@ -218,11 +237,25 @@ export async function setRentalPriceRelayed(tokenId, pricePerDayWei, opts = {}) 
  * meaning it has.
  */
 export async function evolveCoachRelayed(tokenId, state, previousProfile, opts = {}) {
-  const profile = buildCoachProfile(state, { now: opts.now ?? Date.now() })
+  const now = opts.now ?? Date.now()
+  const profile = buildCoachProfile(state, { now })
   if (!hasLearned(previousProfile, profile)) return { evolved: false, profile }
 
   const { signer, address } = await deviceSigner()
-  const { configHash, configURI } = await publishProfileRelayed(profile, signer)
+
+  /*
+   * Written before the transaction rather than after: the memory describes the
+   * change this version records, so it has to be inside the payload the hash
+   * covers. Recorded afterwards it would be a caption on the chain, not part
+   * of it.
+   */
+  const version = Number(opts.version ?? 0) + 1
+  const memory = rememberVersion(
+    opts.memory,
+    memoryEntry({ version, at: now, before: previousProfile, after: profile, nameOf: liftName }),
+  )
+
+  const { configHash, configURI } = await publishProfileRelayed(profile, signer, memory)
 
   const deadline = deadlineFromNow(opts.now ?? Date.now())
   const nonce = await currentNonce(address)
@@ -245,7 +278,7 @@ export async function evolveCoachRelayed(tokenId, state, previousProfile, opts =
     signature,
   })
 
-  return { evolved: true, profile }
+  return { evolved: true, profile, memory }
 }
 
 /**

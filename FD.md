@@ -153,11 +153,25 @@ portion grams and a shopping list; a food log — search Indian-first foods
 yesterday" one-tap copy; remove entries. Numbers are computed with hard
 safety floors — the UI never shows a target below them.
 
+### Memory — "What it knows" (`/#/memory`)
+The coach's record of what it has learned, newest version first. Each entry:
+version number, date, session count, and up to five plain sentences describing
+what changed since the previous version (a lift that moved with both weights,
+extra reps at the same weight, a lift that has stalled and for how many
+sessions, a lift going backwards, bodyweight moves, a changed goal). Reached
+from the coach card on Home ("Everything it knows about you") and links out to
+Proof. Two empty states: no coach yet (offer to create one), and a coach that
+has not recorded anything yet (explain that memories appear as it evolves —
+this is the state of every coach minted before the feature existed).
+
 ### Coaches (the market)
-Lists every coach on-chain that is priced for rent: id, age, version
-("has learned N times"), price per day. Rent flow: pick duration, pay via
-browser wallet, access granted in the same transaction. Rented coaches appear
-with remaining days and an "ask" action. Honesty copy: payment goes straight
+Two halves. **The trainer's half** (only when the user owns a coach): name a
+price per day in 0G and list it, update the price, or take it off the market
+(confirm — rentals already paid for still run to their end). No wallet needed;
+the device signs and the app pays the fee. **The market**: every coach on-chain
+that is priced for rent — id, age, version ("has learned N times"), price per
+day. Rent flow: pick duration, pay via browser wallet, access granted in the
+same transaction. Rented coaches appear with remaining days and an "ask" action. Honesty copy: payment goes straight
 to the trainer, access ends by itself, testnet tokens are not real money.
 Loading state matters here — chain reads take 1–3 seconds.
 

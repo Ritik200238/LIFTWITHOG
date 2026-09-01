@@ -4,9 +4,9 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-641%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
-[![mutation](https://img.shields.io/badge/mutation-164%20faults%20·%20159%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
-[![contract](https://img.shields.io/badge/contract-67%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
+[![tests](https://img.shields.io/badge/tests-668%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
+[![contract](https://img.shields.io/badge/contract-72%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
 [![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809)
 [![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
@@ -31,10 +31,13 @@ Every fitness app dies the same way: years of your training, your progress, your
 "knowledge of you" — rows in a company's database, gone when the company goes. LIFTWITHOG
 inverts that. The coach is an **ERC-7857 Agentic ID** on 0G Chain that *your device* controls:
 
-- 🏋️ **It learns for real, and the learning is recorded.** Finish a workout → the coach
-  re-derives its profile from your actual training → re-encrypts → re-uploads to 0G Storage →
-  `evolve()` on chain, in the background. The on-chain `version` climbing is the public record
-  that this coach has genuinely trained with you.
+- 🏋️ **It learns for real, and you can read what it learned.** Finish a workout → the coach
+  re-derives its profile from your actual training, writes down *what changed*, re-encrypts,
+  re-uploads to 0G Storage and `evolve()`s on chain — in the background. Open its memory and
+  every version is a sentence: *"barbell bench press: 85 kg → 95 kg"*, *"squat has not moved
+  in 3 sessions"*. The memory is inside the payload the chain hashes, and the same text is
+  what the coach reads before answering you. `version 12` is twelve things it can tell you
+  about yourself, not a counter.
 - 🔑 **No wallet. No gas. Still yours.** A key generated on your phone signs EIP-712 messages;
   our relayer pays the fee. The signature names the owner, so the relayer **can pay but cannot
   redirect ownership**. *Proven on chain: coach `#1`'s owner holds `0.0 0G` and owns it anyway.*
@@ -42,9 +45,10 @@ inverts that. The coach is an **ERC-7857 Agentic ID** on 0G Chain that *your dev
   0G Compute, attestation verified per response. No attested provider live? The app **refuses**
   — it never silently falls back to an unattested one. Privacy is a checked property here,
   not a settings toggle.
-- 💸 **Trainers rent out their method, atomically.** `rent()` grants expiring access and
-  forwards the *entire* payment to the trainer in the same transaction. The contract holds no
-  balance and has no withdraw function — an invariant test drives thousands of random calls
+- 💸 **Trainers list and earn, without ever holding a token.** Name a day rate from your
+  phone — the device signs, we pay the fee — and `rent()` grants expiring access while
+  forwarding the *entire* payment to you in the same transaction. The contract holds no
+  balance and has no withdraw function; an invariant test drives thousands of random calls
   and asserts its balance is always zero.
 - 🇮🇳 **And underneath it: a complete tracker people actually need.** 1,324 exercises, plate
   math on the bar, warm-up ramps, an India-first nutrition engine (IFCT foods, protein by
@@ -85,6 +89,14 @@ the full list is **[VERIFICATION.md](VERIFICATION.md)**. One shortcut runs most 
 
 ```bash
 npm run evidence   # reads 0G live: contract, versions, zero-gas owners, TEE provider
+```
+
+And that a trainer can earn without ever holding a token — coach `#1`, listed from a browser:
+
+```text
+rentalPrice(1)           → 0.0003 0G / day
+ownerOf(1)               → 0xcEfBD045607d04e6FFDd136b30E66e728aBa2Cf7
+balance of that owner    → 0.0 0G      ← listed it for rent, has never held gas
 ```
 
 ---
@@ -207,7 +219,7 @@ sequenceDiagram
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
 | Wrong numbers can't reach a diet or a bar | 164 seeded faults must all be caught | `node scripts/mutate.mjs` — 159 caught, 5 proven equivalent |
 
-**641 tests**: 510 frontend · 64 server · 67 contract (42 unit, 9 fuzz, 5 invariant, 16 ERC-7857).
+**668 tests**: 529 frontend · 67 server · 72 contract (47 unit, 9 fuzz, 5 invariant, 16 ERC-7857).
 
 ---
 

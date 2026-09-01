@@ -3,6 +3,29 @@
 Every entry here describes something that exists in this repository and can be
 run, tested, or read on chain. Nothing is listed because it is planned.
 
+## 2.3.0 — The coach remembers, and trainers can earn *(1 Sep 2026)*
+
+- **A coaching record.** Every evolve writes down what changed in plain
+  sentences — a lift that moved with both numbers, extra reps counted as
+  progress rather than a stall, a lift that stopped moving named with how many
+  sessions it has sat there. The memory rides inside the encrypted payload, so
+  the hash the chain records covers it, and the same text reaches the model:
+  advice at version 12 knows what versions 1–11 noticed. New **What it knows**
+  screen; the coach card carries the latest line.
+- **Trainers list their own coach, gaslessly.** `setRentalPriceFor` added to
+  the contract before mainnet — a coach minted from a phone is owned by a key
+  with no gas, so the one action that earns a trainer money was the one the
+  gasless design made impossible. Listing moved from a script we ran to
+  something any owner does from the app.
+- **The spending cap stopped forgetting.** Relayer rate limits moved from
+  in-process Maps into the store; on serverless every cold instance previously
+  started at zero. Postgres does it in one atomic statement — 30 simultaneous
+  calls against a cap of 12 allow exactly 12.
+- **Reminders reach the hosted app** via a scheduled sweep, guarded by a shared
+  secret, with the free plan's once-a-day limit stated rather than discovered.
+- `CoachAgent` v3 on Galileo: `0x640eecC824D54d7ECF05fa423E18673E70342809`.
+- 668 tests (529 frontend, 67 server, 72 contract) · 174 mutations, 169 caught.
+
 ## 2.2.0 — ERC-7857 Agentic ID, and a server that runs anywhere *(31 Aug 2026)*
 
 - **`CoachAgent` v2 is a genuine ERC-7857 Agentic ID.** Implements `IERC7857`

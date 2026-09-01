@@ -22,6 +22,8 @@ the address the day it does.
 | Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc-testnet.0g.ai` — non-zero, and grows as the app is used |
 | The brain is hash-anchored | `getIntelligentDatas(tokenId)` returns the keccak256 the server verifies ciphertext against before every answer |
 | The contract never holds funds | read its balance on the explorer — zero — then see the invariant that keeps it so: `invariant_ContractNeverHoldsFunds` in `contracts/test/CoachAgentFuzz.t.sol` |
+| A trainer lists without holding a token | list a coach in the app, then `cast call <addr> "rentalPrice(uint256)(uint256)" <id>` — non-zero, set by an owner whose balance is 0 |
+| The coach records what it learned | open **What it knows** in the app: each version's sentences travelled inside the payload whose hash `coachOf(tokenId)` returns |
 | No admin can touch your coach | read the source: no owner role, no pause, no upgrade hook, `transferVerifier` immutable |
 
 ## One command, most of the claims
@@ -38,9 +40,9 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 ## The test suites
 
 ```bash
-npm --prefix frontend test     # 510 tests — app logic, nutrition, sync, offline shell
-npm test                       # 64 tests  — server, storage backends, auth, sync rules
-cd contracts && forge test     # 67 tests  — 42 unit · 9 fuzz · 5 invariant · 16 ERC-7857
+npm --prefix frontend test     # 529 tests — app logic, nutrition, coach memory, sync, offline
+npm test                       # 67 tests  — server, storage backends, rate limits, auth, sync
+cd contracts && forge test     # 72 tests  — 47 unit · 9 fuzz · 5 invariant · 16 ERC-7857
 ```
 
 ## The one that matters most
@@ -49,9 +51,9 @@ cd contracts && forge test     # 67 tests  — 42 unit · 9 fuzz · 5 invariant 
 node scripts/mutate.mjs
 ```
 
-Breaks the code on purpose — 164 seeded faults across the nutrition engine,
-meal planner, sync merge, plate math, warm-up ramps and service-worker
-manifest — and fails unless the tests notice. 159 are caught; the 5 survivors
+Breaks the code on purpose — 174 seeded faults across the nutrition engine,
+meal planner, coach memory, sync merge, plate math, warm-up ramps and the
+service-worker manifest — and fails unless the tests notice. 169 are caught; the 5 survivors
 are each proven equivalent in the script itself, with measured evidence. This
 is the difference between "the tests pass" and "the tests would catch a wrong
 number that reaches a person's diet or a loaded bar."

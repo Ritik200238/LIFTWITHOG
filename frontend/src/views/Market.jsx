@@ -104,7 +104,28 @@ export default function Market() {
     }
   }
 
-  const listedFor = useCoach((s) => s.listedFor)
+  const storedListing = useCoach((s) => s.listedFor)
+
+  /**
+   * What the chain says this coach is listed at, preferred over what we
+   * remember listing it at.
+   *
+   * The stored value is a convenience, not a source of truth: it is written
+   * when this device lists and survives in local storage, so a cleared cache —
+   * or a coach whose price was set from somewhere else — would show "List my
+   * coach" for a coach that is already listed, and the trainer would pay a
+   * second fee to change nothing. The market list already carries the real
+   * price, so use it whenever it has loaded.
+   */
+  const listedFor =
+    coaches === null
+      // Still reading the chain: show what we last knew rather than flickering
+      // "not listed" at somebody whose coach is on the market.
+      ? storedListing
+      // The chain has answered. A coach absent from the rentable list is not
+      // rentable — including one delisted from another device, which the
+      // stored value would otherwise keep claiming is live.
+      : String(coaches.find((c) => c.tokenId === myTokenId)?.pricePerDay ?? '0')
   const setPrice = useCoach((s) => s.setPrice)
 
   const [priceInput, setPriceInput] = useState('')

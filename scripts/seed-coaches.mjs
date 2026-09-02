@@ -15,14 +15,17 @@
  * mess you can see.
  */
 
-import crypto from 'node:crypto'
 import { ethers } from 'ethers'
+import { sealForService, servicePublicKeyFrom } from '../server/coachEnvelope.js'
 
 const RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai'
 const CHAIN_ID = 16602
 const INDEXER = process.env.OG_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai'
 const COACH = process.env.COACH_ADDRESS
+// Pays the gas. May differ from the key a coach is sealed to.
 const KEY = process.env.RELAYER_PRIVATE_KEY || process.env.COACH_SERVICE_KEY
+// Opens the coach. This is the one the server holds, so it is the one sealed to.
+const SERVICE_KEY = process.env.COACH_SERVICE_KEY || process.env.RELAYER_PRIVATE_KEY
 const GAS = { gasPrice: 5_000_000_000n }
 
 if (!COACH || !KEY) {
@@ -84,18 +87,20 @@ const COACHES = [
 ]
 
 /**
- * Encrypt with the same scheme the server reads with.
+ * Seal with the one implementation the server opens with.
  *
- * A rentable coach is encrypted to the service key rather than to a person, so
- * the enclave can open it for whoever is authorised. Must match `encryptConfig`
- * in api/coach-runtime.js exactly, or nothing rented here can ever be answered.
+ * A rentable coach is sealed to the service key rather than to a person, so the
+ * enclave can open it for whoever is authorised.
+ *
+ * This used to be a hand-rolled copy of `encryptConfig`, keyed on
+ * `RELAYER_PRIVATE_KEY || COACH_SERVICE_KEY` while the server keyed on
+ * `COACH_SERVICE_KEY` alone. Where a deployment sets those to different values —
+ * which render.yaml does — every coach seeded here was unreadable by the server
+ * that had to answer for it, and nothing said so until somebody asked one a
+ * question. Importing the real thing removes the copy that could disagree.
  */
-function encryptForService(plaintext) {
-  const key = crypto.createHash('sha256').update(`og-fitness-coach-v1:${KEY}`).digest()
-  const iv = crypto.randomBytes(12)
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
-  const body = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
-  return Buffer.concat([iv, cipher.getAuthTag(), body])
+function sealForTheService(plaintext) {
+  return sealForService(plaintext, servicePublicKeyFrom(SERVICE_KEY))
 }
 
 const provider = new ethers.JsonRpcProvider(RPC, CHAIN_ID, { staticNetwork: true })
@@ -110,7 +115,7 @@ console.log(`Seeding ${COACHES.length} coaches from ${wallet.address}\n`)
 for (const coach of COACHES) {
   process.stdout.write(`${coach.name}… `)
 
-  const ciphertext = encryptForService(coach.method)
+  const ciphertext = await sealForTheService(coach.method)
   const [uploaded, uploadErr] = await indexer.upload(
     new MemData(new Uint8Array(ciphertext)),
     RPC,

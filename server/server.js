@@ -18,7 +18,7 @@ import {
   withinQuestionLimit,
   withinStoreLimit,
 } from './relayer.js';
-import { loadConfigFromStorage, runOn0GCompute, storeForDevice } from './coach-runtime.js';
+import { loadConfigFromStorage, runOn0GCompute, servicePublicKey, storeForDevice } from './coach-runtime.js';
 import { isStaleWrite, stampFor } from './sync.js';
 import { createStore } from './store.js';
 
@@ -658,12 +658,28 @@ const routes = {
    * somebody may have one before they have an account here.
    */
   /**
+   * The public key a device seals a new coach to.
+   *
+   * Served rather than baked into the frontend so that rotating the service key
+   * does not strand every installed app on a key this server no longer holds.
+   * It is a public key: there is nothing here worth withholding, and a device
+   * that cannot fetch it cannot create a coach the server could ever answer.
+   */
+  'GET /api/coach/pubkey': async (_req, res) => {
+    try {
+      return json(res, 200, { publicKey: servicePublicKey() });
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      throw e;
+    }
+  },
+
+  /**
    * Store a device's encrypted blob on 0G Storage, paid for by us.
    *
    * Writing to 0G Storage costs gas and the device key holds none. It arrives
-   * already encrypted with a key that never leaves the device, so this server
-   * carries bytes it cannot read — which is the right division: we pay, they
-   * keep the secret.
+   * already sealed for this service's key, so the storage network and anybody
+   * fetching by root hash sees ciphertext; only the enclave path opens it.
    */
   'POST /api/coach/store': async (req, res) => {
     /*

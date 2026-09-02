@@ -542,6 +542,77 @@ test('a matching blob is opened as normal', async () => {
   assert.equal(opened, 'three sets of five');
 });
 
+test('a coach sealed the way the app seals one is opened by the server that answers for it', async () => {
+  /*
+   * The round trip nothing covered, which is why it was broken in production
+   * for every coach a real person owned.
+   *
+   * The two existing tests either side of this one each seal and open with the
+   * same half of the app. This one uses the seal the browser actually calls —
+   * imported, not reimplemented — and hands the bytes to `loadConfigFromStorage`
+   * exactly as the storage network would. If the device and the server ever
+   * disagree again about a key, a nonce, a tag position or a version byte, this
+   * is the test that says so.
+   */
+  const { sealForService, servicePublicKeyFrom } = await import('./coachEnvelope.js');
+  const { loadConfigFromStorage } = await import('./coach-runtime.js');
+
+  const service = '0x' + '2b'.repeat(32);
+  process.env.COACH_SERVICE_KEY = service;
+
+  const profile = {
+    unit: 'kg',
+    sessions: 31,
+    lifts: [{ id: 'squat', bestWeight: 100, bestReps: 5, sessions: 9 }],
+    memoryDigest: 'v4:\n  - Squat: 95 kg → 100 kg.',
+  };
+
+  const ciphertext = await sealForService(profile, servicePublicKeyFrom(service));
+  const anchor = ethers.keccak256(ciphertext);
+
+  const indexer = {
+    downloadToBlob: async () => [
+      { arrayBuffer: async () => ciphertext.buffer.slice(ciphertext.byteOffset, ciphertext.byteOffset + ciphertext.byteLength) },
+      null,
+    ],
+  };
+
+  const opened = await loadConfigFromStorage(CONFIG_URI, anchor, { indexer });
+
+  // Text, because that is what goes into the prompt — and it must still carry
+  // the memory, which is the part the coach answers differently because of.
+  assert.deepEqual(JSON.parse(opened), profile);
+  assert.match(opened, /Squat: 95 kg → 100 kg/);
+});
+
+test('a coach sealed for a different service key is named as that, not as tampering', async () => {
+  /*
+   * A rotated service key and an altered blob both fail to open, and telling
+   * somebody their coach was tampered with when the truth is that we changed
+   * our own key would send them looking in the wrong place.
+   */
+  const { sealForService, servicePublicKeyFrom } = await import('./coachEnvelope.js');
+  const { loadConfigFromStorage } = await import('./coach-runtime.js');
+
+  const sealed = await sealForService({ sessions: 1 }, servicePublicKeyFrom('0x' + '33'.repeat(32)));
+  process.env.COACH_SERVICE_KEY = '0x' + '44'.repeat(32);
+
+  const indexer = {
+    downloadToBlob: async () => [
+      { arrayBuffer: async () => sealed.buffer.slice(sealed.byteOffset, sealed.byteOffset + sealed.byteLength) },
+      null,
+    ],
+  };
+
+  await assert.rejects(
+    () => loadConfigFromStorage(CONFIG_URI, ethers.keccak256(sealed), { indexer }),
+    (error) =>
+      error.code === 'bad_config' &&
+      error.status === 422 &&
+      /different service key/.test(error.message),
+  );
+});
+
 // --------------------------------------------- only a real enclave will do
 
 test('a provider reporting the string "false" is not attested', async () => {

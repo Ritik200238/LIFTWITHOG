@@ -20,6 +20,12 @@
 
 import { ethers } from 'ethers'
 import { OG_NETWORK, encryptJson } from './ogVault.js'
+/*
+ * The one implementation of the seal, shared with the server that opens it.
+ * Imported from `server/` on purpose — see the header of that file: a second
+ * copy living here is exactly how the device and the server came to disagree.
+ */
+import { sealForService } from '../../../server/coachEnvelope.js'
 import { Indexer, MemData } from '@0gfoundation/0g-storage-ts-sdk'
 import { buildCoachProfile, canonicalise, hasLearned } from './coachProfile.js'
 import { memoryEntry, memoryForPrompt, rememberVersion } from './coachMemory.js'
@@ -103,7 +109,22 @@ async function publishProfileRelayed(profile, signer, memory) {
   const record = memory?.length
     ? { ...profile, memory, memoryDigest: memoryForPrompt(memory) }
     : profile
-  const ciphertext = await encryptJson(record, signer)
+
+  /*
+   * Sealed for the service, not for this device.
+   *
+   * The coach has to be answerable, and answering means running the profile
+   * through a model inside a TEE on the server — so a blob only this browser
+   * could open would be a blob no coach could ever use. That was the bug: the
+   * device sealed with its own key, the server tried its own, and every coach
+   * a real person made replied "This coach cannot be opened by this server."
+   *
+   * The device still decides. It mints the content key here and wraps it for
+   * the key it fetched from `/api/coach/pubkey`; the storage network and anyone
+   * reading by root hash get ciphertext. What is given up is honest and worth
+   * stating: this server can read the profile it is asked to reason over.
+   */
+  const ciphertext = await sealForService(record, await servicePublicKey())
   const configHash = ethers.keccak256(ciphertext)
 
   // Base64 rather than raw bytes: this rides a JSON body, and a byte array in
@@ -357,6 +378,43 @@ async function post(path, body) {
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(explain(response.status, payload))
   return payload
+}
+
+/**
+ * The key a coach is sealed to, fetched once per page load.
+ *
+ * Cached in a module variable because every mint and every evolve needs it and
+ * it cannot change underneath a running tab; not cached in storage, because a
+ * rotated service key must not be pinned on a device for as long as the browser
+ * keeps its data. The promise itself is cached, so two evolves firing together
+ * make one request — and a failed fetch clears it so the next attempt retries
+ * rather than replaying the rejection forever.
+ */
+let servicePublicKeyPromise = null
+
+/** Drop the cached key. Exists for the tests, which need a cold start each time. */
+export function __resetServiceKeyCache() {
+  servicePublicKeyPromise = null
+}
+
+export async function servicePublicKey() {
+  if (!servicePublicKeyPromise) {
+    servicePublicKeyPromise = (async () => {
+      const response = await fetch('/api/coach/pubkey').catch(() => null)
+      if (!response?.ok) {
+        throw new Error(
+          'The coach service is not reachable, so there is no key to seal this coach to. Start the API (npm start in api/) and try again.',
+        )
+      }
+      const { publicKey } = await response.json().catch(() => ({}))
+      if (!publicKey) throw new Error('The coach service did not return a key to seal to.')
+      return publicKey
+    })().catch((e) => {
+      servicePublicKeyPromise = null
+      throw e
+    })
+  }
+  return servicePublicKeyPromise
 }
 
 /**

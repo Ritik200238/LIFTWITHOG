@@ -10,6 +10,7 @@ import crypto from 'node:crypto';
 import { ethers } from 'ethers';
 import { Indexer } from '@0gfoundation/0g-storage-ts-sdk';
 import { CoachError, OG_RPC, OG_CHAIN_ID } from './coach.js';
+import { looksSealed, openAsService, servicePublicKeyFrom } from './coachEnvelope.js';
 
 export const OG_INDEXER =
   process.env.OG_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai';
@@ -119,44 +120,115 @@ export function serviceWallet() {
   return new ethers.Wallet(key, provider);
 }
 
-/** The AES key the service encrypts and decrypts rentable configs with. */
-function serviceKey() {
+/**
+ * The service's private key, as a key rather than as a wallet.
+ *
+ * Separate from `serviceWallet()` because opening an envelope needs the key
+ * itself for ECDH and nothing else — no provider, no network, no funds — and a
+ * function that reaches for a JSON-RPC endpoint cannot be called from a test.
+ */
+export function servicePrivateKey() {
   const secret = process.env.COACH_SERVICE_KEY;
   if (!secret) {
     throw new CoachError(503, 'not_configured', 'This server has no coach service key.');
   }
-  // Same derivation on both sides, and never the raw private key as an AES key.
+  return secret;
+}
+
+/** The public key a device seals a new coach to. Served by `/api/coach/pubkey`. */
+export function servicePublicKey() {
+  return servicePublicKeyFrom(servicePrivateKey());
+}
+
+/**
+ * The AES key the *old* format was encrypted under.
+ *
+ * Kept only to open coaches that were written before envelopes existed and are
+ * still anchored on chain. Nothing writes this format any more.
+ */
+function legacyKey(secret) {
   return crypto.createHash('sha256').update(`og-fitness-coach-v1:${secret}`).digest();
 }
 
-export function encryptConfig(plaintext) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', serviceKey(), iv);
-  const body = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  return Buffer.concat([iv, cipher.getAuthTag(), body]);
+/**
+ * The seeding script derived its key from `RELAYER_PRIVATE_KEY || COACH_SERVICE_KEY`
+ * while this file used `COACH_SERVICE_KEY` alone. Where the deployment sets those
+ * to different values — which render.yaml does — the two disagreed and the seeded
+ * coaches were as unreadable as the personal ones. Both are tried rather than
+ * guessing which one a given blob was written with.
+ */
+function legacySecrets() {
+  return [process.env.COACH_SERVICE_KEY, process.env.RELAYER_PRIVATE_KEY].filter(Boolean);
 }
 
-export function decryptConfig(bytes) {
-  const buffer = Buffer.from(bytes);
-  if (buffer.length < 29) throw new CoachError(422, 'bad_config', 'That coach config is truncated.');
+/** Open a pre-envelope blob: `iv(12) ‖ tag(16) ‖ body`. */
+function openLegacy(buffer) {
+  if (buffer.length < 29) return null;
 
   const iv = buffer.subarray(0, 12);
   const tag = buffer.subarray(12, 28);
   const body = buffer.subarray(28);
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', serviceKey(), iv);
-  decipher.setAuthTag(tag);
-
-  try {
-    return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
-  } catch {
-    /*
-     * GCM failing here means the bytes were altered, or were never encrypted to
-     * this key — a personal coach, most likely, which this server is not
-     * supposed to be able to read.
-     */
-    throw new CoachError(422, 'bad_config', 'This coach cannot be opened by this server.');
+  for (const secret of legacySecrets()) {
+    try {
+      const decipher = crypto.createDecipheriv('aes-256-gcm', legacyKey(secret), iv);
+      decipher.setAuthTag(tag);
+      return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
+    } catch {
+      // Not this key. Try the next, and report failure only once none are left.
+    }
   }
+  return null;
+}
+
+/**
+ * Encrypt in the old format.
+ *
+ * Retained for the tests that pin the legacy reader, so that the path keeping
+ * already-minted coaches alive has something exercising it. New coaches are
+ * sealed by the device with `sealForService`.
+ */
+export function encryptConfig(plaintext) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', legacyKey(servicePrivateKey()), iv);
+  const body = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), body]);
+}
+
+/**
+ * Open whatever a coach's `configURI` pointed at, in either format.
+ *
+ * Returns text, because that is what goes into the prompt: an envelope carries
+ * a profile object, which is stringified back for the model, while the seeded
+ * coaches carry a plain method description that is already text.
+ */
+export async function decryptConfig(bytes) {
+  const buffer = Buffer.from(bytes);
+
+  if (looksSealed(buffer)) {
+    let value;
+    try {
+      value = await openAsService(buffer, servicePrivateKey());
+    } catch {
+      /*
+       * The magic matched, so this was sealed by this app — but the wrap will
+       * not open. Either the bytes were altered after the hash was anchored, or
+       * the service key has been rotated since the coach was created. Both are
+       * worth saying out loud rather than hiding behind "cannot be opened".
+       */
+      throw new CoachError(
+        422,
+        'bad_config',
+        'This coach was sealed for a different service key than this server holds.',
+      );
+    }
+    return typeof value === 'string' ? value : JSON.stringify(value);
+  }
+
+  const legacy = openLegacy(buffer);
+  if (legacy !== null) return legacy;
+
+  throw new CoachError(422, 'bad_config', 'This coach cannot be opened by this server.');
 }
 
 /** Pull a coach config off 0G Storage and open it. */
@@ -229,7 +301,7 @@ export async function loadConfigFromStorage(configURI, configHash, deps = {}) {
     }
   }
 
-  return decryptConfig(ciphertext);
+  return await decryptConfig(ciphertext);
 }
 
 /**

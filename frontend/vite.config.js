@@ -77,6 +77,15 @@ export default defineConfig({
   ],
   base: './',
   resolve: {
+    /*
+     * `src/lib/ogCoach.js` imports the coach envelope out of `../server`, and a
+     * bare `ethers` inside that file resolves against *its* directory — pulling
+     * `server/node_modules/ethers` into the browser bundle beside the frontend's
+     * own copy. That second copy is not built for a browser: the build fails on
+     * `ws-browser.js` reaching for a polyfill shim it cannot see. Deduping
+     * pins every `ethers` specifier, wherever it is written, to this one.
+     */
+    dedupe: ['ethers'],
     alias: {
       // The polyfill plugin maps `stream` to stream-browserify, which has no
       // `/promises` subpath — and the 0G compute SDK imports that specifier
@@ -87,6 +96,15 @@ export default defineConfig({
     },
   },
   server: {
+    /*
+     * `src/lib/ogCoach.js` imports the coach envelope from `../server`, which is
+     * outside this Vite root. That import is deliberate: the seal and the code
+     * that opens it must be one file, or they drift — and they did, silently,
+     * until every coach a real person made became unopenable. The build resolves
+     * it without help; the dev server refuses to serve outside the root unless
+     * told, so it is told.
+     */
+    fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
     proxy: {
       '/api': { target: backend, changeOrigin: true },
       '/img': { target: media, changeOrigin: true },

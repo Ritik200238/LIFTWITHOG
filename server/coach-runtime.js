@@ -12,6 +12,32 @@ import { ogProvider } from './ogProvider.js';
 import { Indexer } from '@0gfoundation/0g-storage-ts-sdk';
 import { CoachError, OG_RPC, OG_CHAIN_ID } from './coach.js';
 import { looksSealed, openAsService, servicePublicKeyFrom } from './coachEnvelope.js';
+import { createStore } from './store.js';
+
+/** The mirror. See `blobKey` in store.js for why a second copy exists at all. */
+const mirror = createStore();
+
+/**
+ * How long 0G Storage gets before we stop waiting on it.
+ *
+ * `finalityRequired: true` waits for the network to confirm the write, which is
+ * the safe choice — the alternative loses blobs when a holding node drops one
+ * before it replicates. What it is not is bounded: Hanami documented the same
+ * upload stalling past ten minutes on a large blob. On a serverless function
+ * that is not a slow request, it is the platform killing the invocation, and
+ * the person is shown a message about starting a local API.
+ */
+const STORAGE_TIMEOUT_MS = +(process.env.OG_STORAGE_TIMEOUT_MS || 60_000);
+
+/** Reject rather than hang, and say which operation gave up. */
+function withTimeout(promise, ms, what) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${what} did not finish within ${ms}ms`)), ms).unref?.(),
+    ),
+  ]);
+}
 
 export const OG_INDEXER =
   process.env.OG_INDEXER_URL || 'https://indexer-storage-testnet-turbo.0g.ai';
@@ -62,14 +88,18 @@ export async function storeForDevice(ciphertext) {
    * and `numSegments()` on what it is handed, and a Blob carries `size` as a
    * property — passing one fails before a byte is sent.
    */
-  const [result, err] = await indexer.upload(new MemData(ciphertext), OG_RPC, wallet, {
-    taskSize: 10,
-    expectedReplica: 1,
-    finalityRequired: true,
-    tags: '0x',
-    skipTx: false,
-    fee: BigInt(0),
-  });
+  const [result, err] = await withTimeout(
+    indexer.upload(new MemData(ciphertext), OG_RPC, wallet, {
+      taskSize: 10,
+      expectedReplica: 1,
+      finalityRequired: true,
+      tags: '0x',
+      skipTx: false,
+      fee: BigInt(0),
+    }),
+    STORAGE_TIMEOUT_MS,
+    '0G Storage upload',
+  ).catch((e) => [null, e]);
 
   if (err) {
     /*
@@ -97,6 +127,20 @@ export async function storeForDevice(ciphertext) {
      * validates perfectly on chain and can never be loaded by anybody, ever.
      */
     throw new CoachError(502, 'storage_failed', '0G Storage returned no root hash.');
+  }
+
+  /*
+   * A second copy, after the write succeeded and never instead of it.
+   *
+   * 0G Storage stays the canonical home and the chain records this root, but a
+   * node can drop a blob before it replicates — after which the indexer answers
+   * "file not found" for a coach whose pointer is on chain forever. Best effort:
+   * failing to mirror must not fail a mint that has already been paid for.
+   */
+  try {
+    await mirror.writeBlob(rootHash, ciphertext);
+  } catch (e) {
+    console.warn('could not mirror the coach blob', rootHash, e.message || e);
   }
 
   return rootHash;
@@ -248,6 +292,22 @@ export async function loadConfigFromStorage(configURI, configHash, deps = {}) {
    * unhandled throw and a blank 500, so the person was told nothing and the
    * cause sat in a server log.
    */
+  /*
+   * The mirror first, when there is one.
+   *
+   * Not a cache for speed — the indexer is usually fine — but the answer to the
+   * one failure this path cannot otherwise survive: a blob dropped before it
+   * replicated, leaving a coach whose on-chain pointer resolves to nothing. The
+   * hash check below runs on whichever copy answered, so a mirror that had been
+   * tampered with is refused exactly like a bad download.
+   */
+  if (configHash) {
+    const mirrored = await mirror.readBlob(configURI).catch(() => null);
+    if (mirrored && ethers.keccak256(mirrored).toLowerCase() === String(configHash).toLowerCase()) {
+      return await decryptConfig(mirrored);
+    }
+  }
+
   let blob;
   let err;
   try {
@@ -260,7 +320,11 @@ export async function loadConfigFromStorage(configURI, configHash, deps = {}) {
      * nothing at all. `downloadToBlob` is the in-memory form, which is what a
      * config that is about to be decrypted should be.
      */
-    [blob, err] = await indexer.downloadToBlob(configURI);
+    [blob, err] = await withTimeout(
+      indexer.downloadToBlob(configURI),
+      STORAGE_TIMEOUT_MS,
+      '0G Storage read',
+    );
   } catch (thrown) {
     const message = String(thrown?.message || thrown);
     if (/not found/i.test(message)) {

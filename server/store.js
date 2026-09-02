@@ -31,6 +31,16 @@ const DB = 'db';
 const SECRET = 'secret';
 const VAPID = 'vapid';
 const stateKey = (uid) => `state:${uid}`;
+/**
+ * A coach blob we have already paid to store on 0G, kept as a second copy.
+ *
+ * 0G Storage is the canonical home and the chain records the root hash, so this
+ * is not a source of truth — it is the answer to a storage node dropping a blob
+ * before it replicates, which leaves a coach whose `configURI` points at
+ * something the indexer cannot find. The chain would keep that dead pointer
+ * forever, and the coach could never answer again.
+ */
+const blobKey = (root) => `blob:${String(root).toLowerCase()}`;
 
 /** An account list that has every field the server reads. */
 const emptyDb = () => ({ users: [], creds: [], subs: [], invites: [] });
@@ -182,6 +192,19 @@ function fileStore(dir) {
      * resetting it is the same event as the server being unable to spend
      * anything anyway.
      */
+    async readBlob(root) {
+      const target = file('blob-' + String(root).replace(/[^a-zA-Z0-9]/g, '') + '.bin');
+      if (!fs.existsSync(target)) return null;
+      return new Uint8Array(fs.readFileSync(target));
+    },
+
+    async writeBlob(root, bytes) {
+      atomicWrite(
+        file('blob-' + String(root).replace(/[^a-zA-Z0-9]/g, '') + '.bin'),
+        Buffer.from(bytes),
+      );
+    },
+
     async limit({ bucket, key, max, windowMs, now = Date.now() }) {
       const id = `${bucket}:${key}`;
 
@@ -302,6 +325,21 @@ function postgresStore(databaseUrl) {
 
     async writeState(uid, state) {
       await write(stateKey(uid), state);
+    },
+
+    /*
+     * Base64 in the same jsonb table rather than a bytea column, so the two
+     * backends keep the one shape and there is no migration to forget. A coach
+     * blob is a few hundred bytes; this is not where size becomes interesting.
+     */
+    async readBlob(root) {
+      const stored = await read(blobKey(root));
+      if (!stored?.b64) return null;
+      return new Uint8Array(Buffer.from(stored.b64, 'base64'));
+    },
+
+    async writeBlob(root, bytes) {
+      await write(blobKey(root), { b64: Buffer.from(bytes).toString('base64') });
     },
 
     /**

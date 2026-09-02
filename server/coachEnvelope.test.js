@@ -160,3 +160,68 @@ test('an envelope from a future version is refused rather than misread', () => {
 
   assert.equal(looksSealed(future), false);
 });
+
+/**
+ * The blob that outlives a storage node dropping it.
+ *
+ * 0G Storage is the canonical home and the chain records the root, but a node
+ * can drop a blob before it replicates — after which the indexer answers "file
+ * not found" for a coach whose pointer is on chain forever, and the coach can
+ * never answer again. These cover the second copy that makes that survivable,
+ * and the thing it must never become: a way to serve bytes nobody checked.
+ */
+
+test('a coach still opens when 0G Storage has lost the blob', async () => {
+  const { createStore } = await import('./store.js');
+  const { loadConfigFromStorage } = await import('./coach-runtime.js');
+  const { ethers } = await import('ethers');
+
+  const service = '0x' + '5c'.repeat(32);
+  process.env.COACH_SERVICE_KEY = service;
+
+  const profile = { sessions: 12, lifts: [] };
+  const sealed = await sealForService(profile, servicePublicKeyFrom(service));
+  const root = ethers.keccak256(sealed);
+
+  await createStore().writeBlob(root, sealed);
+
+  // The indexer has lost it, which is exactly the case this exists for.
+  const indexer = {
+    downloadToBlob: async () => { throw new Error('File not found'); },
+  };
+
+  assert.deepEqual(JSON.parse(await loadConfigFromStorage(root, root, { indexer })), profile);
+});
+
+test('the mirror is checked against the chain like any other copy', async () => {
+  /*
+   * The mirror must not become a way to serve bytes nobody verified. A local
+   * copy that does not hash to what the chain recorded is refused and the
+   * indexer is asked instead — the anchor is the authority, not the storage.
+   */
+  const { createStore } = await import('./store.js');
+  const { loadConfigFromStorage } = await import('./coach-runtime.js');
+  const { ethers } = await import('ethers');
+
+  const service = '0x' + '6d'.repeat(32);
+  process.env.COACH_SERVICE_KEY = service;
+
+  const real = await sealForService({ sessions: 1 }, servicePublicKeyFrom(service));
+  const anchor = ethers.keccak256(real);
+
+  // Something else entirely, filed under the real coach's root.
+  await createStore().writeBlob(anchor, await sealForService({ sessions: 999 }, servicePublicKeyFrom(service)));
+
+  let asked = false;
+  const indexer = {
+    downloadToBlob: async () => {
+      asked = true;
+      return [{ arrayBuffer: async () => real.buffer.slice(real.byteOffset, real.byteOffset + real.byteLength) }, null];
+    },
+  };
+
+  const opened = await loadConfigFromStorage(anchor, anchor, { indexer });
+
+  assert.equal(asked, true, 'a mirror that failed its hash was trusted anyway');
+  assert.deepEqual(JSON.parse(opened), { sessions: 1 });
+});

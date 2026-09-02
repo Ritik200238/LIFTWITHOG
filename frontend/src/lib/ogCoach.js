@@ -61,6 +61,12 @@ export const COACH_ABI = [
   'function coachOf(uint256 tokenId) view returns (bytes32, string, uint64, uint64)',
   'function ownerOf(uint256 tokenId) view returns (address)',
   'function totalMinted() view returns (uint256)',
+  // Read by /verify, which asks the deployed bytecode what it implements rather
+  // than telling the reader. The control id has to be asked through this too.
+  'function supportsInterface(bytes4 interfaceId) view returns (bool)',
+  // Also /verify: which contract guards transfers, according to the contract
+  // doing the guarding rather than according to us.
+  'function transferVerifier() view returns (address)',
   'event CoachMinted(uint256 indexed tokenId, address indexed owner, bytes32 configHash)',
 ]
 

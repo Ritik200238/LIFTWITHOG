@@ -66,6 +66,52 @@ const Link = ({ href, children }) => (
   <a className="taplink" href={href} target="_blank" rel="noreferrer noopener">{children}</a>
 )
 
+/**
+ * The interface ids to ask about, and what each answer ought to be.
+ *
+ * `0xdeadbeef` is the one that carries the argument. It is not an interface
+ * anybody implements, so a correct contract says false — and a stub written to
+ * look compliant, which returns true for whatever it is handed, is caught by
+ * exactly one line on this page. Without it the four rows above prove only that
+ * `supportsInterface` exists.
+ */
+const INTERFACES = [
+  { id: '0x4b396f04', label: 'ERC-7857 — an Agentic ID', expect: true },
+  { id: '0x35d39512', label: 'ERC-7857 Authorize — lending it out', expect: true },
+  { id: '0x80ac58cd', label: 'ERC-721 — still an NFT', expect: true },
+  { id: '0x01ffc9a7', label: 'ERC-165 — answers this question at all', expect: true },
+  { id: '0xdeadbeef', label: 'an id nothing implements — the control', expect: false },
+]
+
+/** One asked-and-answered interface, right when the answer matches expectation. */
+function InterfaceRow({ id, label, expect, answered }) {
+  const right = answered === expect
+  const unknown = answered === null
+
+  return (
+    <div
+      className="row small"
+      style={{ justifyContent: 'space-between', gap: 12, padding: '6px 0', alignItems: 'baseline' }}
+    >
+      <div style={{ minWidth: 0 }}>
+        <code style={{ fontSize: 12 }}>{id}</code>
+        <div className="dim" style={{ fontSize: 12 }}>{t(label)}</div>
+      </div>
+      <div
+        style={{
+          whiteSpace: 'nowrap',
+          fontWeight: 600,
+          // Correct-because-false has to read as a pass, or the control looks
+          // like the one thing on the page that went wrong.
+          color: unknown ? 'var(--dim)' : right ? 'var(--acc)' : 'var(--bad, #d33)',
+        }}
+      >
+        {unknown ? t('no answer') : String(answered)} {unknown ? '' : right ? '✓' : '✗'}
+      </div>
+    </div>
+  )
+}
+
 export default function Verify() {
   const nav = useNavigate()
   const [chain, setChain] = useState(null)
@@ -94,6 +140,26 @@ export default function Verify() {
           // How many coaches exist right now. A number that moves as people
           // use the app is harder to fake than a screenshot.
           state.minted = Number(await contract.totalMinted())
+
+          /*
+           * Every id in one batch, control included, so a reader cannot be shown
+           * the passes without the failure. `allSettled` because one reverting
+           * call must not blank the four that answered — a partial answer here
+           * is still evidence, and an empty card is not.
+           */
+          const answers = await Promise.allSettled(
+            INTERFACES.map((row) => contract.supportsInterface(row.id)),
+          )
+
+          state.interfaces = INTERFACES.map((row, i) => ({
+            ...row,
+            answered: answers[i].status === 'fulfilled' ? answers[i].value : null,
+          }))
+
+          // The verifier the coach is wired to, read off the coach rather than
+          // configured here: a claim about which contract guards transfers is
+          // only worth anything if it comes from the contract doing the guarding.
+          state.verifier = await contract.transferVerifier().catch(() => null)
         }
 
         if (!cancelled) setChain(state)
@@ -151,11 +217,59 @@ export default function Verify() {
 
       <h4 className="sec">{t('The contract')}</h4>
 
+      {/*
+        * Asked, not asserted.
+        *
+        * This block used to be a sentence saying `supportsInterface(0x4b396f04)`
+        * returns true, on a page whose entire purpose is not being taken at our
+        * word. Now the browser asks the deployed bytecode while the page loads.
+        *
+        * The last row is the one that makes the rest mean anything: an id
+        * nothing implements, which must come back false. A contract answering
+        * true to everything would pass every other row here — so without a
+        * control, five green ticks prove only that a function exists.
+        */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: '0 0 4px' }}>{t('supportsInterface — asked just now')}</h3>
+        <div className="dim small" style={{ marginBottom: 10 }}>
+          {t('Read from the deployed contract by your browser, over the public 0G RPC.')}
+        </div>
+
+        {error ? (
+          <div className="muted small">
+            {t('Could not reach 0G right now.')}{' '}
+            <Link href={`${EXPLORER}/address/${COACH_ADDRESS}`}>{t('Read it on the explorer instead')}</Link>
+          </div>
+        ) : !chain?.interfaces ? (
+          <div className="skel" style={{ height: 130 }} />
+        ) : (
+          <div>
+            {chain.interfaces.map((row) => (
+              <InterfaceRow key={row.id} {...row} />
+            ))}
+            <div className="dim small" style={{ marginTop: 10, lineHeight: 1.45 }}>
+              {t('The last one is a control: an interface id nothing implements. A contract that answered true to everything would pass every other line above, so a false there is what makes the rest worth reading.')}
+            </div>
+          </div>
+        )}
+      </div>
+
       <Claim
         title={t('CoachAgent is deployed and anyone can read it')}
         evidence={<Link href={`${EXPLORER}/address/${COACH_ADDRESS}`}>{COACH_ADDRESS}</Link>}
       >
-        {t('A genuine ERC-7857 Agentic ID (and ERC-721): each token is one person’s coach — its encrypted brain’s hash and 0G Storage address, its version, its owner. Ask the bytecode itself: supportsInterface(0x4b396f04) returns true.')}
+        {t('A genuine ERC-7857 Agentic ID (and ERC-721): each token is one person’s coach — its encrypted brain’s hash and 0G Storage address, its version, its owner.')}
+      </Claim>
+
+      <Claim
+        title={t('And the transfer it defines actually transfers')}
+        evidence={
+          chain?.verifier
+            ? <Link href={`${EXPLORER}/address/${chain.verifier}`}>{chain.verifier}</Link>
+            : <span className="muted">{t('transferVerifier() on the contract above')}</span>
+        }
+      >
+        {t('ERC-7857 exists for one moment: an agent changes hands and its encrypted brain is re-encrypted to the buyer, so the seller’s key stops being useful. iTransferFrom calls the verifier above, which checks that the attestation covers this exact coach, this exact buyer and the exact sealed key — and spends it, so it cannot be used twice. The attestor is a software key held by the service that does the re-encryption, not a hardware enclave; that is weaker, and it is said here rather than left out.')}
       </Claim>
 
       <Claim

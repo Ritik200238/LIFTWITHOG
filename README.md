@@ -269,6 +269,16 @@ sequenceDiagram
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
 
+**The rules the coach is bound by are published, not described.** "It gives safe advice"
+is not a checkable claim and everyone makes it. The literal system prompt and every
+nutrition bound — the calorie floors, the deficit cap, the rate-of-loss cap — are an
+unencrypted blob on 0G Storage with a commitment
+[anchored on chain](https://chainscan-galileo.0g.ai/tx/0x56480501ac8f854de334913b9c1fe7cca0ed5e83b9e074a73f9e5b857181f9e8).
+The numbers are read out of the module that enforces them rather than retyped, so the
+document cannot drift from the code — `scripts/publish-policy.mjs` recomputes the same
+sha256 from source. If this coach ever tells somebody to eat 700 calories a day, the
+document saying it must not is public and timestamped, and the gap is ours to answer for.
+
 **What we have actually got wrong, and what is still open:**
 **[SECURITY.md](SECURITY.md)** lists ten findings from this codebase with the code and the
 test that closed each, then six risks that are still open.

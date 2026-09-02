@@ -29,6 +29,7 @@ the address the day it does.
 | The coach is a registered ERC-8004 Trustless Agent | agent **#382** on 0G's Identity Registry — `cast call 0x8004A818BFB912233c491871b3d84c89A494BD9e "tokenURI(uint256)(string)" 382 --rpc-url https://evmrpc-testnet.0g.ai` returns our agent card, and `ownerOf(382)` returns the wallet that registered it |
 | Its agent card is public and served by the app | [liftwithog.vercel.app/agent-card.json](https://liftwithog.vercel.app/agent-card.json) — capabilities, standards, and the limitations we refuse to hide |
 | No admin can touch your coach | read the source: no owner role, no pause, no upgrade hook, `transferVerifier` immutable |
+| The rules the coach follows are public, and fixed to a moment | the literal system prompt and every nutrition bound are published unencrypted on 0G Storage at root `0xfdfae365…dd35f8`, sha256 `0x2ded2a2a…7ae979`, with a commitment binding the two [anchored on chain](https://chainscan-galileo.0g.ai/tx/0x56480501ac8f854de334913b9c1fe7cca0ed5e83b9e074a73f9e5b857181f9e8). `node --env-file=server/.env scripts/publish-policy.mjs` recomputes the same hash from the code. See [`policy-provenance.json`](policy-provenance.json). |
 
 ## One command, most of the claims
 

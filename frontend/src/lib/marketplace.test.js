@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ageInDays, costFor, formatPrice, historyLine } from './marketplace.js'
 
 /**
@@ -101,6 +101,22 @@ describe('what it costs', () => {
 })
 
 describe('reading the market off the chain', () => {
+  /*
+   * The contract address, stubbed rather than inherited.
+   *
+   * `listRentableCoaches` returns an empty list when no contract is configured,
+   * which is right for a fork somebody just cloned. These tests passed on a
+   * machine where the variable happened to be set in the environment and
+   * returned nothing on a clean checkout — so they asserted the behaviour they
+   * were written for locally, and asserted nothing at all in CI. It took the
+   * first CI run to notice, which is the whole argument for having one.
+   */
+  beforeEach(() => vi.stubEnv('VITE_COACH_ADDRESS', '0x' + '11'.repeat(20)))
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
   /**
    * `mint` is permissionless, so the id space is whatever anybody has made of
    * it. The two reads behind this page each grew without bound with it: one

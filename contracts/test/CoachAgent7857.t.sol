@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {CoachAgent} from "../src/CoachAgent.sol";
 import {IERC7857} from "../src/interfaces/IERC7857.sol";
 import {IERC7857Authorize} from "../src/interfaces/IERC7857Authorize.sol";
@@ -93,6 +94,93 @@ contract CoachAgent7857Test is Test {
         coach.evolve(id, evolved, "og://storage/root/def456");
 
         assertEq(coach.getIntelligentDatas(id)[0].dataHash, evolved, "the brain hash did not follow the evolve");
+    }
+
+    /**
+     * The standard's event, on the path that actually creates coaches.
+     *
+     * `mint` announced the intelligent data and `mintFor` did not — and
+     * `mintFor` is the relayed path, which is how every coach in the product is
+     * made, because it is the one that works without holding a coin. So an
+     * indexer following ERC-7857 saw the coaches nobody has and missed the
+     * coaches everybody has. Asserted as an event rather than by reading state,
+     * because an indexer cannot read state it was never told to look at.
+     */
+    function test_RelayedMintAnnouncesTheIntelligentData() public {
+        (address owner, uint256 key) = makeAddrAndKey("relayed-owner");
+        uint256 expectedId = coach.totalMinted() + 1;
+
+        bytes memory signature = _signMint(owner, key, CONFIG, URI);
+
+        vm.recordLogs();
+        coach.mintFor(owner, CONFIG, URI, block.timestamp + 1 hours, signature);
+
+        assertTrue(_sawIntelligentDataSet(expectedId), "mintFor did not announce the intelligent data");
+    }
+
+    /// The mirror of the same gap: `evolveFor` announced it, `evolve` did not.
+    function test_DirectEvolveAnnouncesTheIntelligentData() public {
+        uint256 id = _mint(trainer);
+
+        vm.recordLogs();
+        vm.prank(trainer);
+        coach.evolve(id, keccak256("v2"), "og://storage/root/def456");
+
+        assertTrue(_sawIntelligentDataSet(id), "evolve did not announce the intelligent data");
+    }
+
+    /// Was `IntelligentDataSet` emitted for this coach in the recorded logs?
+    function _sawIntelligentDataSet(uint256 tokenId) private returns (bool) {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        // Taken from the vendored interface rather than written out. Spelling it
+        // by hand got the struct's field order backwards — the signature is
+        // `(string,bytes32)` — and the test failed against a contract that was
+        // emitting correctly, which is the wrong way round for a test to be wrong.
+        bytes32 wanted = IERC7857.IntelligentDataSet.selector;
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics.length > 1 && logs[i].topics[0] == wanted) {
+                if (uint256(logs[i].topics[1]) == tokenId) return true;
+            }
+        }
+        return false;
+    }
+
+    /// An EIP-712 signature over the relayed-mint message, as a device produces it.
+    function _signMint(address owner, uint256 key, bytes32 configHash, string memory uri)
+        private
+        view
+        returns (bytes memory)
+    {
+        (, string memory name, string memory version, uint256 chainId, address verifying, , ) =
+            coach.eip712Domain();
+
+        bytes32 domain = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                keccak256(bytes(version)),
+                chainId,
+                verifying
+            )
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "MintCoach(address owner,bytes32 configHash,bytes32 configURIHash,uint256 nonce,uint256 deadline)"
+                ),
+                owner,
+                configHash,
+                keccak256(bytes(uri)),
+                coach.nonceOf(owner),
+                block.timestamp + 1 hours
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) =
+            vm.sign(key, keccak256(abi.encodePacked(hex"1901", domain, structHash)));
+        return abi.encodePacked(r, s, v);
     }
 
     function test_NoCoachNoData() public {

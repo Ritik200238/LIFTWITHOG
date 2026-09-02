@@ -233,6 +233,16 @@ contract CoachAgentTest is Test {
 
         vm.expectRevert(CoachAgent.NoSuchCoach.selector);
         coach.hasAccess(999, athlete);
+
+        /*
+         * This one used to answer zero instead of reverting, alone among the
+         * views. Zero is what a real coach returns for somebody with no access,
+         * so a caller holding a wrong id was handed a plausible answer rather
+         * than told the id was wrong — and "your subscription has not started"
+         * is a very different thing from "that coach does not exist".
+         */
+        vm.expectRevert(CoachAgent.NoSuchCoach.selector);
+        coach.accessExpiry(999, athlete);
     }
 
     // ----------------------------------------------------------------- fuzz

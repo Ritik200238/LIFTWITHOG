@@ -223,6 +223,17 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
         });
 
         emit CoachMinted(tokenId, owner, configHash);
+
+        /*
+         * The ERC-7857 event, on the path that actually creates coaches.
+         *
+         * `mint` emitted this and `mintFor` did not — and `mintFor` is how every
+         * coach in the product is made, because it is the relayed path that lets
+         * somebody own one without holding a coin. So an indexer following the
+         * standard saw the intelligent data of the coaches nobody has, and none
+         * of the coaches everybody has.
+         */
+        emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
     }
 
     /**
@@ -381,6 +392,11 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
         coach.updatedAt = uint64(block.timestamp);
 
         emit CoachEvolved(tokenId, coach.version, configHash);
+
+        // The mirror of the gap in `mintFor`: `evolveFor` announced the new
+        // intelligent data and this did not, so the two ways of learning the
+        // same thing told an indexer different stories.
+        emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
     }
 
     // ---------------------------------------------------------------- rental
@@ -511,7 +527,12 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
     }
 
     /// @notice When this address's access ends, or zero if it has none.
+    /// @dev Reverts for a coach that does not exist, like every other view here.
+    ///      Alone among them it used to answer zero, which reads as "no access"
+    ///      — the same answer a real coach gives — so a caller with a wrong id
+    ///      was told a plausible thing instead of that the id was wrong.
     function accessExpiry(uint256 tokenId, address user) external view returns (uint64) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
         return _access[_grantKey(tokenId, user)];
     }
 

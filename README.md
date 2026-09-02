@@ -4,7 +4,7 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-791%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-796%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-103%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
@@ -269,7 +269,7 @@ sequenceDiagram
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
 | Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**791 tests**: 542 frontend · 146 server · 103 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier, 13 clone).
+**796 tests**: 542 frontend · 151 server · 103 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier, 13 clone).
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
 
@@ -303,6 +303,21 @@ contract forwards it inside the call that brought it and has no withdraw functio
 The standard's own `iCloneFrom` is implemented too, attestation-gated like a transfer, so
 an indexer or marketplace finds what it expects. `supportsInterface(0xd79f01c7)` returns
 true on the deployed contract.
+
+**Attestation you can re-check yourself, not a boolean we report.** Every answer already
+passes `processResponse` — the fail-closed gate. But that returns a *boolean*: the SDK
+checked something and told us, which puts the SDK in the trust base. So the provider's raw
+signature over the answer is fetched too, and confirmed to recover to the signer address
+0G's contract says belongs to that provider. That is arithmetic anybody can run:
+
+```js
+ethers.recoverAddress(ethers.hashMessage(text), signature) === signingAddress
+```
+
+Hanami wired exactly this and **shipped it disabled**, because the direct broker wants a
+standing deposit. Ours is on. When a provider does not serve signatures it says
+`signed: false` with a reason — an answer the enclave already vouched for is not thrown
+away for want of a second, better proof, and a badge is never shown on faith.
 
 **The coach knows what it should not answer.** Ask it about a torn meniscus, eating through
 a pregnancy, a testosterone dose or chest pain during squats, and it hands off — naming a

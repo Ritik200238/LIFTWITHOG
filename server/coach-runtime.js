@@ -13,6 +13,7 @@ import { Indexer } from '@0gfoundation/0g-storage-ts-sdk';
 import { CoachError, OG_RPC, OG_CHAIN_ID } from './coach.js';
 import { looksSealed, openAsService, servicePublicKeyFrom } from './coachEnvelope.js';
 import { createStore } from './store.js';
+import { signatureFor } from './attestation.js';
 
 /** The mirror. See `blobKey` in store.js for why a second copy exists at all. */
 const mirror = createStore();
@@ -514,6 +515,22 @@ async function askProvider(broker, provider, body) {
     JSON.stringify(json?.usage ?? {}),
   );
 
+  /*
+   * The stronger proof, after the gate rather than instead of it.
+   *
+   * `processResponse` above is the fail-closed check and stays authoritative.
+   * This asks the provider for its raw signature over the answer and confirms
+   * it recovers to the signer 0G's contract says belongs to it — evidence a
+   * stranger can re-check in a browser without trusting our report of what a
+   * library told us. When a provider does not serve signatures it says so; an
+   * answer the enclave already vouched for is not thrown away for want of a
+   * second, better proof.
+   */
+  const attestation = await signatureFor({ broker, provider, chatId, model, endpoint }).catch((e) => ({
+    signed: false,
+    reason: `signature lookup failed: ${e.message || e}`,
+  }));
+
   if (verified !== true) {
     /*
      * The provider was listed as attested and then produced a response its
@@ -527,7 +544,7 @@ async function askProvider(broker, provider, body) {
     );
   }
 
-  return answer;
+  return { answer, attestation };
 }
 
 /**

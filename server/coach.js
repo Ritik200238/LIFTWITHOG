@@ -262,7 +262,19 @@ export async function advise(request, deps) {
   const { configURI, configHash } = await readCoachRecord(contract, tokenId);
   const config = await deps.loadConfig(configURI, configHash);
 
-  const answer = await deps.runModel({ config, question: asked });
+  /*
+   * Two shapes accepted, deliberately.
+   *
+   * The real compute path returns `{ answer, attestation }` — the answer plus
+   * the provider's signature over it, which a stranger can re-check. Every test
+   * here injects a `runModel` that returns a plain string, and so may any other
+   * caller. Normalising at the seam keeps both honest rather than forcing a
+   * boxed value on everything downstream, which was the first attempt and broke
+   * strict equality in two tests for no gain.
+   */
+  const produced = await deps.runModel({ config, question: asked });
+  const answer = typeof produced === 'string' ? produced : produced?.answer;
+  const attestation = typeof produced === 'string' ? null : (produced?.attestation ?? null);
 
   /*
    * Checked, not trusted. The prompt tells the model never to reveal the
@@ -282,7 +294,7 @@ export async function advise(request, deps) {
    * would undo the entire point of running this here — and an error path is
    * exactly where that kind of thing leaks.
    */
-  return { answer: String(answer ?? '').trim(), address };
+  return { answer: String(answer ?? '').trim(), address, attestation };
 }
 
 /**

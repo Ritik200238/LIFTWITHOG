@@ -83,6 +83,8 @@ check guards "a progress card cannot claim more than the chain says" \
   bash -c 'cd server && node --test progressCard.test.js'
 check guards "an out-of-scope question never reaches the model" \
   bash -c 'cd server && node --test referral.test.js'
+check guards "no proof is claimed that cannot be re-checked" \
+  bash -c 'cd server && node --test attestation.test.js'
 check guards "vercel.json is a config Vercel will accept" \
   bash -c 'cd server && node --test vercelConfig.test.js'
 

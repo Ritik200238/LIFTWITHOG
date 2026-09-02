@@ -80,7 +80,18 @@ test('an answer the enclave vouches for is returned', async () => {
   const restore = stubFetch('Three sets of five.');
 
   try {
-    assert.equal(await run(broker), 'Three sets of five.');
+    const { answer, attestation } = await run(broker);
+    assert.equal(answer, 'Three sets of five.');
+
+    /*
+     * The stronger proof rides along, and says so honestly when it is absent.
+     * A stub provider serves no signatures, so `signed: false` with a reason is
+     * the correct answer here — the thing that must never happen is a badge
+     * claimed without one.
+     */
+    assert.equal(typeof attestation, 'object');
+    assert.equal(attestation.signed, false);
+    assert.ok(attestation.reason.length > 0, 'an unsigned answer must say why');
   } finally {
     restore();
   }
@@ -165,7 +176,7 @@ test('a provider that will not vouch is followed by the next attested one', asyn
   const restore = stubFetch('From the second one.');
 
   try {
-    assert.equal(await run(broker), 'From the second one.');
+    assert.equal((await run(broker)).answer, 'From the second one.');
     assert.deepEqual(asked, ['0xaaa', '0xbbb']);
   } finally {
     restore();

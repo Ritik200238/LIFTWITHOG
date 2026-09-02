@@ -37,6 +37,15 @@ contract StubVerifier is ITransferProofVerifier {
     ) external view returns (bool) {
         return answer;
     }
+
+    function attestTransfer(
+        address,
+        address,
+        uint256,
+        IERC7857.TransferValidityProof[] calldata
+    ) external view returns (bool) {
+        return answer;
+    }
 }
 
 contract CoachAgent7857Test is Test {

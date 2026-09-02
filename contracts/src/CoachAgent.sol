@@ -603,7 +603,14 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
         TransferValidityProof[] calldata proofs
     ) external {
         if (transferVerifier == address(0)) revert VerifierNotConfigured();
-        if (!ITransferProofVerifier(transferVerifier).verifyTransfer(from, to, tokenId, proofs)) {
+        /*
+         * `attestTransfer`, not `verifyTransfer`: the attestation is spent here,
+         * not merely read. ERC-721's authorization already stops the same proof
+         * moving the coach twice in a row, but not the round trip — sell and buy
+         * back, and yesterday's attestation would bless today's sale with no
+         * re-encryption behind it.
+         */
+        if (!ITransferProofVerifier(transferVerifier).attestTransfer(from, to, tokenId, proofs)) {
             revert TransferProofRejected();
         }
 

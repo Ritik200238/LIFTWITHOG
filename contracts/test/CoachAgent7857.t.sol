@@ -81,6 +81,35 @@ contract CoachAgent7857Test is Test {
         assertFalse(coach.supportsInterface(0xffffffff), "claims the interface ERC-165 forbids");
     }
 
+    /**
+     * The control the README and /verify show a reader, pinned here too.
+     *
+     * `0xdeadbeef` is not an interface anybody implements, so a correct contract
+     * says no — and a stub written to look compliant, answering `true` to
+     * whatever it is handed, passes every assertion above and fails only this
+     * one. Without it, four green ticks prove that `supportsInterface` exists.
+     *
+     * It is the same id we invite somebody to `cast call` for themselves, on
+     * purpose: a control asserted in the test suite and a different one shown to
+     * the reader would mean neither is the one under test.
+     */
+    function test_TheControlIdIsFalse() public view {
+        assertFalse(coach.supportsInterface(0xdeadbeef), "control id must be false");
+    }
+
+    /**
+     * The declared ids match the vendored interfaces, byte for byte.
+     *
+     * `supportsInterface` returning true for a constant somebody typed is worth
+     * nothing if the constant drifted from the standard. These compare the
+     * hardcoded selectors against the ones solc computes from 0G's own
+     * interface files.
+     */
+    function test_TheInterfaceIdsHaveNotDrifted() public pure {
+        assertEq(type(IERC7857).interfaceId, bytes4(0x4b396f04), "ERC-7857 id drifted");
+        assertEq(type(IERC7857Authorize).interfaceId, bytes4(0x35d39512), "7857 Authorize id drifted");
+    }
+
     // ----------------------------------------------------- intelligent data
 
     function test_TheBrainIsTheIntelligentData() public {

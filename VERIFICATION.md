@@ -46,10 +46,10 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 ```bash
 npm --prefix frontend test     # 543 tests — app logic, nutrition, coach memory, sync, offline
 npm test                       # 103 tests  — server, storage backends, rate limits, auth, sync
-cd contracts && forge test     # 88 tests  — 42 unit · 9 fuzz · 5 invariant · 18 ERC-7857 · 14 verifier
+cd contracts && forge test     # 90 tests  — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier
 ```
 
-734 in total. `node scripts/counts.mjs` prints these by running the suites, and
+736 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 

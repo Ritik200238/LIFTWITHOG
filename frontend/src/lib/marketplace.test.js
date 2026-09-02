@@ -99,3 +99,94 @@ describe('what it costs', () => {
     expect(formatPrice(null)).toBeNull()
   })
 })
+
+describe('reading the market off the chain', () => {
+  /**
+   * `mint` is permissionless, so the id space is whatever anybody has made of
+   * it. The two reads behind this page each grew without bound with it: one
+   * round trip per id from 1 upwards, and an `eth_getLogs` from block 0 on every
+   * load. Both are cheap to attack and neither fails loudly — the page just
+   * stops working, for everybody, for as long as the ids exist.
+   */
+
+  /** A contract that counts what it was asked, and complains like a real RPC. */
+  const fakeContract = ({ total, listed, logWindowLimit = Infinity }) => {
+    const seen = { prices: [], logRanges: [] }
+
+    return {
+      seen,
+      contract: {
+        totalMinted: async () => BigInt(total),
+        rentalPrice: async (id) => {
+          seen.prices.push(Number(id))
+          return listed.has(Number(id)) ? 1000n : 0n
+        },
+        coachOf: async () => [0n, 'og://root', 3n, 1_700_000_000n],
+        ownerOf: async () => '0xowner',
+        filters: { CoachMinted: () => ({}) },
+        queryFilter: async (_f, from, to) => {
+          seen.logRanges.push([from, to])
+          if (to - from > logWindowLimit) throw new Error('query returned more than 10000 results')
+          return []
+        },
+      },
+    }
+  }
+
+  it('does not read every id that has ever been minted', async () => {
+    /*
+     * The griefing case: five hundred empty coaches cost the attacker one
+     * transaction each and cost every visitor a round trip each, before the
+     * page renders anything at all.
+     */
+    const { listRentableCoaches } = await import('./marketplace.js')
+    const { seen, contract } = fakeContract({ total: 5000, listed: new Set([4999, 4998]) })
+
+    const rows = await listRentableCoaches({ provider: {}, contract, scanDepth: 300 })
+
+    expect(rows).toHaveLength(2)
+    expect(seen.prices.length).toBeLessThanOrEqual(300)
+    // Newest first: the work is a function of what is shown, not what exists.
+    expect(Math.max(...seen.prices)).toBe(5000)
+  })
+
+  it('stops as soon as it has enough to show', async () => {
+    const { listRentableCoaches } = await import('./marketplace.js')
+    const listed = new Set(Array.from({ length: 200 }, (_, i) => 1000 - i))
+    const { seen, contract } = fakeContract({ total: 1000, listed })
+
+    const rows = await listRentableCoaches({ provider: {}, contract, limit: 10 })
+
+    expect(rows).toHaveLength(10)
+    expect(seen.prices.length).toBeLessThan(100)
+  })
+
+  it('asks for a bounded range of blocks, not the whole chain', async () => {
+    /*
+     * Public RPCs cap how many blocks a log query may span. From block 0 this
+     * worked in testing and would begin returning errors as the chain grew —
+     * and the failure surfaced as an empty marketplace rather than as anything
+     * mentioning log ranges.
+     */
+    const { creationTimes } = await import('./marketplace.js')
+    const { seen, contract } = fakeContract({ total: 1, listed: new Set() })
+    const provider = { getBlockNumber: async () => 900_000 }
+
+    await creationTimes(['1'], { provider, contract })
+
+    expect(seen.logRanges).toHaveLength(1)
+    const [from, to] = seen.logRanges[0]
+    expect(from).toBeGreaterThan(0)
+    expect(to - from).toBeLessThanOrEqual(45_000)
+  })
+
+  it('loses an age rather than the page when the log query is refused', async () => {
+    // Ages are decoration beside price and version. Losing a subtitle is the
+    // right failure; losing the marketplace is not.
+    const { creationTimes } = await import('./marketplace.js')
+    const { contract } = fakeContract({ total: 1, listed: new Set(), logWindowLimit: 10 })
+    const provider = { getBlockNumber: async () => 900_000 }
+
+    await expect(creationTimes(['1'], { provider, contract })).resolves.toEqual({})
+  })
+})

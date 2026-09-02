@@ -82,44 +82,98 @@ export function formatPrice(pricePerDay) {
 }
 
 /**
+ * The newest coaches to look at, and how many at a time.
+ *
+ * `mint` is permissionless, so the id space is whatever anybody has made of it.
+ * Reading every id from 1 upwards meant one round trip per token before the
+ * page could render anything — so somebody minting five hundred empty coaches
+ * made the marketplace unusable for everyone, at almost no cost to themselves.
+ *
+ * Newest-first bounds that: the work is a function of what is shown, not of
+ * what exists. It is also the better ordering for a marketplace, which is a
+ * happy accident rather than the reason.
+ */
+const SCAN_DEPTH = 300
+const BATCH = 25
+
+/**
+ * How far back mint events are looked for.
+ *
+ * Public RPCs refuse unbounded `eth_getLogs` ranges, and the limit varies by
+ * provider, so this is chosen to be comfortably inside the smallest one rather
+ * than tuned to any particular endpoint. At 0G's block time this is a wide
+ * window in wall-clock terms.
+ */
+const MINT_LOG_WINDOW = 45_000
+
+/**
  * Every coach currently for rent.
  *
  * Walks the token ids rather than an index, because the contract keeps no list
  * of listings — and a list it did keep would be one more thing to fall out of
- * step with the truth. There are few enough coaches for this to be honest work;
- * when there are not, this is where a subgraph goes.
+ * step with the truth. When this stops being enough, it is where a subgraph
+ * goes; until then it must at least not be a way to take the page down.
  */
 export async function listRentableCoaches(opts = {}) {
   if (!COACH_ADDRESS) return []
 
   const provider = opts.provider ?? readProvider()
-  const contract = coachContract(provider)
+  /*
+   * Injectable for the same reason the loader on the server is: the two things
+   * worth asserting here — that this does not read every id that exists, and
+   * that it does not ask for every block that exists — are invisible against a
+   * real chain and trivial against a contract that counts what it was asked.
+   */
+  const contract = opts.contract ?? coachContract(provider)
   const limit = opts.limit ?? 50
+  const depth = opts.scanDepth ?? SCAN_DEPTH
 
   const total = Number(await contract.totalMinted())
+  const oldest = Math.max(1, total - depth + 1)
   const found = []
 
-  for (let id = 1; id <= total && found.length < limit; id += 1) {
-    try {
-      const price = await contract.rentalPrice(id)
-      if (price === 0n) continue
+  /*
+   * In batches, and in parallel within a batch. Sequentially this was one
+   * round trip per id against a public RPC, which is both slow for a real
+   * marketplace and the thing that made the griefing cheap.
+   */
+  for (let top = total; top >= oldest && found.length < limit; top -= BATCH) {
+    const ids = []
+    for (let id = top; id > top - BATCH && id >= oldest; id -= 1) ids.push(id)
 
-      const [, configURI, version, updatedAt] = await contract.coachOf(id)
-      const owner = await contract.ownerOf(id)
+    const rows = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const price = await contract.rentalPrice(id)
+          if (price === 0n) return null
 
-      found.push({
-        tokenId: String(id),
-        owner,
-        version: Number(version),
-        updatedAt: Number(updatedAt) * 1000,
-        configURI,
-        pricePerDay: price.toString(),
-      })
-    } catch {
-      /*
-       * A token that cannot be read is skipped rather than failing the page.
-       * One bad row must not empty a marketplace.
-       */
+          // Only for coaches that are actually listed: the other reads are the
+          // expensive part, and most ids are not for rent.
+          const [[, configURI, version, updatedAt], owner] = await Promise.all([
+            contract.coachOf(id),
+            contract.ownerOf(id),
+          ])
+
+          return {
+            tokenId: String(id),
+            owner,
+            version: Number(version),
+            updatedAt: Number(updatedAt) * 1000,
+            configURI,
+            pricePerDay: price.toString(),
+          }
+        } catch {
+          /*
+           * A token that cannot be read is skipped rather than failing the page.
+           * One bad row must not empty a marketplace.
+           */
+          return null
+        }
+      }),
+    )
+
+    for (const row of rows) {
+      if (row && found.length < limit) found.push(row)
     }
   }
 
@@ -137,20 +191,53 @@ export async function creationTimes(tokenIds, opts = {}) {
   if (tokenIds.length === 0) return {}
 
   const provider = opts.provider ?? readProvider()
-  const contract = coachContract(provider)
+  const contract = opts.contract ?? coachContract(provider)
 
   const wanted = new Set(tokenIds.map(String))
   const times = {}
 
-  const events = await contract.queryFilter(contract.filters.CoachMinted(), 0, 'latest')
+  /*
+   * A bounded window, not the whole chain.
+   *
+   * This asked for every CoachMinted event from block 0 to latest, on every
+   * load of the market page. Public RPCs cap how many blocks a log query may
+   * span, and Galileo only gets longer — so this was a page that worked in
+   * testing and would start returning nothing, with the failure landing on the
+   * caller as an empty marketplace rather than as an error about log ranges.
+   *
+   * Ages are decoration next to price and version, so a coach older than the
+   * window simply has no age shown. Losing a subtitle is the right failure;
+   * losing the page is not.
+   */
+  const latest = await provider.getBlockNumber().catch(() => null)
+  if (latest === null) return times
 
-  for (const event of events) {
-    const id = String(event.args?.tokenId)
-    if (!wanted.has(id)) continue
+  const from = Math.max(0, latest - (opts.blockWindow ?? MINT_LOG_WINDOW))
 
-    const block = await event.getBlock()
-    times[id] = Number(block.timestamp) * 1000
+  let events = []
+  try {
+    events = await contract.queryFilter(contract.filters.CoachMinted(), from, latest)
+  } catch {
+    return times
   }
+
+  /*
+   * One block fetch per distinct block, not per event — a batch of coaches
+   * minted together shares a timestamp, and the seed script mints them that way.
+   */
+  const blocks = new Map()
+
+  await Promise.all(
+    events
+      .filter((event) => wanted.has(String(event.args?.tokenId)))
+      .map(async (event) => {
+        if (!blocks.has(event.blockNumber)) {
+          blocks.set(event.blockNumber, event.getBlock().catch(() => null))
+        }
+        const block = await blocks.get(event.blockNumber)
+        if (block) times[String(event.args.tokenId)] = Number(block.timestamp) * 1000
+      }),
+  )
 
   return times
 }

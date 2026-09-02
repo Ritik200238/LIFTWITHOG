@@ -19,6 +19,10 @@
 
 ### ▶ Live: **[liftwithog.vercel.app](https://liftwithog.vercel.app)** · Prove it yourself: **[/#/verify](https://liftwithog.vercel.app/#/verify)**
 
+**Judging this?** [SUBMISSION.md](SUBMISSION.md) answers each criterion in its order of
+weight, with a command or a transaction behind every claim — and a section naming what
+is *not* done.
+
 *The verify page reads 0G from **your** browser — chain id, block height, coaches minted, live.*
 
 </div>

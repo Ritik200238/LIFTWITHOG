@@ -1,4 +1,3 @@
-import { Indexer, MemData } from '@0gfoundation/0g-storage-ts-sdk'
 import { ethers } from 'ethers'
 
 // Declared in its own dependency-free module so that reading the chain id does
@@ -87,96 +86,107 @@ async function decryptState(encryptedData, key) {
 /**
  * Uploads user state to 0G Decentralized Storage Vault
  */
+/**
+ * Encrypt here, store on 0G, and let the server do the talking.
+ *
+ * The bytes are sealed on this device with a key derived from the device
+ * signature, so what leaves is ciphertext and the server cannot read it — the
+ * same division as a coach's method.
+ *
+ * The relay is not a preference. Uploading from the page failed two ways at
+ * once, and neither is configurable:
+ *
+ *   1. The 0G indexer answers with storage nodes at `http://34.x.x.x:5678`.
+ *      A page on HTTPS may not call plain HTTP, so the browser blocked the
+ *      upload as mixed content before a byte moved. Every backup on the live
+ *      site failed with "Network Error", and the console said why.
+ *   2. Storage costs a fee and the signer was the device key, which by design
+ *      holds nothing. Over HTTP it would still have failed, for gas.
+ *
+ * So the SDK stays out of the bundle here and the server, which has neither
+ * problem, does the upload.
+ */
 export async function uploadTo0GVault(state, signer) {
-  try {
-    const key = await getDerivedKey(signer)
-    const encryptedData = await encryptState(state, key)
+  const key = await getDerivedKey(signer)
+  const encrypted = await encryptState(state, key)
 
-    /*
-     * `MemData`, not a browser Blob.
-     *
-     * The indexer calls `file.size()`, `file.numChunks()` and
-     * `file.numSegments()` on whatever it is handed. A browser Blob has `size`
-     * as a property, so passing one threw `size is not a function` before a
-     * single byte left the machine — which means this backup had never once
-     * worked, on any build, for anybody. `MemData` is the SDK's wrapper for
-     * bytes already in memory and implements that interface.
-     */
-    const payload = new MemData(encryptedData)
+  const res = await fetch('/api/vault/store', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ciphertext: toBase64(encrypted) }),
+  })
 
-    const indexer = new Indexer(OG_NETWORK.storageIndexer)
-    
-    // Upload options for 0G Storage Indexer
-    const uploadOptions = {
-      taskSize: 10,
-      expectedReplica: 1,
-      finalityRequired: true,
-      tags: '0x',
-      skipTx: false,
-      fee: BigInt(0)
-    }
+  const out = await res.json().catch(() => ({}))
 
-    const [txResult, uploadErr] = await indexer.upload(payload, OG_NETWORK.rpcUrl, signer, uploadOptions)
-
-    /*
-     * A failed upload has to fail.
-     *
-     * This used to log the error as a "notice", carry on, and — when the
-     * indexer returned no root hash — invent one out of `getRandomValues` and
-     * return `success: true`. The person was told their training history was
-     * backed up. Nothing had been stored, and the hash they were given pointed
-     * at nothing, so the restore would fail years later when it was the only
-     * copy left.
-     *
-     * A backup that lies about succeeding is worse than having no backup, since
-     * it is the reason somebody stops keeping the other copy.
-     */
-    if (uploadErr) {
-      throw new Error(`0G Storage upload failed: ${uploadErr.message || uploadErr}`)
-    }
-
-    const rootHash = txResult?.rootHash
-    if (!rootHash) {
-      throw new Error('0G Storage returned no root hash, so nothing can be restored from this.')
-    }
-
-    return {
-      success: true,
-      rootHash,
-      timestamp: Date.now(),
-      network: OG_NETWORK.name
-    }
-  } catch (error) {
-    console.error('[0G Vault Error]', error)
-    throw new Error(error.message || 'Failed to upload state to 0G Storage')
+  /*
+   * A failed upload has to fail.
+   *
+   * This once logged the error as a "notice", carried on, and invented a root
+   * hash out of `getRandomValues` when the indexer returned none — telling the
+   * person their history was backed up when nothing had been stored. A backup
+   * that lies about succeeding is worse than no backup, because it is the
+   * reason somebody stops keeping the other copy.
+   */
+  if (!res.ok) {
+    throw new Error(out.message || `0G Storage upload failed (${res.status}).`)
   }
+
+  if (!out.rootHash) {
+    throw new Error('0G Storage returned no root hash, so nothing can be restored from this.')
+  }
+
+  return { success: true, rootHash: out.rootHash, timestamp: Date.now(), network: OG_NETWORK.name }
 }
 
 /**
- * Downloads and decrypts user state from 0G Storage
+ * The backup back, decrypted here and nowhere else.
+ *
+ * The server fetches the ciphertext — see `uploadTo0GVault` for why it has to —
+ * and the key that opens it never left this device.
  */
 export async function downloadFrom0GVault(rootHash, signer) {
-  try {
-    const indexer = new Indexer(OG_NETWORK.storageIndexer)
-    const key = await getDerivedKey(signer)
+  const res = await fetch('/api/vault/read', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ rootHash }),
+  })
 
-    /*
-     * `downloadToBlob`, not `download`.
-     *
-     * `download(rootHash, filePath)` writes to a path on disk and returns an
-     * Error or null — it is not a tuple and there is no path in a browser. This
-     * used to call it with one argument and destructure the result, so `err`
-     * was always undefined and the "buffer" was too: restoring a backup could
-     * never have worked, on any build, for anybody.
-     */
-    const [blob, err] = await indexer.downloadToBlob(rootHash)
-    if (err) throw err
-    if (!blob) throw new Error('0G Storage has nothing stored under that hash.')
+  const out = await res.json().catch(() => ({}))
 
-    const state = await decryptState(new Uint8Array(await blob.arrayBuffer()), key)
-    return state
-  } catch (error) {
-    console.error('[0G Vault Download Error]', error)
-    throw new Error('Failed to retrieve or decrypt state from 0G Storage')
+  if (!res.ok) {
+    throw new Error(out.message || '0G Storage has nothing stored under that code.')
   }
+
+  const bytes = fromBase64(String(out.ciphertext || ''))
+  if (!bytes.length) throw new Error('0G Storage returned an empty backup.')
+
+  const key = await getDerivedKey(signer)
+
+  /*
+   * Decryption failing is the honest answer to "this backup is not yours",
+   * because a root hash is public and anybody may ask for any of them. Said
+   * plainly rather than as a generic failure.
+   */
+  try {
+    return await decryptState(bytes, key)
+  } catch {
+    throw new Error('That backup was made by a different device, so this one cannot open it.')
+  }
+}
+
+/** base64 without a data URL round-trip, for bytes that can be megabytes. */
+function toBase64(bytes) {
+  let s = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk))
+  }
+  return btoa(s)
+}
+
+function fromBase64(text) {
+  const bin = atob(text)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
 }

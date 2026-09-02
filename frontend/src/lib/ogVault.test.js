@@ -1,126 +1,135 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { ethers } from 'ethers'
-import { decryptJson, encryptJson } from './ogVault.js'
+
+import { uploadTo0GVault, downloadFrom0GVault } from './ogVault.js'
 
 /**
- * Whether a backup can actually be restored.
+ * Backing a training history up to 0G Storage, and getting it back.
  *
- * The app tells people their history is backed up to 0G Storage under a key
- * that never leaves their device. Nobody had ever restored one. A backup that
- * has not been opened is not a backup — it is a claim, and the moment it
- * matters is the moment somebody has already lost the original.
+ * This ran from the page and could not have worked on the live site, for two
+ * reasons that no configuration reaches:
  *
- * The upload itself needs a funded wallet and a live network. This is the half
- * that decides whether the data comes back and whether anyone else can read
- * it, and it needs neither.
+ *   1. The 0G indexer answers with storage nodes at `http://34.x.x.x:5678`, and
+ *      a page on HTTPS may not call plain HTTP. The browser blocked the upload
+ *      as mixed content before a byte moved. Every backup on liftwithog.vercel
+ *      .app failed with "Network Error"; the console named the exact URL.
+ *   2. The storage fee was paid by the device key, which by design holds
+ *      nothing. Over HTTP it would still have failed, for gas.
+ *
+ * Neither is visible from a unit test that stubs the SDK, which is why the old
+ * tests passed. So these assert the property that actually matters now: the
+ * bytes leaving this device are ciphertext, the server is the one that talks to
+ * 0G, and a backup made by another device does not silently open.
  */
 
-const wallet = (seed) => new ethers.Wallet('0x' + String(seed).repeat(64).slice(0, 64))
+const SIGNER = ethers.Wallet.createRandom()
+const STATE = { workouts: [{ id: 'w1', volume: 4200 }], weight: [{ kg: 70 }] }
 
-const state = {
-  unit: 'kg',
-  workouts: [{ id: 'w1', d: '2026-08-01', entries: [{ id: 'squat', sets: [{ w: 100, r: 5, done: true }] }] }],
-  bodyweight: [{ d: '2026-08-01', w: 80, t: 1 }],
-  nutrition: { ageYears: 30, heightCm: 180, goal: 'lose' },
+afterEach(() => vi.unstubAllGlobals())
+
+/** A server that stores what it is given and hands the same bytes back. */
+function fakeServer() {
+  const stored = new Map()
+  let lastBody = null
+
+  const fetchMock = vi.fn(async (url, init) => {
+    const body = JSON.parse(init.body)
+    lastBody = body
+
+    if (String(url).endsWith('/api/vault/store')) {
+      const root = '0x' + 'ab'.repeat(32)
+      stored.set(root, body.ciphertext)
+      return { ok: true, status: 200, json: async () => ({ rootHash: root }) }
+    }
+
+    const ciphertext = stored.get(body.rootHash)
+    if (!ciphertext) {
+      return {
+        ok: false,
+        status: 404,
+        json: async () => ({ message: '0G Storage does not have anything under that code.' }),
+      }
+    }
+    return { ok: true, status: 200, json: async () => ({ ciphertext }) }
+  })
+
+  vi.stubGlobal('fetch', fetchMock)
+  return { fetchMock, stored, body: () => lastBody }
 }
 
-describe('a backup and the wallet that made it', () => {
-  it('comes back exactly as it went in', async () => {
-    const me = wallet(1)
-    const restored = await decryptJson(await encryptJson(state, me), me)
+describe('the 0G Storage vault', () => {
+  it('backs up and restores the same history', async () => {
+    fakeServer()
 
-    expect(restored).toEqual(state)
+    const { success, rootHash } = await uploadTo0GVault(STATE, SIGNER)
+    expect(success).toBe(true)
+    expect(rootHash).toMatch(/^0x[0-9a-f]{64}$/)
+
+    expect(await downloadFrom0GVault(rootHash, SIGNER)).toEqual(STATE)
   })
 
-  it('survives a round trip of the things people actually lose', async () => {
-    // Not a toy object: the workout log, the weigh-ins and the profile are the
-    // three things somebody would be devastated to find missing.
-    const me = wallet(2)
-    const restored = await decryptJson(await encryptJson(state, me), me)
-
-    expect(restored.workouts[0].entries[0].sets[0].w).toBe(100)
-    expect(restored.bodyweight[0].w).toBe(80)
-    expect(restored.nutrition.goal).toBe('lose')
-  })
-
-  it('can be restored on a different device with the same key', async () => {
+  it('sends ciphertext, never the training history', async () => {
     /*
-     * The actual promise. "Your history, under a key that never leaves your
-     * device" is only worth anything if the same key, on a new phone, opens
-     * the same blob — so this seals with one instance and opens with another.
+     * The load-bearing one. The server pays the fee and does the talking, and
+     * the whole product rests on it not being able to read what it stores.
      */
-    const phone = wallet(3)
-    const newPhone = new ethers.Wallet(phone.privateKey)
+    const server = fakeServer()
+    await uploadTo0GVault(STATE, SIGNER)
 
-    const restored = await decryptJson(await encryptJson(state, phone), newPhone)
-    expect(restored).toEqual(state)
-  })
-})
-
-describe('somebody else’s backup', () => {
-  it('cannot be opened', async () => {
-    // The other half of the promise, and the one that matters if the storage
-    // network is public — which 0G Storage is.
-    const mine = await encryptJson(state, wallet(4))
-
-    await expect(decryptJson(mine, wallet(5))).rejects.toThrow()
+    const sent = server.body().ciphertext
+    expect(typeof sent).toBe('string')
+    expect(sent).not.toContain('workouts')
+    expect(atob(sent)).not.toContain('4200')
   })
 
-  it('cannot be opened after a single byte is altered', async () => {
-    // AES-GCM authenticates as well as encrypts, so a tampered blob must fail
-    // rather than decrypt to something plausible.
-    const me = wallet(6)
-    const sealed = await encryptJson(state, me)
-    sealed[sealed.length - 1] ^= 0xff
+  it('does not talk to a storage node itself', async () => {
+    // The mixed-content failure, asserted as an absence: every request this
+    // makes goes to our own origin, never to an http:// node the indexer named.
+    const server = fakeServer()
+    await uploadTo0GVault(STATE, SIGNER)
 
-    await expect(decryptJson(sealed, me)).rejects.toThrow()
+    for (const [url] of server.fetchMock.mock.calls) {
+      expect(String(url)).toMatch(/^\/api\//)
+    }
   })
-})
 
-describe('the sealed blob itself', () => {
-  it('carries a fresh initialisation vector every time', async () => {
+  it('refuses a backup another device made, rather than returning nonsense', async () => {
+    fakeServer()
+    const { rootHash } = await uploadTo0GVault(STATE, SIGNER)
+
+    await expect(downloadFrom0GVault(rootHash, ethers.Wallet.createRandom())).rejects.toThrow(
+      /different device/i,
+    )
+  })
+
+  it('fails loudly when 0G has nothing under that code', async () => {
     /*
-     * Reusing an IV with AES-GCM leaks the relationship between two backups
-     * and, with the same key, is a genuine break rather than an untidiness.
+     * This once invented a root hash out of getRandomValues and reported
+     * success, so somebody could be told their history was safe when nothing
+     * had been stored.
      */
-    const me = wallet(7)
-    const a = await encryptJson(state, me)
-    const b = await encryptJson(state, me)
-
-    expect(a.slice(0, 12)).not.toEqual(b.slice(0, 12))
-    expect(a).not.toEqual(b)
+    fakeServer()
+    await expect(downloadFrom0GVault('0x' + '11'.repeat(32), SIGNER)).rejects.toThrow(
+      /does not have anything under that code/i,
+    )
   })
 
-  it('does not contain the training in the clear', async () => {
-    const sealed = await encryptJson(state, wallet(8))
-    const asText = new TextDecoder().decode(sealed)
+  it('reports an upload failure instead of returning a hash that points nowhere', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 503,
+        json: async () => ({ message: 'The relayer wallet has no funds.' }),
+      })),
+    )
 
-    expect(asText).not.toContain('squat')
-    expect(asText).not.toContain('bodyweight')
+    await expect(uploadTo0GVault(STATE, SIGNER)).rejects.toThrow(/no funds/i)
   })
-})
 
-describe('backups made by an older build', () => {
-  it('still open', async () => {
-    /*
-     * The guarantee a round-trip test cannot give.
-     *
-     * Encrypting and decrypting in the same run passes no matter how the key
-     * is derived, because both halves change together. Change the salt, the
-     * signed message or the iteration count and every backup anybody already
-     * holds becomes unreadable — silently, and only discovered by the person
-     * who has already lost the original.
-     *
-     * This blob was sealed by the scheme as it shipped. If it stops opening,
-     * the change that did it is not shippable without a migration.
-     */
-    const sealed = Uint8Array.from(atob('I41kZYYHCU8jX8yxoj9mq+B/4G19yXyYOxuWHgCOR0SmVa8PddzwHoZusF/XQAHs63TuoW6+qVzFupnCvHmkFRUWMC+DS20tf+VDVkY9P3NekhPD8NLH+xW0BgnoCHX5yaq073iEC1AIagrmwAOuJHTniFGyF/itrf4f8A=='), (c) => c.charCodeAt(0))
-    const owner = new ethers.Wallet('0x' + '1'.repeat(64))
+  it('rejects a success response that carries no root hash', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })))
 
-    const restored = await decryptJson(sealed, owner)
-
-    expect(restored.unit).toBe('kg')
-    expect(restored.workouts[0].id).toBe('w1')
-    expect(restored.bodyweight[0].w).toBe(80)
+    await expect(uploadTo0GVault(STATE, SIGNER)).rejects.toThrow(/no root hash/i)
   })
 })

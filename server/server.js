@@ -691,6 +691,98 @@ const routes = {
    * already sealed for this service's key, so the storage network and anybody
    * fetching by root hash sees ciphertext; only the enclave path opens it.
    */
+  /**
+   * A backup of somebody's whole training history, onto 0G Storage.
+   *
+   * The device encrypts first and this never sees plaintext, exactly as
+   * `/api/coach/store` does not see a coach's method. What is different is why
+   * the relay has to exist at all, and it is worth writing down because it is
+   * not a preference:
+   *
+   *   1. The 0G indexer answers with storage nodes at `http://34.x.x.x:5678`.
+   *      A page served over HTTPS is forbidden by the browser from calling
+   *      those, so the upload was blocked as mixed content before a byte moved.
+   *      No configuration fixes it — the node addresses are the network's, and
+   *      they are plain HTTP.
+   *   2. Uploading costs a storage fee, and the signer was the device key,
+   *      which by design holds nothing. Even over HTTP it would have failed for
+   *      lack of gas.
+   *
+   * Two dead ends in one feature, and the same answer to both: the device keeps
+   * the secret, this pays the fee and does the talking. Which is what the coach
+   * path already does.
+   */
+  'POST /api/vault/store': async (req, res) => {
+    const caller = callerIp(req);
+
+    if (!(await withinStoreLimit(caller))) {
+      return json(res, 429, {
+        error: 'too_many',
+        message: 'That is more storage than anybody needs in an hour.',
+      });
+    }
+
+    const body = await readBody(req);
+    const base64 = String(body.ciphertext || '');
+
+    /*
+     * Larger than a coach profile because this is a whole history — years of
+     * sets, weigh-ins and meals — and still bounded, because an endpoint that
+     * spends our gas on bytes it cannot read is one somebody will point a
+     * pipe at.
+     */
+    if (!base64 || base64.length > 8_000_000) {
+      return json(res, 400, { error: 'bad_request', message: 'That is not a backup.' });
+    }
+
+    let bytes;
+    try {
+      bytes = new Uint8Array(Buffer.from(base64, 'base64'));
+      if (bytes.length === 0) throw new Error('empty');
+    } catch {
+      return json(res, 400, { error: 'bad_request', message: 'That did not decode.' });
+    }
+
+    try {
+      const rootHash = await storeForDevice(bytes);
+      return json(res, 200, { rootHash });
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('vault store failed:', e);
+      return json(res, 502, { error: 'storage_failed', message: 'That could not be backed up.' });
+    }
+  },
+
+  /**
+   * The bytes back, still encrypted.
+   *
+   * Anybody may ask for any root hash — the same as 0G Storage itself, which is
+   * a public network — and what comes back is ciphertext only the device that
+   * made it can open. Reading a backup is not what protects it; the key is.
+   */
+  'POST /api/vault/read': async (req, res) => {
+    const body = await readBody(req);
+    const root = String(body.rootHash || '').trim();
+
+    if (!/^0x[0-9a-fA-F]{64}$/.test(root)) {
+      return json(res, 400, { error: 'bad_request', message: 'That is not a backup code.' });
+    }
+
+    try {
+      const bytes = await fetchCardBytes(root);
+      if (!bytes) {
+        return json(res, 404, {
+          error: 'no_backup',
+          message: '0G Storage does not have anything under that code.',
+        });
+      }
+      return json(res, 200, { ciphertext: Buffer.from(bytes).toString('base64') });
+    } catch (e) {
+      console.error('vault read failed:', e);
+      return json(res, 502, { error: 'storage_failed', message: 'That could not be read.' });
+    }
+  },
+
   'POST /api/coach/store': async (req, res) => {
     /*
      * Limited by caller before anything is read, because this endpoint spends

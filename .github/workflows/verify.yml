@@ -1,0 +1,120 @@
+# Everything checkable without a credential, on every push.
+#
+# The point is that the guards in this repository become protective rather than
+# merely available. There are tests here for whether a coach can be opened at
+# all, whether an unattested answer can reach somebody, whether a payment and
+# its access arrive together, and whether a document still describes the code —
+# and until this file existed, every one of them ran only when somebody
+# remembered to run it.
+#
+# The entry point is `./verify.sh`, the same command a person uses locally, so
+# CI cannot drift into checking something different from what the README tells
+# a reader to run.
+#
+# Two things are deliberately not on every push, and the reasons differ:
+#
+#   mutation — it re-runs the whole suite once per seeded fault. It is the most
+#              valuable check here and far too slow to sit in front of a push,
+#              so it runs nightly instead of being quietly dropped.
+#   live     — it reads 0G's public RPC and the deployed site. A failure there
+#              is real information, but it is information about the network
+#              rather than about the commit, and a red mark on somebody's push
+#              for an RPC hiccup teaches people to ignore red marks.
+
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly, for the two jobs that do not belong on a push.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  # A newer push makes an in-flight run irrelevant; cancelling keeps feedback
+  # fast rather than queued behind work nobody is waiting for.
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suites:
+    name: suites and guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name != 'schedule'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install
+        run: |
+          npm --prefix frontend ci
+          npm --prefix server ci
+          npm --prefix contracts ci
+
+      # Split by evidence class, exactly as ./verify.sh does, so a failure names
+      # which kind of claim broke rather than only that something did.
+      - name: Unit suites
+        run: ./verify.sh unit
+
+      - name: Contracts
+        run: ./verify.sh contracts
+
+      - name: Guards
+        # Each of these exists because something shipped broken in that exact
+        # way. A deletion here should be a visible act, not a quiet one.
+        run: ./verify.sh guards
+
+      - name: Release checks
+        run: ./verify.sh release
+
+  mutation:
+    name: mutation (nightly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm --prefix frontend ci
+
+      # A passing suite proves the tests run. This proves they would notice a
+      # wrong number reaching somebody's diet or a loaded bar.
+      - name: 174 seeded faults
+        run: ./verify.sh mutation
+
+  live:
+    name: live chain and site (nightly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm --prefix server ci
+
+      # Reads nothing in this repository: the deployed contract over RPC, the
+      # 0xdeadbeef control, and whether the live site serves the contract this
+      # repository deploys. No secrets — every one of these is public.
+      - name: Deployed contract and site
+        run: ./verify.sh live

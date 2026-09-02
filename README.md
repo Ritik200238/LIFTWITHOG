@@ -242,6 +242,16 @@ sequenceDiagram
 
 ## Engineering guarantees (each one enforced by test)
 
+> **The model writes the workout. The chain decides who owns the coach.
+> The model cannot touch the second one.**
+>
+> Everything an AI produces here is a *suggestion* about training. Ownership,
+> rental expiry, price and transfer are decided by a contract with no admin, no
+> pause and no upgrade — so the worst a confused, jailbroken or malicious model
+> can do is give bad advice. It cannot move a coach, extend a subscription, or
+> pay itself. Those two layers are separate on purpose, and the separation is
+> the thing to check rather than believe.
+
 | Guarantee | Mechanism | Evidence |
 |---|---|---|
 | The contract never holds anyone's money | payout is the last call of `rent()`; no withdraw exists | [`invariant_ContractNeverHoldsFunds`](contracts/test/CoachAgentFuzz.t.sol) across random call sequences |
@@ -306,6 +316,23 @@ every coach a real person created could not be opened. A filter matching zero
 checks also fails, so a typo cannot look like a green run.
 
 Also: `npm run evidence` · [VERIFICATION.md](VERIFICATION.md).
+
+### Walking the whole thing without a wallet
+
+Nothing below needs an extension, an account, a signature, or a coin. Three links
+and one command:
+
+1. **[The contract](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2)**
+   — every coach ever minted, every version, every listing.
+2. **[The transfer](https://chainscan-galileo.0g.ai/tx/0x4b4bc5ae2cc2e1f61140ad41c3bc7ad799b80ed0319517937b7b9cd2d228bb99)**
+   — an ERC-7857 intelligent transfer that moved a coach, not a revert.
+3. **[The gasless mint](https://chainscan-galileo.0g.ai/tx/0x86ded4a19776a96cf49ef4abcd8d85c403e778bbdada5201b18388e20042ac70)**
+   — and the [owner it went to](https://chainscan-galileo.0g.ai/address/0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43),
+   holding nothing.
+4. `./verify.sh live` — reads all of the above over RPC, including the control.
+
+The in-app version is **[/#/verify](https://liftwithog.vercel.app/#/verify)**, which
+does the same reads from your own browser rather than from our server.
 
 Deploy your own contract: `cd contracts && PRIVATE_KEY=0x… forge script script/Deploy.s.sol:Deploy --rpc-url og_testnet --broadcast --with-gas-price 3gwei --priority-gas-price 2gwei`
 

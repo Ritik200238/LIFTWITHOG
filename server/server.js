@@ -11,6 +11,7 @@ import {
 import webpush from 'web-push';
 import { CoachError, advise, leaksConfig, readCoachRecord, recall } from './coach.js';
 import { listing, quote, redeem } from './x402.js';
+import { publish as publishCard, verify as verifyCard } from './progressCard.js';
 import {
   RelayError,
   callerIp,
@@ -20,7 +21,14 @@ import {
   withinQuestionLimit,
   withinStoreLimit,
 } from './relayer.js';
-import { loadConfigFromStorage, runOn0GCompute, servicePublicKey, storeForDevice } from './coach-runtime.js';
+import {
+  coachCreatedAt,
+  fetchCardBytes,
+  loadConfigFromStorage,
+  runOn0GCompute,
+  servicePublicKey,
+  storeForDevice,
+} from './coach-runtime.js';
 import { isStaleWrite, stampFor } from './sync.js';
 import { createStore } from './store.js';
 
@@ -861,6 +869,53 @@ const routes = {
    * exposed the way software buys things, which is what makes the ERC-8004
    * registration mean something to a machine.
    */
+  /**
+   * Publish one claim about a coach, signed by the address that owns it.
+   *
+   * Unencrypted on purpose — it is the one thing here meant to be read by
+   * strangers. The owner picks a sentence their coach already wrote rather than
+   * exposing the record; everything else stays sealed.
+   */
+  'POST /api/coach/card': async (req, res) => {
+    const body = await readBody(req);
+
+    try {
+      const { root } = await publishCard(
+        { tokenId: body.tokenId, claim: body.claim, issuedAt: body.issuedAt, signature: body.signature },
+        {
+          createdAt: coachCreatedAt,
+          store: (bytes) => storeForDevice(bytes),
+        },
+      );
+      return json(res, 200, { root, url: `/api/card/${root}` });
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('card publish failed:', e);
+      return json(res, 500, { error: 'server_error', message: 'That could not be published.' });
+    }
+  },
+
+  /**
+   * Check a card, trusting nothing in it.
+   *
+   * Public: no account, no signature, no wallet. Everything the card asserts
+   * about itself is re-derived from the chain, and the answer ships with what it
+   * does and does not cover.
+   */
+  'GET /api/card': async (req, res) => {
+    const root = new URL(req.url, 'http://x').searchParams.get('root');
+    if (!root) return json(res, 400, { error: 'bad_request', message: 'Which card?' });
+
+    try {
+      const result = await verifyCard(root, { createdAt: coachCreatedAt, fetch: fetchCardBytes });
+      return json(res, 200, result);
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('card verify failed:', e);
+      return json(res, 502, { error: 'chain_unreachable', message: 'That could not be checked.' });
+    }
+  },
+
   /** Coaches for rent, so an agent can find one before paying for it. */
   'GET /api/coaches': async (_req, res) => {
     try {

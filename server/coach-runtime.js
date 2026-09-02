@@ -653,3 +653,40 @@ export function pickAttestedProviders(services) {
 
   return providers;
 }
+
+/**
+ * When a coach was first recorded, from the chain's own log.
+ *
+ * The contract stores `updatedAt`, which moves every time a coach learns, so it
+ * cannot answer this. The mint event can, and it is the one number in a progress
+ * card that nobody can edit after the fact — the whole reason a card is worth
+ * more than a screenshot.
+ */
+export async function coachCreatedAt(contract, tokenId) {
+  try {
+    const events = await contract.queryFilter(contract.filters.CoachMinted(tokenId));
+    const first = events[0];
+    if (!first) return null;
+    const block = await first.getBlock();
+    return Number(block.timestamp) * 1000;
+  } catch {
+    // No log, or an RPC that will not answer. The card simply carries no age.
+    return null;
+  }
+}
+
+/** Read a published card back off 0G Storage. Public bytes, no key. */
+export async function fetchCardBytes(root, deps = {}) {
+  const indexer = deps.indexer ?? new Indexer(OG_INDEXER);
+  try {
+    const [blob, err] = await withTimeout(
+      indexer.downloadToBlob(root),
+      STORAGE_TIMEOUT_MS,
+      '0G Storage read',
+    );
+    if (err || !blob) return null;
+    return new Uint8Array(await blob.arrayBuffer());
+  } catch {
+    return null;
+  }
+}

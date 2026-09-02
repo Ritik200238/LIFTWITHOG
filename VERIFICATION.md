@@ -46,11 +46,11 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 
 ```bash
 npm --prefix frontend test     # 542 tests — app logic, nutrition, coach memory, sync, offline
-npm test                       # 121 tests  — server, storage backends, rate limits, auth, sync
+npm test                       # 132 tests  — server, storage backends, rate limits, auth, sync
 cd contracts && forge test     # 90 tests  — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier
 ```
 
-753 in total. `node scripts/counts.mjs` prints these by running the suites, and
+764 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
@@ -146,6 +146,11 @@ the deployed contract by `scripts/prove-transfer.mjs`.
 | Hire a coach with a payment for a different coach | `402 payment_not_found` |
 | Hire a coach on a rental that has since expired | `403 no_access` — the chain is asked, not the receipt |
 | Quote a coach nobody has listed | `409 not_for_rent` — a different answer from "you have not paid", which would be retried forever |
+| Publish a progress card about a coach you do not own | `403 not_owner` |
+| Edit a card's claim after signing it | the signature recovers to a different address than the card names, and `valid` is false |
+| Claim more versions, or a longer history, than the chain records | the version and the mint event are re-read; `valid` is false |
+| Publish a card, then sell the coach | the card stays readable and becomes invalid — not an error, because a sale is not fraud |
+| Point at a storage root holding something that is not a card | `422 bad_card` |
 | Forge `X-Forwarded-For` to reset a limit | ignored — the caller is identified by a header the caller cannot write |
 | Relay when the wallet is nearly empty | `503 relayer_empty`, before spending rather than during |
 

@@ -48,6 +48,9 @@ const COACH_ABI = [
   'function rentalPrice(uint256 tokenId) view returns (uint256)',
   // Read by the discovery listing, which is bounded by it.
   'function totalMinted() view returns (uint256)',
+  // Read by a progress card: when a coach was first recorded, which `updatedAt`
+  // cannot answer because it moves every time the coach learns.
+  'event CoachMinted(uint256 indexed tokenId, address indexed owner, bytes32 configHash)',
 ];
 
 export class CoachError extends Error {

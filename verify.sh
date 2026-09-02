@@ -79,6 +79,8 @@ check guards "the anchored policy is still the policy" \
   bash -c 'cd server && node --test policyProvenance.test.js'
 check guards "a transaction hash is not a payment" \
   bash -c 'cd server && node --test x402.test.js'
+check guards "a progress card cannot claim more than the chain says" \
+  bash -c 'cd server && node --test progressCard.test.js'
 
 # ---------------------------------------------------------------- mutation
 

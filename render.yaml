@@ -41,7 +41,7 @@ services:
 
       # The deployed CoachAgent on 0G Galileo.
       - key: COACH_ADDRESS
-        value: "0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A"
+        value: "0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2"
 
       # Set by hand in the Render dashboard, never in this file: the key that
       # pays gas so nobody using the app needs a wallet, and the key the coach

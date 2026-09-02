@@ -66,9 +66,9 @@ the product's central loop did not work, and fixing that before anything else.
   closed each, plus six open risks.
 - **`verify.sh`**, splitting evidence by kind — and `live` reads nothing in the
   repository.
-- **Five guard tests** that each exist because something shipped broken.
+- **Seven guard tests** that each exist because something shipped broken.
 
-**17 commits this wave.** Each names what was wrong before it, because a commit
+**20 commits this wave.** Each names what was wrong before it, because a commit
 log is the only record of momentum a judge can check.
 
 ---
@@ -129,7 +129,7 @@ integration is worse than an absent one.
 ## 20% — Technical quality
 
 ```
-736 tests    543 frontend · 103 server · 90 contract
+737 tests    543 frontend · 104 server · 90 contract
              (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier)
 174 seeded faults, 169 caught, 5 proven equivalent with measured evidence
 ```

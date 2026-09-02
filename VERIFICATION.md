@@ -46,11 +46,11 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 
 ```bash
 npm --prefix frontend test     # 543 tests — app logic, nutrition, coach memory, sync, offline
-npm test                       # 103 tests  — server, storage backends, rate limits, auth, sync
+npm test                       # 104 tests  — server, storage backends, rate limits, auth, sync
 cd contracts && forge test     # 90 tests  — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier
 ```
 
-736 in total. `node scripts/counts.mjs` prints these by running the suites, and
+737 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
@@ -97,6 +97,52 @@ found at run time.
 - **Vault**: `frontend/src/lib/ogVault.js` — AES-256-GCM, key derived on the
   device; what 0G Storage receives is ciphertext. Round-trip it from Settings:
   back up, wipe, restore by root hash.
+
+## The failure matrix
+
+What this system does when somebody tries something it should refuse. A product
+that only documents its happy path is documenting the half nobody attacks — and
+"it is secure" is a claim, while a named revert is a fact.
+
+Every row below is driven by a test, and the on-chain ones are driven against
+the deployed contract by `scripts/prove-transfer.mjs`.
+
+### On chain
+
+| Attempt | Result |
+|---|---|
+| Rent a coach that is not listed | `NotForRent()` |
+| Rent for 0 days, or more than a year | `BadDuration()` |
+| Pay anything other than the exact cost | `WrongPayment(expected)` |
+| Set a price on a coach you do not own | `NotCoachOwner()` |
+| Use a relayed signature after its deadline | `SignatureExpired()` |
+| Replay a relayed signature | `WrongSignature()` — the nonce moved |
+| Alter the owner in a relayed message | `WrongSignature()` — the owner is signed data |
+| Read anything about a coach that does not exist | `NoSuchCoach()` |
+| Transfer with an attestation signed by anybody else | `TransferProofRejected()` |
+| Transfer with an attestation for a different coach | `TransferProofRejected()` |
+| Transfer with an attestation for a different buyer | `TransferProofRejected()` |
+| Swap the sealed key under a genuine attestation | `TransferProofRejected()` |
+| Replay a spent attestation after buying the coach back | `TransferProofRejected()` |
+| Drain the contract | there is no withdraw function, and an invariant test asserts its balance is always zero |
+| Pause, upgrade or reassign a coach | there is no owner role and no proxy |
+
+### At the API
+
+| Attempt | Result |
+|---|---|
+| Ask a coach you have no rental on | `403 no_access` — checked on chain, never cached |
+| Ask with a signature older than its window | `401 expired` |
+| Ask with a signature made for another coach | `403 no_access` — the token id is inside the signed message |
+| Ask a coach to recite its own configuration | `422 refused` — checked in the answer, not asked for in the prompt |
+| Read the coaching record of a coach you rent | `403 not_owner` — renting buys questions, not somebody's training history |
+| Ask when no attested provider will vouch | `503 no_tee` — never an unattested answer |
+| Fetch a coach whose stored blob does not match the chain | `502 config_tampered` |
+| Fetch a coach sealed for a different service key | `422 bad_config` — named as that, not as tampering |
+| Exceed the per-address hourly limit | `429 too_many` |
+| Exceed the whole service's daily budget | `429 budget_spent` — keyed on a constant, so a fresh address does not help |
+| Forge `X-Forwarded-For` to reset a limit | ignored — the caller is identified by a header the caller cannot write |
+| Relay when the wallet is nearly empty | `503 relayer_empty`, before spending rather than during |
 
 ## What we do NOT claim
 

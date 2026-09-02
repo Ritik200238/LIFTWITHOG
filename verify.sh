@@ -73,6 +73,8 @@ check guards "the frontend ABI declares every call it makes" \
   bash -c 'cd frontend && npx vitest run src/lib/coachAbi.test.js'
 check guards "the relayer ABI declares every call it makes" \
   bash -c 'cd server && node --test relayer.test.js'
+check guards "every refusal the failure matrix names exists" \
+  bash -c 'cd server && node --test failureMatrix.test.js'
 
 # ---------------------------------------------------------------- mutation
 

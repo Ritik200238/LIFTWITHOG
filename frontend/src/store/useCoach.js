@@ -209,14 +209,8 @@ export const useCoach = create((set, get) => ({
       // RPC and chain id is a second thing to forget when the network moves.
       // Loaded at the moment a coach is actually read, so the home screen does
       // not pay for the chain library before anybody has one.
-      const { ethers } = await import('ethers')
-      const { OG_NETWORK } = await import('../lib/ogVault.js')
-      const provider = new ethers.JsonRpcProvider(
-        OG_NETWORK.rpcUrl,
-        OG_NETWORK.chainId,
-        { staticNetwork: true },
-      )
-      const onChain = await (await chain()).readCoach(provider, tokenId)
+      const { readProvider } = await import('../lib/marketplace.js')
+      const onChain = await (await chain()).readCoach(readProvider(), tokenId)
       set({ version: onChain.version })
       save({ ...get(), version: onChain.version })
     } catch {

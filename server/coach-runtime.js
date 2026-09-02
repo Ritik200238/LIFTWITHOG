@@ -8,6 +8,7 @@
 
 import crypto from 'node:crypto';
 import { ethers } from 'ethers';
+import { ogProvider } from './ogProvider.js';
 import { Indexer } from '@0gfoundation/0g-storage-ts-sdk';
 import { CoachError, OG_RPC, OG_CHAIN_ID } from './coach.js';
 import { looksSealed, openAsService, servicePublicKeyFrom } from './coachEnvelope.js';
@@ -33,7 +34,7 @@ export async function storeForDevice(ciphertext) {
   const key = process.env.RELAYER_PRIVATE_KEY || process.env.COACH_SERVICE_KEY;
   if (!key) throw new CoachError(503, 'not_configured', 'This server has no relayer key, so it cannot pay the fee. Set RELAYER_PRIVATE_KEY in api/.env — see the README.');
 
-  const provider = new ethers.JsonRpcProvider(OG_RPC, OG_CHAIN_ID, { staticNetwork: true });
+  const provider = ogProvider(OG_RPC, OG_CHAIN_ID);
   const wallet = new ethers.Wallet(key, provider);
 
   /*
@@ -116,7 +117,7 @@ export function serviceWallet() {
   if (!key) {
     throw new CoachError(503, 'not_configured', 'This server has no coach service key.');
   }
-  const provider = new ethers.JsonRpcProvider(OG_RPC, OG_CHAIN_ID, { staticNetwork: true });
+  const provider = ogProvider(OG_RPC, OG_CHAIN_ID);
   return new ethers.Wallet(key, provider);
 }
 

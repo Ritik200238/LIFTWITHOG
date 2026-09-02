@@ -10,6 +10,7 @@
  */
 
 import { ethers } from 'ethers';
+import { ogProvider } from './ogProvider.js';
 import { createStore } from './store.js';
 
 export const OG_RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
@@ -124,7 +125,7 @@ export function relayerWallet() {
   const key = process.env.RELAYER_PRIVATE_KEY || process.env.COACH_SERVICE_KEY;
   if (!key) throw new RelayError(503, 'not_configured', 'This server has no relayer key, so it cannot pay the fee. Set RELAYER_PRIVATE_KEY in api/.env — see the README.');
 
-  const provider = new ethers.JsonRpcProvider(OG_RPC, OG_CHAIN_ID, { staticNetwork: true });
+  const provider = ogProvider(OG_RPC, OG_CHAIN_ID);
   return new ethers.Wallet(key, provider);
 }
 

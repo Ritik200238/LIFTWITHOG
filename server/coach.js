@@ -28,6 +28,7 @@
  */
 
 import { ethers } from 'ethers';
+import { ogProvider } from './ogProvider.js';
 
 export const OG_RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
 // Mainnet (Aristotle) is 16661, Galileo testnet 16602. The id must move with
@@ -111,7 +112,7 @@ export function coachReader(provider) {
 }
 
 export function defaultProvider() {
-  return new ethers.JsonRpcProvider(OG_RPC, OG_CHAIN_ID, { staticNetwork: true });
+  return ogProvider(OG_RPC, OG_CHAIN_ID);
 }
 
 /**

@@ -15,11 +15,24 @@
 import { ethers } from 'ethers'
 import { COACH_ADDRESS, coachContract } from './ogCoach.js'
 import { OG_NETWORK } from './ogVault.js'
+/*
+ * The same builder the API uses, so a browser and the server degrade the same
+ * way when an RPC is slow. Imported from `server/` for the reason the coach
+ * envelope is: one implementation cannot disagree with itself.
+ */
+import { ogProvider } from '../../../server/ogProvider.js'
 
-/** A read-only view of the chain. No wallet, no permission prompt. */
+/**
+ * A read-only view of the chain. No wallet, no permission prompt.
+ *
+ * Every read in the app comes through here — the market, the proof page, the
+ * verify page, the coach's version. That is deliberate: it is the one place to
+ * add a fallback endpoint, and a page that builds its own provider is a page
+ * that keeps failing after the others have been fixed.
+ */
 export function readProvider() {
-  return new ethers.JsonRpcProvider(OG_NETWORK.rpcUrl, OG_NETWORK.chainId, {
-    staticNetwork: true,
+  return ogProvider(OG_NETWORK.rpcUrl, OG_NETWORK.chainId, {
+    fallbacks: import.meta.env?.VITE_OG_RPC_FALLBACK_URLS,
   })
 }
 

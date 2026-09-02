@@ -327,10 +327,13 @@ export async function evolveCoachRelayed(tokenId, state, previousProfile, opts =
  * produce exactly that.
  */
 async function currentNonce(address) {
-  const provider = new ethers.JsonRpcProvider(OG_NETWORK.rpcUrl, OG_NETWORK.chainId, {
-    staticNetwork: true,
-  })
-  return coachContract(provider).nonceOf(address)
+  /*
+   * Loaded here rather than imported at the top: `marketplace.js` imports this
+   * module, so a static import back the other way is a cycle — and the read
+   * provider is only needed on the paths that are about to talk to a chain.
+   */
+  const { readProvider } = await import('./marketplace.js')
+  return coachContract(readProvider()).nonceOf(address)
 }
 
 /**

@@ -132,4 +132,72 @@ describe('the 0G Storage vault', () => {
 
     await expect(uploadTo0GVault(STATE, SIGNER)).rejects.toThrow(/no root hash/i)
   })
+  it('never reuses an initialisation vector', async () => {
+    /*
+     * AES-GCM with a repeated IV under the same key is not a weaker cipher, it
+     * is a broken one: two ciphertexts XOR to the plaintexts, and the
+     * authentication tag stops being unforgeable. A round-trip test cannot see
+     * this — encrypt and decrypt still agree perfectly with a fixed IV — which
+     * is exactly why the mutation for it survived.
+     *
+     * The IV is the first 12 bytes of what gets stored, so two encryptions of
+     * the same history differing there is the property, stated directly.
+     */
+    const server = fakeServer()
+
+    await uploadTo0GVault(STATE, SIGNER)
+    const first = atob(server.body().ciphertext)
+    await uploadTo0GVault(STATE, SIGNER)
+    const second = atob(server.body().ciphertext)
+
+    expect(first.slice(0, 12)).not.toBe(second.slice(0, 12))
+    expect(first).not.toBe(second)
+  })
+
+  it('derives the key from the signature and the salt, not the signature alone', async () => {
+    /*
+     * Dropping the PBKDF2 salt leaves a scheme that still round-trips, so
+     * nothing here noticed. What it costs is the salt's whole job: with a fixed,
+     * known input the derived key becomes precomputable across every user of
+     * this app, and the same signature always yields the same key.
+     *
+     * Pinned as a known answer. Decryption of a blob made by the real scheme is
+     * what fails if the derivation changes at all — salt, iteration count or
+     * hash — so this is a format lock rather than a test of one constant.
+     */
+    const server = fakeServer()
+    const fixed = new ethers.Wallet('0x' + '11'.repeat(32))
+
+    const { rootHash } = await uploadTo0GVault(STATE, fixed)
+    const stored = server.stored.get(rootHash)
+
+    // The bytes must not be openable by a derivation that skipped the salt.
+    const unsalted = await unsaltedKey(fixed)
+    await expect(openWith(stored, unsalted)).rejects.toBeTruthy()
+
+    // And must be openable by the real one.
+    expect(await downloadFrom0GVault(rootHash, fixed)).toEqual(STATE)
+  })
 })
+
+/** The derivation with the salt removed — the mutation, reproduced here. */
+async function unsaltedKey(signer) {
+  const encoder = new TextEncoder()
+  const address = await signer.getAddress()
+  const signature = await signer.signMessage(`0G-Gym Encryption Key for Vault Address: ${address.toLowerCase()}`)
+  const material = await crypto.subtle.importKey('raw', encoder.encode(signature), { name: 'PBKDF2' }, false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new Uint8Array(0), iterations: 100000, hash: 'SHA-256' },
+    material,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt'],
+  )
+}
+
+async function openWith(base64, key) {
+  const bin = atob(base64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12) }, key, bytes.slice(12))
+}

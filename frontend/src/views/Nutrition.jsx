@@ -18,7 +18,7 @@
  * instead of quietly handing over a plan that misses.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { t } from '../lib/i18n.js'
 import { fmtNum } from '../lib/format.js'
@@ -95,6 +95,35 @@ function Macro({ label, value, unit, tint }) {
  */
 function DraftNumber({ value, onCommit, plausible, width = 72, label }) {
   const [draft, setDraft] = useState(null)
+  const box = useRef(null)
+
+  /*
+   * Keep this field where the eye left it.
+   *
+   * Committing the third of the three values is what unlocks the whole plan,
+   * and the plan renders *above* this form — so the moment somebody finished
+   * typing their age, the results appeared and shoved the field they were
+   * looking at from 355px down the page to 1933px. Off screen, still focused,
+   * with the keyboard open over whatever replaced it.
+   *
+   * The layout is right: results belong at the top. What is wrong is the page
+   * moving under a finger. So the field's position is measured before the
+   * commit and the scroll is corrected by however far it travelled, which
+   * leaves it visually stationary while everything else grows around it.
+   */
+  const anchored = (commit) => {
+    const before = box.current?.getBoundingClientRect().top
+    commit()
+    if (before == null) return
+
+    requestAnimationFrame(() => {
+      const after = box.current?.getBoundingClientRect().top
+      if (after == null) return
+      const moved = after - before
+      // A pixel or two is rounding, not a jump worth correcting.
+      if (Math.abs(moved) > 2) window.scrollBy({ top: moved, behavior: 'instant' })
+    })
+  }
 
   const type = (raw) => {
     const clean = String(raw).replace(/\D/g, '').slice(0, 3)
@@ -102,7 +131,7 @@ function DraftNumber({ value, onCommit, plausible, width = 72, label }) {
     const next = clean === '' ? null : Number(clean)
     // Only good values move the rest of the screen. A half-typed one changes
     // nothing, which is why the plan below stays put.
-    if (next !== null && plausible(next)) onCommit(next)
+    if (next !== null && plausible(next)) anchored(() => onCommit(next))
   }
 
   const settle = () => {
@@ -120,6 +149,7 @@ function DraftNumber({ value, onCommit, plausible, width = 72, label }) {
       type="text"
       inputMode="numeric"
       aria-label={label}
+      ref={box}
       style={{ width }}
       value={draft ?? (value ?? '')}
       onFocus={(e) => e.target.select()}

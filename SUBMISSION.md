@@ -55,7 +55,7 @@ the product's central loop did not work, and fixing that before anything else.
   next to any sealed key, including the one the seller still holds.
 - **The published coaching policy** — the literal system prompt and every
   nutrition bound, unencrypted on 0G Storage, with a commitment
-  [anchored on chain](https://chainscan-galileo.0g.ai/tx/0x56480501ac8f854de334913b9c1fe7cca0ed5e83b9e074a73f9e5b857181f9e8).
+  [anchored on chain](https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa).
   The numbers are read out of the module enforcing them, so the document cannot
   drift from the code.
 - **Coaching record recovery** — the record lived in one browser's local
@@ -129,7 +129,7 @@ integration is worse than an absent one.
 ## 20% — Technical quality
 
 ```
-736 tests    542 frontend · 104 server · 90 contract
+739 tests    542 frontend · 107 server · 90 contract
              (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier)
 174 seeded faults, 169 caught, 5 proven equivalent with measured evidence
 ```

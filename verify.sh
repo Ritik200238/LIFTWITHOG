@@ -75,6 +75,8 @@ check guards "the relayer ABI declares every call it makes" \
   bash -c 'cd server && node --test relayer.test.js'
 check guards "every refusal the failure matrix names exists" \
   bash -c 'cd server && node --test failureMatrix.test.js'
+check guards "the anchored policy is still the policy" \
+  bash -c 'cd server && node --test policyProvenance.test.js'
 
 # ---------------------------------------------------------------- mutation
 

@@ -759,3 +759,47 @@ test('a seeded coach with no memory is empty, not an error', async () => {
 
   assert.deepEqual(result.memory, []);
 });
+
+test('the coach is told what it cannot do, in terms it can repeat', async () => {
+  /*
+   * The separation the whole design rests on, put into the model's own mouth.
+   *
+   * A paragraph does not constrain a model — that is what `leaksConfig` and the
+   * nutrition engine are for, and they are code. The value is that somebody
+   * probing the coach gets the same answer the README gives, from the thing
+   * itself rather than from us.
+   *
+   * It is also true here in a way it is not for most products: ownership,
+   * price, rental and transfer are decided by a contract with no admin and no
+   * upgrade path, so a jailbroken model genuinely cannot reach them.
+   */
+  const { systemPrompt } = await import('./coach-runtime.js');
+  const prompt = systemPrompt('{"sessions":3}');
+
+  for (const claim of [
+    /do not own, transfer, price, rent out or grant access/i,
+    /no administrator and cannot be upgraded/i,
+    /do not compute nutrition targets; you are given/i,
+    /refuses to answer rather than running anywhere else/i,
+  ]) {
+    assert.match(prompt, claim);
+  }
+});
+
+test('what the prompt says it cannot do matches what the contract enforces', async () => {
+  /*
+   * The failure this guards is a prompt that promises more than the code does.
+   * Every capability the coach disclaims must be a function on the contract —
+   * a disclaimer about something that does not exist is noise, and a missing
+   * one is a claim nothing backs.
+   */
+  const { readFile } = await import('node:fs/promises');
+  const contract = await readFile(new URL('../contracts/src/CoachAgent.sol', import.meta.url), 'utf8');
+
+  for (const fn of ['function rent(', 'function setRentalPrice', 'function iTransferFrom', 'function grantAccess']) {
+    assert.ok(contract.includes(fn), `the prompt disclaims ${fn} but the contract has no such function`);
+  }
+
+  // And the disclaimer about no admin has to stay true.
+  assert.ok(!/\bOwnable\b|\bonlyOwner\b|function pause\(/.test(contract), 'the contract grew an admin the prompt denies');
+});

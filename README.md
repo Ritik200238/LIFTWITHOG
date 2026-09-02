@@ -4,7 +4,7 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-736%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-739%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-90%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
@@ -269,7 +269,7 @@ sequenceDiagram
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
 | Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**736 tests**: 542 frontend · 104 server · 90 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier).
+**739 tests**: 542 frontend · 107 server · 90 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier).
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
 
@@ -277,7 +277,7 @@ trusting a document — the previous set disagreed with itself in three places.
 is not a checkable claim and everyone makes it. The literal system prompt and every
 nutrition bound — the calorie floors, the deficit cap, the rate-of-loss cap — are an
 unencrypted blob on 0G Storage with a commitment
-[anchored on chain](https://chainscan-galileo.0g.ai/tx/0x56480501ac8f854de334913b9c1fe7cca0ed5e83b9e074a73f9e5b857181f9e8).
+[anchored on chain](https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa).
 The numbers are read out of the module that enforces them rather than retyped, so the
 document cannot drift from the code — `scripts/publish-policy.mjs` recomputes the same
 sha256 from source. If this coach ever tells somebody to eat 700 calories a day, the

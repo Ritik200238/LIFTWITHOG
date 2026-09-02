@@ -197,7 +197,17 @@ export default function Market() {
    */
   const rent = async (coach) => {
     if (!window.ethereum) {
-      toast(t('Renting needs a wallet — it spends real funds. Everything else here does not.'))
+      /*
+       * "Spends real funds" contradicted the line at the bottom of this very
+       * screen, which says this is a test network moving test tokens. Two
+       * sentences a thumb-length apart, disagreeing about whether the money is
+       * real — and the honest one is the footer.
+       *
+       * What is true either way is that renting is the one thing here that
+       * moves value from an account, so it needs a wallet, and nothing else in
+       * the app does.
+       */
+      toast(t('Renting is the one thing here that needs a wallet. Everything else works without one.'))
       return
     }
 

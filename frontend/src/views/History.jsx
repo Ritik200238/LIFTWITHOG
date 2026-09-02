@@ -30,7 +30,7 @@ export default function History() {
 
   return <>
     <div className="hdr"><button className="iconbtn" onClick={() => nav('/stats')} aria-label={t('Stats')}><Icon name="chevronLeft" /></button>
-      <div style={{ flex: 1, marginLeft: 12 }}><h1>{t('History')}</h1><div className="sub">{t('{0} workouts', S.workouts.length)}</div></div></div>
+      <div style={{ flex: 1, marginLeft: 12 }}><h1>{t('History')}</h1><div className="sub">{t(S.workouts.length === 1 ? '{0} workout' : '{0} workouts', S.workouts.length)}</div></div></div>
     {/*
       * Grouped by month. This was one unbroken reversed list, so a year of
       * training was about a hundred and fifty identical rows and the only way

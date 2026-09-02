@@ -1,3 +1,4 @@
+import { passkeyMessage, wasCancelled } from '../lib/passkeyError.js'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore, DEF, hasData } from '../store/useStore.js'
@@ -51,7 +52,7 @@ export default function Settings() {
   }
   const signInHere = async () => {
     try { const u = await passkeyLogin(); setUser(u); await pullState(); toast(t('Welcome back, {0}', u.name)) }
-    catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(e.message || t('Sign-in failed')) }
+    catch (e) { if (!wasCancelled(e)) toast(passkeyMessage(e, { signingIn: true })) }
   }
   const registerHere = () => useUI.getState().openSheet(close => <RegisterInline close={close} setUser={setUser} pushState={pushState} pullState={pullState} toast={toast} />)
   // Ends the profile's sessions on every device — this one included, so on success it lands in

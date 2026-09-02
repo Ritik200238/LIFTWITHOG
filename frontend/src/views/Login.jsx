@@ -1,3 +1,4 @@
+import { passkeyMessage, wasCancelled } from '../lib/passkeyError.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { webauthnOK, passkeyLogin, passkeyRegister, api, BIO } from '../lib/api.js'
@@ -25,7 +26,7 @@ function RegisterSheet({ close }) {
       setUser(u); close()
       if (hasData(useStore.getState().S)) { await pushState(); useUI.getState().toast(t('Profile created — data from this device moved into it')) }
       else { await pullState(); useUI.getState().toast(t('Welcome, {0}', u.name)) }
-    } catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(e.message || t('Registration failed')) }
+    } catch (e) { if (!wasCancelled(e)) useUI.getState().toast(passkeyMessage(e, { signingIn: false })) }
   }
   return <>
     <h3>{t('Create your profile')}</h3>
@@ -46,7 +47,7 @@ export default function Login() {
   const { setUser, pullState, setGuest } = useStore()
   const signIn = async () => {
     try { const u = await passkeyLogin(); setUser(u); await pullState(); useUI.getState().toast(t('Welcome back, {0}', u.name)) }
-    catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') useUI.getState().toast(e.message || t('Sign-in failed')) }
+    catch (e) { if (!wasCancelled(e)) useUI.getState().toast(passkeyMessage(e, { signingIn: true })) }
   }
   const head = <>
     <div style={{ fontSize: 54, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="dumbbell" /></div>

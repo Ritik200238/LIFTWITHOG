@@ -523,7 +523,7 @@ function ProgressionFields({ ex, mode, c, setC, routine, unit }) {
   </>
 }
 
-function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
+function ExConfig({ ex, existing, onSave, onDelete, close, routine, destination = 'routine' }) {
   const st = useStore(s => s.S)
   const cardio = isCardio(ex.id)
   const [c, setC] = useState(existing || defaultConfig(ex.id))
@@ -632,12 +632,24 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine }) {
         : t('Reps climb by one whenever every set was clean. Set a ceiling to add sets instead of reps forever.')}
     </div>}
     <ProgressionFields ex={ex} mode={mode} c={c} setC={setC} routine={routine} unit={st.unit} />
-    <Button variant="primary" onClick={save}>{existing ? t('Save') : t('Add to routine')}</Button>
+    {/*
+      * "Add to routine" was the label everywhere, including mid-workout, where
+      * there is no routine to add anything to — the exercise goes into the
+      * session you are standing in. The button named the wrong thing at the
+      * exact moment somebody is between sets and reading it fastest.
+      *
+      * The destination cannot be inferred from `routine`: the sheet that adds
+      * to a routine does not pass one either, so both callers looked identical
+      * from in here. It is stated instead.
+      */}
+    <Button variant="primary" onClick={save}>
+      {existing ? t('Save') : destination === 'workout' ? t('Add to workout') : t('Add to routine')}
+    </Button>
     {ex.custom && <><div style={{ height: 8 }} /><Button icon="pencil" onClick={() => { close(); customExSheet(ex) }}>{t('Edit or delete this exercise')}</Button></>}
     {onDelete && <><div style={{ height: 8 }} /><Button variant="danger" onClick={() => { close(); onDelete() }}>{t('Remove from routine')}</Button></>}
   </>
 }
-export const exConfigSheet = (ex, existing, onSave, onDelete, routine) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} close={close} />)
+export const exConfigSheet = (ex, existing, onSave, onDelete, routine, destination) => ui().openSheet(close => <ExConfig ex={ex} existing={existing} onSave={onSave} onDelete={onDelete} routine={routine} destination={destination} close={close} />)
 
 /* ============================ glyph picker ============================ */
 // Grouped by what the glyph means for a training day, so picking one is a scan
@@ -949,7 +961,7 @@ export function addExerciseFlow() {
     const plan = nextPrescription(s, full, s.routines.find(r => r.id === s.active.routineId))
     s.active.entries.push({ id: ex.id, target: { ...cfg }, plan, sets: applyPrescription(buildSets(s, full), plan) })
     s.active.cur = s.active.entries.length - 1
-  }), null, routine))
+  }), null, routine, 'workout'))
 }
 
 // Shown when the last exercise's last set is checked — finish, or keep going.

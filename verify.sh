@@ -122,6 +122,21 @@ check live "it answers FALSE for an interface nothing implements" bash -c "$(dec
 
 check live "every claim npm run evidence makes still holds" node scripts/evidence.mjs
 
+# The deployed app, not the repository.
+#
+# `VITE_COACH_ADDRESS` is baked in at build time, and when it is missing the
+# coach card renders nothing at all — correct for a fork somebody just cloned,
+# and indistinguishable from a broken deploy for anybody else. This catches both
+# that and the quieter one: a site still serving the contract from two deploys
+# ago, which passes every other check in this file because every other check
+# reads the chain rather than the bundle.
+SITE="${SITE_URL:-https://liftwithog.vercel.app}"
+
+check live "the deployed app carries the contract this repo deploys" bash -c "
+  asset=\$(curl -s --max-time 25 '$SITE/' | grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+  [ -n \"\$asset\" ] || exit 1
+  curl -s --max-time 40 \"$SITE/\$asset\" | grep -qi '$COACH'"
+
 # -------------------------------------------------------------------------
 
 echo

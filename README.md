@@ -4,7 +4,7 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-777%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-791%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-103%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
@@ -269,7 +269,7 @@ sequenceDiagram
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
 | Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**777 tests**: 542 frontend · 132 server · 103 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier, 13 clone).
+**791 tests**: 542 frontend · 146 server · 103 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier, 13 clone).
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
 
@@ -303,6 +303,17 @@ contract forwards it inside the call that brought it and has no withdraw functio
 The standard's own `iCloneFrom` is implemented too, attestation-gated like a transfer, so
 an indexer or marketplace finds what it expects. `supportsInterface(0xd79f01c7)` returns
 true on the deployed contract.
+
+**The coach knows what it should not answer.** Ask it about a torn meniscus, eating through
+a pregnancy, a testosterone dose or chest pain during squats, and it hands off — naming a
+specialist on the marketplace rather than improvising. The check runs **before** the model,
+not after: a refusal produced after inference is a refusal that already generated the
+answer. `leaksConfig` exists because the prompt asked the model not to reveal the profile
+and it did anyway; the same reasoning applies here, except the harm is the answer existing.
+
+Ordinary coaching questions are untouched — "my legs are sore", "how do I get past a bench
+plateau", "should I deload" — and there is a test for each side, because a safety check that
+refuses everything is a broken product.
 
 **A progress card a stranger can check.** Gym people already post their lifts, and the
 number is always somebody's word for it. Three things about a coach are facts nobody can

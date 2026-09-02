@@ -10,7 +10,7 @@ import {
 } from '@simplewebauthn/server';
 import webpush from 'web-push';
 import { CoachError, advise, leaksConfig, readCoachRecord, recall } from './coach.js';
-import { listing, quote, redeem } from './x402.js';
+import { findSpecialists, listing, quote, redeem } from './x402.js';
 import { publish as publishCard, verify as verifyCard } from './progressCard.js';
 import {
   RelayError,
@@ -817,11 +817,20 @@ const routes = {
           signature: body.signature,
           question: body.question,
         },
-        { loadConfig: loadConfigFromStorage, runModel: runOn0GCompute, withinQuestionLimit },
+        { loadConfig: loadConfigFromStorage, runModel: runOn0GCompute, withinQuestionLimit, findSpecialists },
       );
 
       return json(res, 200, { answer });
     } catch (e) {
+      /*
+       * A referral is not a failure to the person asking — it is the coach
+       * doing its job — so it travels with the refusal rather than being
+       * flattened into a message. The app renders a card; anything that only
+       * understands `error` and `message` still shows the right sentence.
+       */
+      if (e instanceof CoachError && e.referral) {
+        return json(res, e.status, { error: e.code, message: e.message, referral: e.referral });
+      }
       if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
 
       /*

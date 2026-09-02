@@ -58,10 +58,19 @@ export async function askCoach(signer, tokenId, question, opts = {}) {
      * to that address" tells somebody what to do; "request failed" sends them
      * to support.
      */
-    throw new CoachAskError(
+    const error = new CoachAskError(
       payload.message || `The coach could not answer (${response.status}).`,
       payload.error || 'request_failed',
     )
+    /*
+     * A referral rides along. It is the one refusal that is not a failure — the
+     * coach was asked about a torn ligament or a pregnancy and said "not me",
+     * which is the correct answer and the one a person should be able to act
+     * on. Carried on the error so every existing catch still shows the right
+     * sentence, and a screen that knows about it can offer the specialist.
+     */
+    if (payload.referral) error.referral = payload.referral
+    throw error
   }
 
   if (!payload.answer) {

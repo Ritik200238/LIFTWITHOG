@@ -29,6 +29,7 @@
 
 import { ethers } from 'ethers';
 import { ogProvider } from './ogProvider.js';
+import { assertInScope } from './referral.js';
 
 export const OG_RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai';
 // Mainnet (Aristotle) is 16661, Galileo testnet 16602. The id must move with
@@ -235,6 +236,18 @@ export async function advise(request, deps) {
 
   const asked = String(question ?? '').slice(0, 2000);
   if (!asked.trim()) throw new CoachError(400, 'bad_request', 'There is no question to answer.');
+
+  /*
+   * Scope, before the model rather than after it.
+   *
+   * A strength coach asked about a torn meniscus or eating through a pregnancy
+   * has to say "not me" — and a language model asked anything answers, in the
+   * register of the thing it was asked. `leaksConfig` exists downstream because
+   * the prompt asks the model not to reveal the profile and it did anyway; the
+   * same reasoning applies here, except the harm is the answer existing at all,
+   * so the check runs first. Nothing out of scope reaches 0G Compute.
+   */
+  await assertInScope(asked, deps);
 
   /*
    * The hash travels with the pointer, and the loader checks it.

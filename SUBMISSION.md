@@ -129,7 +129,7 @@ integration is worse than an absent one.
 ## 20% — Technical quality
 
 ```
-777 tests    542 frontend · 132 server · 103 contract
+791 tests    542 frontend · 146 server · 103 contract
              (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier)
 174 seeded faults, 169 caught, 5 proven equivalent with measured evidence
 ```

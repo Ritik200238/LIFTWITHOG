@@ -181,7 +181,7 @@ AttestedTransferVerifier   0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B
 
 ```bash
 npm run evidence                                        # every check, read live from 0G
-node scripts/counts.mjs                                 # 777 tests: 542 + 132 + 103
+node scripts/counts.mjs                                 # 791 tests: 542 + 146 + 103
 node scripts/mutate.mjs                                 # 174 seeded faults, 169 caught
 node --env-file=server/.env scripts/prove-gasless.mjs   # owned and listed, holding 0.0 0G
 node --env-file=server/.env scripts/prove-transfer.mjs  # ERC-7857 transfer, and two refusals

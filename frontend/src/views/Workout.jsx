@@ -108,6 +108,27 @@ function StartChooser() {
             onConfirm: () => {}
           })
         } catch (e) {
+          /*
+           * A referral is the one refusal that is not a failure. The coach was
+           * asked about an injury, a pregnancy or a dose and said "not me",
+           * which is the correct answer — showing it as an error toast would
+           * make the product feel broken at exactly the moment it behaves best.
+           */
+          if (e.referral) {
+            const named = e.referral.specialists?.length
+              ? t('Some coaches on the marketplace may be a better fit.')
+              : ''
+            confirmSheet({
+              title: t('Not this coach'),
+              message: `${e.referral.message}
+
+${named}`.trim(),
+              confirmText: e.referral.specialists?.length ? t('See the marketplace') : t('Got it'),
+              onConfirm: () => { if (e.referral.specialists?.length) nav('/coaches') },
+            })
+            return
+          }
+
           // Reported as the failure it is. This used to toast "0G AI Coach
           // ready!" with the error appended, so a refusal read as a success.
           useUI.getState().toast(e.message || t('Your coach could not answer.'))

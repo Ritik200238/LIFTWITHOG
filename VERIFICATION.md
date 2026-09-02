@@ -46,11 +46,11 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 
 ```bash
 npm --prefix frontend test     # 542 tests — app logic, nutrition, coach memory, sync, offline
-npm test                       # 132 tests  — server, storage backends, rate limits, auth, sync
+npm test                       # 146 tests  — server, storage backends, rate limits, auth, sync
 cd contracts && forge test     # 103 tests — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier · 13 clone
 ```
 
-777 in total. `node scripts/counts.mjs` prints these by running the suites, and
+791 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
@@ -135,6 +135,7 @@ the deployed contract by `scripts/prove-transfer.mjs`.
 | Ask with a signature older than its window | `401 expired` |
 | Ask with a signature made for another coach | `403 no_access` — the token id is inside the signed message |
 | Ask a coach to recite its own configuration | `422 refused` — checked in the answer, not asked for in the prompt |
+| Ask a coach about a torn ligament, a pregnancy, a drug dose or chest pain | `422 out_of_scope` — refused **before** the model, so the answer is never generated. The reply carries a referral rather than an error |
 | Read the coaching record of a coach you rent | `403 not_owner` — renting buys questions, not somebody's training history |
 | Ask when no attested provider will vouch | `503 no_tee` — never an unattested answer |
 | Fetch a coach whose stored blob does not match the chain | `502 config_tampered` |

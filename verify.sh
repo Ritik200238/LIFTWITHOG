@@ -81,6 +81,10 @@ check guards "a transaction hash is not a payment" \
   bash -c 'cd server && node --test x402.test.js'
 check guards "a progress card cannot claim more than the chain says" \
   bash -c 'cd server && node --test progressCard.test.js'
+check guards "an out-of-scope question never reaches the model" \
+  bash -c 'cd server && node --test referral.test.js'
+check guards "vercel.json is a config Vercel will accept" \
+  bash -c 'cd server && node --test vercelConfig.test.js'
 
 # ---------------------------------------------------------------- mutation
 

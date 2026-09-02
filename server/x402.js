@@ -238,3 +238,29 @@ export async function listing(deps = {}) {
 
   return { chainId: OG_CHAIN_ID, coaches: out };
 }
+
+/**
+ * Coaches listed for rent, as candidates a referral can name.
+ *
+ * Specialty is not on chain — a coach is a token with a price, not a category —
+ * so this returns what is rentable and lets the caller decide. That is honest:
+ * inventing an on-chain taxonomy nobody writes to would be a field that is
+ * always empty and a filter that always lies.
+ *
+ * When the marketplace is empty a referral still happens with nobody named.
+ * "Not me" is the load-bearing half.
+ */
+export async function findSpecialists(_specialty, deps = {}) {
+  try {
+    const { coaches } = await listing({ ...deps, limit: 3 });
+    return coaches.map((c) => ({
+      tokenId: c.tokenId,
+      pricePerDay: c.pricePerDay,
+      currency: c.currency,
+      rentVia: `/coaches`,
+      service: c.service,
+    }));
+  } catch {
+    return [];
+  }
+}

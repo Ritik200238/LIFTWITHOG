@@ -72,9 +72,32 @@ if (amount === null) {
   process.exit(0);
 }
 
+/*
+ * 0G will not open a ledger for less than this. Checked here rather than
+ * discovered from the SDK, which throws an unhandled error with a stack trace:
+ *
+ *   Error: Minimum balance to create a ledger is 3 0G, but got 0.1 0G.
+ *
+ * Accurate, and not a sentence that tells you the wallet needs topping up
+ * first. Adding to a ledger that already exists has no such floor; only
+ * opening one does.
+ */
+const MIN_TO_OPEN = 3;
+
+if (!existing && amount < MIN_TO_OPEN) {
+  console.error(`\n0G will not open a ledger for less than ${MIN_TO_OPEN} 0G, and you asked for ${amount}.`);
+  console.error(`Run: node scripts/fund-compute.mjs ${MIN_TO_OPEN}`);
+  process.exit(1);
+}
+
 if (balance < ethers.parseEther(String(amount))) {
-  console.error(`\nThe wallet holds ${ethers.formatEther(balance)} 0G, which is less than ${amount}.`);
-  console.error(`Send testnet 0G to ${wallet.address} first — https://faucet.0g.ai`);
+  const short = Number(ethers.formatEther(balance));
+  console.error(`\nThe wallet holds ${short.toFixed(3)} 0G and needs ${amount}.`);
+  console.error(`\nSend at least ${(amount - short).toFixed(2)} more testnet 0G to:`);
+  console.error(`  ${wallet.address}`);
+  console.error(`\nThen run this again. The faucet at https://faucet.0g.ai gives 0.1 0G`);
+  console.error(`per request, so opening a ledger from empty takes many requests —`);
+  console.error(`asking in the 0G Discord for a larger testnet drip is faster.`);
   process.exit(1);
 }
 

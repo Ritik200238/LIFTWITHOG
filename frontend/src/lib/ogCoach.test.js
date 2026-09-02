@@ -1,54 +1,46 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 /**
- * The parts of coach ownership that do not need a chain to be wrong.
+ * Creating and evolving a coach — on the path the product actually uses.
  *
- * Reading the token id from a receipt, refusing to evolve when nothing was
- * learned, and refusing to anchor a hash for a blob that was never stored.
- * Each of those fails quietly in a way somebody only discovers much later —
- * the last one produces a coach that looks valid on chain forever and can
- * never be loaded by anyone.
+ * These tests used to cover `mintCoach` and `evolveCoach`, which took a wallet
+ * signer. Nobody reached them: the app has no wallet, which is its whole claim,
+ * and the relayed path is what every screen calls. So the suite was carefully
+ * exercising four functions that could not run in the product while
+ * `mintCoachRelayed` — the one that does — had no frontend test at all.
+ *
+ * The dead ones are gone. These are the same properties, asserted against the
+ * live path: the token id is read rather than guessed, an evolve that learned
+ * nothing costs nobody a fee, and a hash is never anchored for a blob that was
+ * not stored.
  */
 
-const uploadMock = vi.fn()
-const mintMock = vi.fn()
-const evolveMock = vi.fn()
-const grantMock = vi.fn()
-
-vi.mock('@0gfoundation/0g-storage-ts-sdk', () => ({
-  Indexer: class {
-    upload(...args) {
-      return uploadMock(...args)
-    }
-  },
-  /*
-   * Stands in for the SDK's in-memory file wrapper, and keeps the shape the
-   * indexer actually calls. Passing a plain browser Blob here is the bug this
-   * whole path had: `size` is a property on a Blob and a method on everything
-   * the indexer accepts, so it threw before sending a byte.
-   */
-  MemData: class {
-    constructor(bytes) {
-      this.bytes = bytes
-    }
-    size() {
-      return this.bytes.length
-    }
-    numChunks() {
-      return 1
-    }
-    numSegments() {
-      return 1
-    }
-  },
-}))
+const postMock = vi.fn()
+const signMock = vi.fn()
 
 vi.mock('./ogVault.js', () => ({
-  OG_NETWORK: { rpcUrl: 'http://rpc', storageIndexer: 'http://indexer' },
+  OG_NETWORK: { rpcUrl: 'http://rpc', storageIndexer: 'http://indexer', chainId: 16602 },
   encryptJson: async () => new Uint8Array([1, 2, 3, 4]),
 }))
 
+/*
+ * The device key, stubbed. The real one is tested in deviceKey.test.js; here it
+ * only has to produce a signature and an address so the relayed request has a
+ * shape, and be observable so the test can assert what was signed.
+ */
+vi.mock('./deviceKey.js', async () => {
+  const actual = await vi.importActual('./deviceKey.js')
+  return {
+    ...actual,
+    deviceSigner: async () => ({
+      signer: { signTypedData: signMock, getAddress: async () => '0x' + 'ab'.repeat(20) },
+      address: '0x' + 'ab'.repeat(20),
+    }),
+  }
+})
+
 let parseLogResult = null
+const nonceMock = vi.fn()
 
 vi.mock('ethers', async () => {
   const actual = await vi.importActual('ethers')
@@ -59,9 +51,7 @@ vi.mock('ethers', async () => {
       Contract: class {
         constructor() {
           this.interface = { parseLog: () => parseLogResult }
-          this.mint = mintMock
-          this.evolve = evolveMock
-          this.grantAccess = grantMock
+          this.nonceOf = nonceMock
         }
       },
       keccak256: actual.ethers.keccak256,
@@ -70,80 +60,133 @@ vi.mock('ethers', async () => {
   }
 })
 
-const SIGNER = {}
+/*
+ * `marketplace.js` is where the read provider lives, and `currentNonce` reaches
+ * it. Stubbed so no test touches a network.
+ */
+vi.mock('./marketplace.js', () => ({ readProvider: () => ({}) }))
+
 const STATE = {
   workouts: [{ d: '2026-01-01', entries: [{ id: 'squat', sets: [{ w: 60, r: 5, done: true }] }] }],
 }
 
 beforeEach(() => {
   vi.stubEnv('VITE_COACH_ADDRESS', '0x' + '11'.repeat(20))
-  uploadMock.mockReset()
-  mintMock.mockReset()
-  evolveMock.mockReset()
-  grantMock.mockReset()
+  postMock.mockReset()
+  signMock.mockReset().mockResolvedValue('0x' + 'cd'.repeat(65))
+  nonceMock.mockReset().mockResolvedValue(0n)
   parseLogResult = null
+
+  // The service public key the device seals to, and the relayed endpoints.
+  vi.stubGlobal('fetch', async (url, init) => {
+    if (String(url).endsWith('/api/coach/pubkey')) {
+      const { ethers } = await vi.importActual('ethers')
+      const key = new ethers.SigningKey('0x' + '7c'.repeat(32)).compressedPublicKey
+      return { ok: true, json: async () => ({ publicKey: key }) }
+    }
+    return postMock(String(url), JSON.parse(init.body))
+  })
 })
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
   vi.resetModules()
 })
 
-async function load() {
-  return import('./ogCoach.js')
-}
+const load = () => import('./ogCoach.js')
 
-describe('minting a coach', () => {
-  it('reads the id from the event rather than guessing it', async () => {
+/** A relayed endpoint answering the way the server does. */
+const ok = (body) => ({ ok: true, json: async () => body })
+
+describe('minting a coach through the relayer', () => {
+  it('seals the profile before it leaves, and anchors the hash of what was stored', async () => {
     /*
-     * `mint` returns a value to another contract; to a wallet it returns a
-     * transaction. Assuming "the newest id" is a race against anybody else
-     * minting in the same block — and the prize for losing it is operating on
-     * a stranger's coach.
+     * The bytes uploaded and the hash anchored must be the same bytes. That is
+     * the entire purpose of `configHash`: it is what makes a blob coming back
+     * from a network nobody controls provably the one that was written.
      */
-    uploadMock.mockResolvedValue([{ rootHash: '0xroot' }, null])
-    parseLogResult = { name: 'CoachMinted', args: { tokenId: 42n } }
-    mintMock.mockResolvedValue({ wait: async () => ({ logs: [{}] }) })
+    postMock.mockImplementation(async (url) => {
+      if (url.endsWith('/store')) return ok({ rootHash: '0xroot' })
+      if (url.endsWith('/mint')) return ok({ tokenId: '42' })
+      throw new Error(`unexpected ${url}`)
+    })
 
-    const { mintCoach } = await load()
-    const result = await mintCoach(SIGNER, STATE, { now: 1000 })
+    const { mintCoachRelayed } = await load()
+    const result = await mintCoachRelayed(STATE, { now: 1000 })
 
     expect(result.tokenId).toBe('42')
     expect(result.version).toBe(1)
+
+    const [, stored] = postMock.mock.calls.find(([u]) => u.endsWith('/store'))
+    const [, minted] = postMock.mock.calls.find(([u]) => u.endsWith('/mint'))
+
+    // What was stored is base64 of the sealed bytes; what was anchored is their
+    // keccak256. Neither is the plaintext.
+    const bytes = Uint8Array.from(atob(stored.ciphertext), (c) => c.charCodeAt(0))
+    const { ethers } = await vi.importActual('ethers')
+    expect(minted.configHash).toBe(ethers.keccak256(bytes))
+    expect(minted.configURI).toBe('0xroot')
+
+    // Sealed, not plaintext: the magic this app's envelope writes.
+    expect(Array.from(bytes.subarray(0, 5))).toEqual([0x4c, 0x57, 0x4f, 0x47, 0x31])
   })
 
-  it('fails loudly when the id cannot be read', async () => {
-    uploadMock.mockResolvedValue([{ rootHash: '0xroot' }, null])
-    parseLogResult = null
-    mintMock.mockResolvedValue({ wait: async () => ({ logs: [] }) })
+  it('names the owner inside the signed message, so the relayer cannot redirect', async () => {
+    /*
+     * The one property the whole gasless design rests on. A relayer that wanted
+     * the coach for itself would have to submit a signature that does not say
+     * so, and the contract refuses it.
+     */
+    postMock.mockImplementation(async (url) =>
+      url.endsWith('/store') ? ok({ rootHash: '0xroot' }) : ok({ tokenId: '7' }),
+    )
 
-    const { mintCoach } = await load()
-    await expect(mintCoach(SIGNER, STATE)).rejects.toThrow(/id could not be read/i)
+    const { mintCoachRelayed } = await load()
+    await mintCoachRelayed(STATE)
+
+    const [, , message] = signMock.mock.calls[0]
+    expect(message.owner.toLowerCase()).toBe('0x' + 'ab'.repeat(20))
+
+    const [, minted] = postMock.mock.calls.find(([u]) => u.endsWith('/mint'))
+    expect(minted.owner.toLowerCase()).toBe('0x' + 'ab'.repeat(20))
   })
 
   it('never anchors a hash when storage refused the upload', async () => {
     /*
      * The worst outcome available here. A hash on chain for a blob that was
      * never written is a coach that validates perfectly and can never be
-     * loaded — permanent, and only discovered when it is the last copy left.
+     * loaded — permanent, and discovered only when it is the last copy left.
      */
-    uploadMock.mockResolvedValue([null, new Error('indexer unreachable')])
+    postMock.mockImplementation(async (url) =>
+      url.endsWith('/store') ? ok({}) : ok({ tokenId: '1' }),
+    )
 
-    const { mintCoach } = await load()
-    await expect(mintCoach(SIGNER, STATE)).rejects.toThrow(/upload failed/i)
-    expect(mintMock).not.toHaveBeenCalled()
+    const { mintCoachRelayed } = await load()
+    await expect(mintCoachRelayed(STATE)).rejects.toThrow(/returned nothing to point at/i)
+
+    expect(postMock.mock.calls.some(([u]) => u.endsWith('/mint'))).toBe(false)
   })
 
-  it('treats a missing root hash as a failure, not a success', async () => {
-    uploadMock.mockResolvedValue([{}, null])
+  it('fails loudly when the relayer returns no token id', async () => {
+    /*
+     * This found a real one. The relayed path took whatever the relayer said and
+     * returned `undefined` as the token id, which the store then saved as the
+     * coach's — leaving a device that believes it owns a coach it can never
+     * name, while the real token, minted and paid for, belongs to somebody who
+     * cannot reach it. The direct-wallet path it replaced had this guard; the
+     * live one did not, and nothing exercised the live one.
+     */
+    postMock.mockImplementation(async (url) =>
+      url.endsWith('/store') ? ok({ rootHash: '0xroot' }) : ok({}),
+    )
 
-    const { mintCoach } = await load()
-    await expect(mintCoach(SIGNER, STATE)).rejects.toThrow(/no root hash/i)
-    expect(mintMock).not.toHaveBeenCalled()
+    const { mintCoachRelayed } = await load()
+    await expect(mintCoachRelayed(STATE)).rejects.toThrow(/did not say which one/i)
   })
 })
 
-describe('evolving a coach', () => {
+describe('evolving a coach through the relayer', () => {
   it('does nothing when the coach has not learned anything', async () => {
     /*
      * Every evolve costs a fee, and a version that records no change also
@@ -153,20 +196,20 @@ describe('evolving a coach', () => {
     const { buildCoachProfile } = await import('./coachProfile.js')
     const previous = buildCoachProfile(STATE, { now: 1 })
 
-    const { evolveCoach } = await load()
-    const result = await evolveCoach(SIGNER, '1', STATE, previous, { now: 999_999 })
+    const { evolveCoachRelayed } = await load()
+    const result = await evolveCoachRelayed('1', STATE, previous, { now: 999_999 })
 
     expect(result.evolved).toBe(false)
-    expect(uploadMock).not.toHaveBeenCalled()
-    expect(evolveMock).not.toHaveBeenCalled()
+    expect(postMock).not.toHaveBeenCalled()
   })
 
   it('records a version when the training has actually moved', async () => {
     const { buildCoachProfile } = await import('./coachProfile.js')
     const previous = buildCoachProfile(STATE, { now: 1 })
 
-    uploadMock.mockResolvedValue([{ rootHash: '0xroot2' }, null])
-    evolveMock.mockResolvedValue({ wait: async () => ({}) })
+    postMock.mockImplementation(async (url) =>
+      url.endsWith('/store') ? ok({ rootHash: '0xroot2' }) : ok({}),
+    )
 
     const heavier = {
       workouts: [
@@ -175,32 +218,38 @@ describe('evolving a coach', () => {
       ],
     }
 
-    const { evolveCoach } = await load()
-    const result = await evolveCoach(SIGNER, '1', heavier, previous)
+    const { evolveCoachRelayed } = await load()
+    const result = await evolveCoachRelayed('1', heavier, previous)
 
     expect(result.evolved).toBe(true)
-    expect(evolveMock).toHaveBeenCalled()
-  })
-})
-
-describe('renting a coach out', () => {
-  it('turns days into an expiry the contract understands', async () => {
-    grantMock.mockResolvedValue({ wait: async () => ({}) })
-
-    const { rentOut } = await load()
-    const now = 1_700_000_000_000
-    const { expiresAt } = await rentOut(SIGNER, '1', '0xabc', 30, { now })
-
-    expect(expiresAt).toBe(Math.floor(now / 1000) + 30 * 86_400)
-    // Seconds, as a BigInt — milliseconds here would grant access until the
-    // year 55,000, which no revoke would ever be issued for.
-    expect(grantMock.mock.calls[0][2]).toBe(BigInt(expiresAt))
+    expect(postMock.mock.calls.some(([u]) => u.endsWith('/evolve'))).toBe(true)
   })
 
-  it('refuses a rental with no length', async () => {
-    const { rentOut } = await load()
-    await expect(rentOut(SIGNER, '1', '0xabc', 0)).rejects.toThrow(/length in days/i)
-    expect(grantMock).not.toHaveBeenCalled()
+  it('carries the memory into the sealed payload, which is what the chain hashes', async () => {
+    /*
+     * The record and the numbers travel together on purpose: the hash on chain
+     * covers the whole thing, so a version's memory is as fixed as its weights.
+     */
+    const { buildCoachProfile } = await import('./coachProfile.js')
+    const previous = buildCoachProfile(STATE, { now: 1 })
+
+    postMock.mockImplementation(async (url) =>
+      url.endsWith('/store') ? ok({ rootHash: '0xroot3' }) : ok({}),
+    )
+
+    const heavier = {
+      workouts: [
+        ...STATE.workouts,
+        { d: '2026-01-05', entries: [{ id: 'squat', sets: [{ w: 90, r: 5, done: true }] }] },
+      ],
+    }
+
+    const { evolveCoachRelayed } = await load()
+    const result = await evolveCoachRelayed('1', heavier, previous, { memory: [] })
+
+    // A note per version, written when it happened.
+    expect(result.memory.length).toBeGreaterThan(0)
+    expect(result.memory[0].notes.length).toBeGreaterThan(0)
   })
 })
 
@@ -210,6 +259,6 @@ describe('configuration', () => {
     vi.resetModules()
 
     const { coachContract, CoachNotConfigured } = await import('./ogCoach.js')
-    expect(() => coachContract(SIGNER)).toThrow(CoachNotConfigured)
+    expect(() => coachContract({})).toThrow(CoachNotConfigured)
   })
 })

@@ -19,14 +19,13 @@
  */
 
 import { ethers } from 'ethers'
-import { OG_NETWORK, encryptJson } from './ogVault.js'
+import { OG_NETWORK } from './ogVault.js'
 /*
  * The one implementation of the seal, shared with the server that opens it.
  * Imported from `server/` on purpose — see the header of that file: a second
  * copy living here is exactly how the device and the server came to disagree.
  */
 import { sealForService } from '../../../server/coachEnvelope.js'
-import { Indexer, MemData } from '@0gfoundation/0g-storage-ts-sdk'
 import { buildCoachProfile, canonicalise, hasLearned } from './coachProfile.js'
 import { memoryEntry, memoryForPrompt, rememberVersion } from './coachMemory.js'
 import { EXIDX } from './exercises.js'
@@ -146,50 +145,6 @@ async function publishProfileRelayed(profile, signer, memory) {
 }
 
 /**
- * Encrypt a profile, put it on 0G Storage, and hash what was stored.
- *
- * The hash covers the ciphertext, so it answers "is this the blob that was
- * written" — the question that matters when something comes back years later
- * from a network nobody here controls.
- */
-async function publishProfile(profile, signer) {
-  const ciphertext = await encryptJson(profile, signer)
-  const configHash = ethers.keccak256(ciphertext)
-
-  const indexer = new Indexer(OG_NETWORK.storageIndexer)
-
-  /*
-   * `MemData` rather than a browser Blob. The indexer calls `size()`,
-   * `numChunks()` and `numSegments()` on what it is given, and a Blob carries
-   * `size` as a property — so handing it one fails before anything is sent.
-   */
-  const payload = new MemData(ciphertext)
-
-  const [txResult, uploadErr] = await indexer.upload(payload, OG_NETWORK.rpcUrl, signer, {
-    taskSize: 10,
-    expectedReplica: 1,
-    finalityRequired: true,
-    tags: '0x',
-    skipTx: false,
-    fee: BigInt(0),
-  })
-
-  /*
-   * A failed upload must fail here, not later.
-   *
-   * Anchoring a hash for a blob that was never stored produces a coach that
-   * looks perfectly valid on chain and cannot be loaded by anyone, ever. The
-   * chain would be recording a lie permanently.
-   */
-  if (uploadErr) throw new Error(`0G Storage upload failed: ${uploadErr.message || uploadErr}`)
-
-  const configURI = txResult?.rootHash
-  if (!configURI) throw new Error('0G Storage returned no root hash; nothing was stored.')
-
-  return { configHash, configURI }
-}
-
-/**
  * Create this person's coach, with no wallet anywhere in sight.
  *
  * The device signs; the server pays the fee; the coach belongs to the device's
@@ -227,7 +182,23 @@ export async function mintCoachRelayed(state, opts = {}) {
     signature,
   })
 
-  return { tokenId: result.tokenId, version: 1, profile, memory, address }
+  /*
+   * A mint with no id is a failure, and it used to be returned as a success.
+   *
+   * The direct-wallet path this replaced read the id out of the receipt and
+   * threw when it could not — this one took whatever the relayer said and
+   * handed `undefined` onward, which the store then saved as the coach's id.
+   * The result is a device that believes it owns a coach it can never name:
+   * every later evolve, listing and question addresses `undefined`, and the
+   * real token — which was minted, and paid for — belongs to somebody who
+   * cannot reach it.
+   */
+  const tokenId = result?.tokenId
+  if (tokenId === undefined || tokenId === null || String(tokenId) === '') {
+    throw new Error('The coach was created but the relayer did not say which one. Nothing was saved.')
+  }
+
+  return { tokenId: String(tokenId), version: 1, profile, memory, address }
 }
 
 /** Readable lift names for the memory. Falls back to the id for a custom lift. */
@@ -424,85 +395,6 @@ export async function servicePublicKey() {
     })
   }
   return servicePublicKeyPromise
-}
-
-/**
- * Create this person's coach from their training history.
- *
- * @returns {{tokenId: string, version: number, profile: object}}
- */
-export async function mintCoach(signer, state, opts = {}) {
-  const profile = buildCoachProfile(state, { now: opts.now ?? Date.now() })
-  const { configHash, configURI } = await publishProfile(profile, signer)
-
-  const contract = coachContract(signer)
-  const tx = await contract.mint(configHash, configURI)
-  const receipt = await tx.wait()
-
-  /*
-   * Read the id from the event rather than assuming it. `mint` returns a value
-   * to another contract; to a wallet it returns a transaction, and guessing
-   * "the last id" is a race against anybody else minting in the same block.
-   */
-  const tokenId = tokenIdFromReceipt(contract, receipt)
-  if (tokenId === null) {
-    throw new Error('The coach was minted but its id could not be read from the receipt.')
-  }
-
-  return { tokenId: tokenId.toString(), version: 1, profile }
-}
-
-function tokenIdFromReceipt(contract, receipt) {
-  for (const log of receipt?.logs ?? []) {
-    try {
-      const parsed = contract.interface.parseLog(log)
-      if (parsed?.name === 'CoachMinted') return parsed.args.tokenId
-    } catch {
-      // Logs from other contracts in the same transaction. Not ours.
-    }
-  }
-  return null
-}
-
-/**
- * Record that the coach has learned something.
- *
- * Does nothing when it has not. Every evolve is a fee somebody pays, and a
- * version that records no change also empties the version count of meaning —
- * which is the only evidence that this coach has any history at all.
- *
- * @returns {{evolved: boolean, profile: object}}
- */
-export async function evolveCoach(signer, tokenId, state, previousProfile, opts = {}) {
-  const profile = buildCoachProfile(state, { now: opts.now ?? Date.now() })
-
-  if (!hasLearned(previousProfile, profile)) return { evolved: false, profile }
-
-  const { configHash, configURI } = await publishProfile(profile, signer)
-
-  const tx = await coachContract(signer).evolve(tokenId, configHash, configURI)
-  await tx.wait()
-
-  return { evolved: true, profile }
-}
-
-/** Let somebody use this coach for a number of days. */
-export async function rentOut(signer, tokenId, toAddress, days, opts = {}) {
-  if (!(days > 0)) throw new Error('A rental needs a length in days.')
-
-  const now = Math.floor((opts.now ?? Date.now()) / 1000)
-  const expiresAt = BigInt(now + Math.round(days * 86_400))
-
-  const tx = await coachContract(signer).grantAccess(tokenId, toAddress, expiresAt)
-  await tx.wait()
-
-  return { expiresAt: Number(expiresAt) }
-}
-
-/** End somebody's access before it lapses. */
-export async function endRental(signer, tokenId, toAddress) {
-  const tx = await coachContract(signer).revokeAccess(tokenId, toAddress)
-  await tx.wait()
 }
 
 /** What the chain says about a coach right now. */

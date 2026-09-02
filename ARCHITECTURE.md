@@ -301,7 +301,7 @@ Same code, two postures: convenience on Vercel, custody on your own box.
 
 ## Engineering discipline
 
-- **737 tests**: 543 frontend (vitest) · 104 server (node:test) · 90 contract
+- **736 tests**: 542 frontend (vitest) · 104 server (node:test) · 90 contract
   (Foundry: 42 unit, 9 fuzz properties, 5 invariants driven through random
   call sequences, 16 on the ERC-7857 surface).
 - **Mutation testing** (`node scripts/mutate.mjs`): 174 deliberate faults —

@@ -4,6 +4,12 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "echo skip",
   "framework": null,
+  "functions": {
+    "api/index.js": {
+      "//": "A mint waits on a 0G Storage write with finalityRequired, which is the safe setting and not a fast one — Hanami documented the same call stalling past ten minutes on a large blob. At the platform's default the function is killed mid-write and the app renders 'Start the API (npm start in api/)' to somebody on a hosted site. The server's own OG_STORAGE_TIMEOUT_MS (60s) gives up first and says which operation did, so this only has to be comfortably longer than that.",
+      "maxDuration": 90
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

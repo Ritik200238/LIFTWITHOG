@@ -26,39 +26,40 @@ import { loadComputeSdk } from './computeSdk.js';
  * shipped.
  */
 
-test('the compute SDK loads, and exposes what the coach path calls', () => {
-  const sdk = loadComputeSdk();
+test('the compute SDK loads, and exposes what the coach path calls', async () => {
+  const sdk = await loadComputeSdk();
 
   for (const name of ['createZGComputeNetworkBroker', 'InferenceVerifier']) {
     assert.ok(sdk?.[name], `the SDK did not expose ${name}`);
   }
 });
 
-test('loading twice returns the same module rather than reloading it', () => {
-  assert.equal(loadComputeSdk(), loadComputeSdk());
+test('loading twice returns the same module rather than reloading it', async () => {
+  assert.equal(await loadComputeSdk(), await loadComputeSdk());
 });
 
-test('the SDK comes from the CommonJS build, which is the whole fix', () => {
+test('the package is reachable by the name the bundler traces', async () => {
   /*
-   * Asserted rather than described, because the failure itself cannot be
-   * reproduced here: the ESM entry links cleanly under this machine's Node and
-   * throws under Vercel's. Node detects a CommonJS chunk's named exports
-   * heuristically, and that detection is what differs — so a test that asserted
-   * "the ESM build is broken" would pass in production and fail in CI, which is
-   * exactly backwards.
+   * The failure this replaced a previous test for. Loading the SDK through
+   * `createRequire` alone worked locally and broke production a second time,
+   * because Vercel decides what to put in a function by following `import` and
+   * `require` specifiers it can read as literals. A `createRequire(url)(name)`
+   * call is not one, so nothing pointed at the package, the bundler dropped it,
+   * and the 500 came back as "Cannot find module".
    *
-   * What is true everywhere is which build we load. `exports.require` names the
-   * CommonJS one, and identity against `require` proves we took that door
-   * rather than the ESM one. Change this back to `await import` and this fails.
+   * So the property to hold is not which build wins — that legitimately differs
+   * by environment — but that the module still names the package in a form the
+   * tracer follows.
    */
-  const require = createRequire(import.meta.url);
-  const root = path.dirname(require.resolve('@0gfoundation/0g-compute-ts-sdk'));
-  const pkg = JSON.parse(fs.readFileSync(path.join(root, '..', 'package.json'), 'utf8'));
+  const source = fs.readFileSync(new URL('./computeSdk.js', import.meta.url), 'utf8');
 
-  assert.equal(pkg.exports?.require, './lib.commonjs/index.js');
-  assert.equal(
-    loadComputeSdk(),
-    require('@0gfoundation/0g-compute-ts-sdk'),
-    'the SDK was not loaded through require — the ESM entry is the one that breaks on Vercel',
+  assert.match(
+    source,
+    /await import\('@0gfoundation\/0g-compute-ts-sdk'\)/,
+    'nothing in computeSdk.js names the package in a way Vercel traces, so it will not be bundled',
   );
+
+  // And the loader still produces something usable either way.
+  const sdk = await loadComputeSdk();
+  assert.equal(typeof sdk.createZGComputeNetworkBroker, 'function');
 });

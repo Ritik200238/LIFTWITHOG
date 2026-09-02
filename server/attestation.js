@@ -50,7 +50,7 @@ export async function signatureFor({ broker, provider, chatId, model, endpoint }
    */
   let InferenceVerifier;
   try {
-    ({ InferenceVerifier } = loadComputeSdk());
+    ({ InferenceVerifier } = await loadComputeSdk());
   } catch (e) {
     return { signed: false, reason: `the compute SDK could not be loaded: ${e.message || e}` };
   }

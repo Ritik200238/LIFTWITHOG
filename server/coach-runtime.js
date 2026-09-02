@@ -569,7 +569,7 @@ export async function runOn0GCompute({ config, question }, deps = {}) {
   const makeBroker =
     deps.createBroker ??
     (async () => {
-      const { createZGComputeNetworkBroker } = loadComputeSdk();
+      const { createZGComputeNetworkBroker } = await loadComputeSdk();
       return createZGComputeNetworkBroker(serviceWallet());
     });
 

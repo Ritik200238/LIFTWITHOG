@@ -16,9 +16,11 @@ the address the day it does.
 
 | Claim | Check |
 |---|---|
-| `CoachAgent` v2 (ERC-7857) is deployed and readable | [`0x640eecC824D54d7ECF05fa423E18673E70342809`](https://chainscan-galileo.0g.ai/address/0x640eecC824D54d7ECF05fa423E18673E70342809) on the 0G explorer |
-| v2 answers for both 7857 interfaces **on chain** | `cast call 0x640eecC824D54d7ECF05fa423E18673E70342809 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
-| v1, the pre-7857 deployment, remains readable | [`0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A`](https://chainscan-galileo.0g.ai/address/0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A) — its coaches and versions are the project's on-chain history |
+| `CoachAgent` (ERC-7857) is deployed and readable | [`0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2`](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2) on the 0G explorer |
+| It answers for both 7857 interfaces **on chain** | `cast call 0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
+| …and says **no** to an interface nothing implements | same call with `0xdeadbeef` → `false`. This is the row that makes the two above it mean anything: a stub answering `true` to everything passes them and fails only this. |
+| The ERC-7857 transfer actually transfers | `node --env-file=server/.env scripts/prove-transfer.mjs` — mints, re-keys for a fresh buyer, calls `iTransferFrom`, then shows a replayed attestation and one signed for a different buyer both refused. [transfer tx](https://chainscan-galileo.0g.ai/tx/0x4b4bc5ae2cc2e1f61140ad41c3bc7ad799b80ed0319517937b7b9cd2d228bb99) |
+| The transfer verifier is what the coach says it is | `cast call 0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2 "transferVerifier()(address)"` → [`0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B`](https://chainscan-galileo.0g.ai/address/0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B), read off the contract doing the guarding rather than configured here |
 | Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc-testnet.0g.ai` — non-zero, and grows as the app is used |
 | The brain is hash-anchored | `getIntelligentDatas(tokenId)` returns the keccak256 the server verifies ciphertext against before every answer |
 | The contract never holds funds | read its balance on the explorer — zero — then see the invariant that keeps it so: `invariant_ContractNeverHoldsFunds` in `contracts/test/CoachAgentFuzz.t.sol` |
@@ -42,10 +44,14 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 ## The test suites
 
 ```bash
-npm --prefix frontend test     # 529 tests — app logic, nutrition, coach memory, sync, offline
-npm test                       # 67 tests  — server, storage backends, rate limits, auth, sync
-cd contracts && forge test     # 72 tests  — 47 unit · 9 fuzz · 5 invariant · 16 ERC-7857
+npm --prefix frontend test     # 543 tests — app logic, nutrition, coach memory, sync, offline
+npm test                       # 97 tests  — server, storage backends, rate limits, auth, sync
+cd contracts && forge test     # 88 tests  — 42 unit · 9 fuzz · 5 invariant · 18 ERC-7857 · 14 verifier
 ```
+
+728 in total. `node scripts/counts.mjs` prints these by running the suites, and
+is where every number in this repository's documents comes from — the previous
+set was typed by hand and disagreed with itself in three places.
 
 ## The one that matters most
 
@@ -62,10 +68,16 @@ number that reaches a person's diet or a loaded bar."
 
 ## Gasless ownership (no wallet, still yours)
 
-Mint a coach in the app (no wallet involved), open **Settings → Proof**, and
-read the owner address it shows on the explorer: an address holding **0.0 0G**
-that nonetheless owns the token, because the device signed and the relayer
-paid. The EIP-712 domain the device signs under is pinned in
+`node --env-file=server/.env scripts/prove-gasless.mjs` generates a key on the
+spot, funds it with nothing, and drives both actions through the relayer. From a
+run of it: coach **#5**, owner
+[`0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43`](https://chainscan-galileo.0g.ai/address/0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43),
+listed at 0.0003 0G/day, balance **0.0 0G** —
+[mint](https://chainscan-galileo.0g.ai/tx/0x86ded4a19776a96cf49ef4abcd8d85c403e778bbdada5201b18388e20042ac70)
+· [listing](https://chainscan-galileo.0g.ai/tx/0xb0d24b1ae3985241a20ce1b997091f6564bddcb4434d765191a359b465a0d38e).
+
+Or do it by hand: mint a coach in the app (no wallet involved), open
+**Settings → Proof**, and read the owner address it shows on the explorer. The EIP-712 domain the device signs under is pinned in
 `frontend/src/lib/deviceKey.js` and must match the contract's — a mismatch
 fails every mint, which is itself the check.
 
@@ -93,8 +105,14 @@ found at run time.
   typed.
 - Attestation proves *where* the model ran and that the channel was sealed —
   not that its advice is wise.
-- `iTransferFrom` refuses until a production TEE/ZKP re-encryption oracle
-  exists to verify proofs; we ship the refusal, not a fake pass.
+- `iTransferFrom` works, and the key that attests to the re-encryption is
+  **software, not hardware** — it is the service that performs the
+  re-encryption, signing that it did. Weaker than a TEE quote, and said in the
+  verifier contract's own source rather than only here. It was previously
+  deployed with `address(0)` and reverted on every call ever made against it;
+  `node --env-file=server/.env scripts/prove-transfer.mjs` now moves a coach on
+  chain and shows a replayed attestation and one signed for a different buyer
+  both being refused.
 - 0G DA is not integrated, because nothing in this product is a
   high-throughput availability stream, and decorative integrations are worse
   than absent ones.

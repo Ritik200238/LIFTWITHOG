@@ -79,9 +79,18 @@ verifiable, and older than any app that reads it.
 
 The architecture's bet is that the coach evolves after **every** workout. That
 one decision is what makes the version count mean something, and it is also
-what makes the cost question decisive: an evolve is a storage write plus a
-chain transaction, and somebody training four times a week does ~200 of them a
-year.
+what makes the cost question decisive.
+
+An evolve is a storage write plus a chain transaction, and it does not happen
+after every workout — `SESSIONS_PER_EVOLVE` in `frontend/src/lib/flywheel.js`
+is **10**, so somebody training four times a week produces about **21 a year**,
+not one per session.
+
+That correction matters more than it sounds. This paragraph previously said
+"~200 of them a year" and derived the cost from it, describing the result as
+"the number the whole design rests on" — while the constant deciding it sat in
+the repository saying something ten times smaller. The argument survives; it was
+simply being made an order of magnitude harder than it needed to be.
 
 Measured on 0G Galileo from this project's own relayer wallet:
 
@@ -90,21 +99,21 @@ Measured on 0G Galileo from this project's own relayer wallet:
 | gas per mint | ~296,000 |
 | gas per evolve | ~244,000–293,000 |
 | fee per relayed transaction | **~0.00099 0G** (average of four real transactions) |
-| a year of training (200 evolves) | **~0.2 0G** |
+| a year of training (~21 evolves) | **~0.02 0G** |
 
-Two hundred evolves a year, per athlete, for a fraction of a token. That is
-the number the whole design rests on, and it is why the flywheel can be
-automatic rather than a button somebody presses when they feel it is worth
-paying for.
+Two hundredths of a token, per athlete, per year. That is why the flywheel can
+be automatic rather than a button somebody presses when they decide it is worth
+paying for — and why the relayer paying for everybody is a business rather than
+a subsidy that has to end.
 
 **"Couldn't this be Ethereum + IPFS + a TEE cloud?"** Technically yes, and it
 would be a different product:
 
 - **The chain.** At Ethereum L1 gas prices, 250,000 gas per evolve is dollars,
-  not fractions of a cent — so evolving on every workout is impossible and the
+  not fractions of a cent — so an automatic flywheel is impossible and the
   design collapses into "evolve occasionally, when it seems worth it". A
-  version count that only increments when the user can afford it stops being a
-  record of training.
+  version count that only increments when somebody decides the fee is justified
+  stops being a record of training and becomes a record of their budget.
 - **The storage.** IPFS pins what somebody keeps paying to pin. The coach's
   premise is that it outlives this company; a brain that disappears when our
   pinning service lapses is not property.
@@ -218,7 +227,7 @@ sequenceDiagram
     C-->>P: CoachMinted + IntelligentDataSet events
 ```
 
-### The flywheel — evolving after every workout
+### The flywheel — evolving as the training adds up
 
 Finishing a workout re-derives the coach profile from actual training,
 re-encrypts, re-uploads, and submits a signed `evolve` **in the background** —
@@ -262,7 +271,7 @@ bumps the epoch and voids every grant. All three properties are fuzz-tested.
 | Device key / recovery phrase | the device, per profile | at rest by the platform | the device only |
 | Training & nutrition state | device + Neon (synced) | TLS in transit | the user; the operator of their instance |
 | Accounts & passkey credentials | Neon (or `data/` self-hosted) | — (public-key material) | instance operator |
-| Coach brain | 0G Storage | server-side, hash-anchored on chain | holders of the coach service key |
+| Coach brain | 0G Storage | **device-sealed** to the service key (AES-256-GCM under an ECDH-wrapped content key), hash-anchored on chain | this service — and nobody else, including the storage network |
 | Vault backups | 0G Storage | **device-side AES-256-GCM** | key-holder only — not us, not 0G |
 | Ownership, versions, rentals | 0G Chain | public by design | everyone — that is the point |
 | Session cookies | HMAC-signed | — | forgeable only with the instance secret; a once-leaked key is auto-rotated by hash at boot |
@@ -291,13 +300,13 @@ Same code, two postures: convenience on Vercel, custody on your own box.
 
 ## Engineering discipline
 
-- **641 tests**: 510 frontend (vitest) · 64 server (node:test) · 67 contract
+- **728 tests**: 543 frontend (vitest) · 97 server (node:test) · 88 contract
   (Foundry: 42 unit, 9 fuzz properties, 5 invariants driven through random
   call sequences, 16 on the ERC-7857 surface).
-- **Mutation testing** (`node scripts/mutate.mjs`): 164 deliberate faults —
+- **Mutation testing** (`node scripts/mutate.mjs`): 174 deliberate faults —
   constants nudged, guards loosened, signs flipped — across the nutrition
   engine, meal planner, sync merge, plate math, warm-ups and the service
-  worker manifest. 159 caught, 5 proven equivalent with measured evidence.
+  worker manifest. 169 caught, 5 proven equivalent with measured evidence.
   A passing suite proves the tests run; this proves they would notice.
 - **Fail-closed defaults**: unattested inference refused; tampered coach
   config refused; unreadable stored state refuses sync (because "no data"
@@ -308,17 +317,33 @@ Same code, two postures: convenience on Vercel, custody on your own box.
 Two things in the trust table above are weaker than the product's ambition, and
 naming them is more useful than waiting until somebody notices:
 
-**The coach's brain is encrypted with the server's key, not the user's.** The
-vault is device-encrypted and provably unreadable by us; the coach's profile is
-not, because the server must decrypt it to build the prompt. The honest
-frontier is decryption *inside the TEE* — the enclave receives the ciphertext
-and the key, and the server never holds plaintext at all. 0G Compute's
-attestation is what would make that verifiable rather than a promise. Until it
-ships, the trust table says plainly which artifact has the weaker protection.
+**The server can read the coach's brain, because it has to.** The device mints a
+content key, encrypts the profile under it, and wraps that key for the service's
+public key — which it fetches from `/api/coach/pubkey` rather than having
+compiled in. So the storage network and anybody fetching the blob by root hash
+see ciphertext, and this server sees the profile it is asked to reason over.
 
-**`iTransferFrom` refuses rather than pretending.** ERC-7857's re-encryption
-proofs need a TEE/ZKP oracle; deployed without one, the function reverts. When
-a production verifier exists, pointing at it is a new deployment owners migrate
+That is not a shortcut, it is the shape of the problem: the inference answering
+a question runs server-side, so a blob only the browser could open would be a
+blob no coach could ever use. The description above this paragraph used to say
+the brain was "encrypted with the server's key" — it was in fact encrypted with
+the *device's* key, which is why for a period every coach a real person created
+answered *"This coach cannot be opened by this server"* while the documentation
+described a design the code did not have.
+
+The honest frontier is unchanged and now closer: decryption *inside* the enclave,
+so the plaintext never exists on our side at all. The envelope is already the
+right shape for it — the same sealed blob can be re-wrapped for a TEE's own key
+without re-encrypting the profile or changing what the chain hashed.
+
+**The transfer attestor is a software key, not hardware.** `iTransferFrom` now
+works — it was `address(0)` and reverted on every call ever made against it —
+and what makes it work is `AttestedTransferVerifier`, which checks that the
+service signed this exact hand-over, binding the sealed key and the recipient's
+public key, and spends the nonce so it cannot be replayed. What it is not is a
+hardware quote: the attestor is the same service that performs the
+re-encryption, attesting that it did. When a production TEE/ZKP verifier exists,
+pointing at it is a new deployment owners migrate
 to by choice — the verifier address is immutable precisely so nobody, including
 us, can swap what a coach's transfers are checked against underneath its owner.
 

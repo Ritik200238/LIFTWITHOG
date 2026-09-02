@@ -23,7 +23,7 @@ run, tested, or read on chain. Nothing is listed because it is planned.
   calls against a cap of 12 allow exactly 12.
 - **Reminders reach the hosted app** via a scheduled sweep, guarded by a shared
   secret, with the free plan's once-a-day limit stated rather than discovered.
-- `CoachAgent` v3 on Galileo: `0x640eecC824D54d7ECF05fa423E18673E70342809`.
+- `CoachAgent` v3 on Galileo: `0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2`.
 - 668 tests (529 frontend, 67 server, 72 contract) · 174 mutations, 169 caught.
 
 ## 2.2.0 — ERC-7857 Agentic ID, and a server that runs anywhere *(31 Aug 2026)*
@@ -72,7 +72,7 @@ run, tested, or read on chain. Nothing is listed because it is planned.
 
 ## 2.0.0 — A coach you own, on 0G *(Aug 2026)*
 
-- **`CoachAgent` on 0G Galileo** (`0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A`,
+- **`CoachAgent` on 0G Galileo** (`0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2`,
   v1): an ERC-721 where each token is one person's coach — its encrypted
   configuration hash, its 0G Storage URI, a version that only climbs.
 - **Owning it needs no wallet**: a key generated on the device signs EIP-712

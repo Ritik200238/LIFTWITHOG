@@ -12,6 +12,7 @@ import webpush from 'web-push';
 import { CoachError, advise } from './coach.js';
 import {
   RelayError,
+  callerIp,
   relayEvolve,
   relayMint,
   relaySetPrice,
@@ -688,10 +689,7 @@ const routes = {
      * point. Keyed on the address behind any proxy where there is one, so a
      * single machine cannot spend the wallet a megabyte at a time.
      */
-    const caller =
-      String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
-      req.socket?.remoteAddress ||
-      'unknown';
+    const caller = callerIp(req);
 
     if (!(await withinStoreLimit(caller))) {
       return json(res, 429, {

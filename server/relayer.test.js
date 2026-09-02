@@ -309,3 +309,54 @@ test('the storage limit lets go after an hour', async () => {
   assert.equal(await withinStoreLimit('203.0.113.7', now + 100), false);
   assert.equal(await withinStoreLimit('203.0.113.7', now + 60 * 60 * 1000 + 1), true);
 });
+
+/**
+ * The limits, and the two ways round them that were open.
+ */
+
+test('a fresh address per request no longer means unlimited relaying', async () => {
+  /*
+   * The per-address limit is keyed on the owner in the request, and the caller
+   * picks that. A script generating a keypair per call never reached the hourly
+   * cap — the comment above it claimed it was "useless for a script", and the
+   * truth was the opposite. Only the balance floor stood in the way, which
+   * notices the money has gone rather than keeping it.
+   */
+  await resetRateLimit();
+
+  const { withinDailyBudget, MAX_RELAYS_PER_DAY } = await import('./relayer.js');
+
+  let allowed = 0;
+  for (let i = 0; i < MAX_RELAYS_PER_DAY + 25; i += 1) {
+    if (await withinDailyBudget()) allowed += 1;
+  }
+
+  assert.equal(allowed, MAX_RELAYS_PER_DAY, 'the whole-service ceiling did not hold');
+});
+
+test('the caller is identified by a header the caller cannot write', async () => {
+  const { callerIp } = await import('./relayer.js');
+
+  /*
+   * Behind nginx, x-forwarded-for is `$proxy_add_x_forwarded_for`: whatever the
+   * client sent, with the real peer appended. Reading the *first* entry — which
+   * the store route did — reads the part the client chose, so a new value per
+   * request bought unlimited relayer-paid uploads while looking rate limited.
+   */
+  assert.equal(
+    callerIp({ headers: { 'x-forwarded-for': '1.1.1.1, 2.2.2.2, 9.9.9.9' } }),
+    '9.9.9.9',
+    'took a client-supplied entry instead of the one our proxy appended',
+  );
+
+  // x-real-ip comes from $remote_addr and from Vercel, and neither passes a
+  // client-supplied one through, so it wins.
+  assert.equal(
+    callerIp({ headers: { 'x-real-ip': '5.5.5.5', 'x-forwarded-for': '1.1.1.1' } }),
+    '5.5.5.5',
+  );
+
+  // No proxy at all: the socket is the only thing that knows.
+  assert.equal(callerIp({ headers: {}, socket: { remoteAddress: '7.7.7.7' } }), '7.7.7.7');
+  assert.equal(callerIp({ headers: {} }), 'unknown');
+});

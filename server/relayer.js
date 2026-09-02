@@ -63,6 +63,24 @@ export class RelayError extends Error {
  */
 export const MAX_RELAYS_PER_HOUR = 12;
 const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * Everything we will relay for everybody, in a day.
+ *
+ * The per-address limit above is keyed on the owner address in the request, and
+ * that address is chosen by whoever is calling. A script generating a fresh
+ * keypair per request never hits it — the comment above claimed the limit was
+ * "useless for a script", and it was the other way round. The only thing
+ * standing between that and an empty wallet was the balance floor, which is a
+ * way of noticing the money has gone rather than a way of keeping it.
+ *
+ * A ceiling on the total cannot be sidestepped by inventing identities. It is
+ * set well above what this app's real use produces and well below anything that
+ * empties a relayer: exceeding it means either a very good day or an attack, and
+ * both are worth a human looking.
+ */
+export const MAX_RELAYS_PER_DAY = +(process.env.MAX_RELAYS_PER_DAY || 400);
 
 /**
  * Uploads we will pay for, per caller, per hour.
@@ -100,8 +118,17 @@ export const MAX_QUESTIONS_PER_HOUR = 60;
 const limiter = createStore();
 
 /** `now` stays injectable so a test can cross a window boundary without waiting an hour. */
-const allow = (bucket, key, max, now = Date.now()) =>
-  limiter.limit({ bucket, key: String(key ?? 'unknown').toLowerCase(), max, windowMs: HOUR_MS, now });
+const allow = (bucket, key, max, now = Date.now(), windowMs = HOUR_MS) =>
+  limiter.limit({ bucket, key: String(key ?? 'unknown').toLowerCase(), max, windowMs, now });
+
+/**
+ * The ceiling nobody can step around by being somebody else.
+ *
+ * Keyed on a constant rather than on the caller, precisely because the caller is
+ * the part that cannot be trusted here.
+ */
+export const withinDailyBudget = (now) =>
+  allow('relay-total', 'all', MAX_RELAYS_PER_DAY, now, DAY_MS);
 
 /**
  * Rate limit by whatever identifies the caller.
@@ -115,6 +142,34 @@ export const withinStoreLimit = (caller, now) => allow('store', caller, MAX_STOR
 export const withinQuestionLimit = (caller, now) => allow('question', caller, MAX_QUESTIONS_PER_HOUR, now);
 
 export const withinRateLimit = (caller, now) => allow('relay', caller, MAX_RELAYS_PER_HOUR, now);
+
+/**
+ * Who is calling, as far as anything can tell.
+ *
+ * The store endpoint keyed on the *first* entry of `x-forwarded-for`, which is
+ * the part the client writes. Behind nginx that header is
+ * `$proxy_add_x_forwarded_for` — whatever the caller sent, with the real peer
+ * appended — so a script could set it to a new value per request and get
+ * unlimited relayer-paid uploads while appearing to be rate limited.
+ *
+ * `x-real-ip` is set by our own nginx from `$remote_addr` and by Vercel, and
+ * neither passes a client-supplied one through, so it is preferred. Failing
+ * that, the *last* forwarded entry is the one our proxy appended rather than
+ * the one the caller chose. The socket address is the answer when there is no
+ * proxy at all.
+ */
+export function callerIp(req) {
+  const real = String(req?.headers?.['x-real-ip'] || '').trim();
+  if (real) return real;
+
+  const forwarded = String(req?.headers?.['x-forwarded-for'] || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (forwarded.length > 0) return forwarded[forwarded.length - 1];
+
+  return req?.socket?.remoteAddress || 'unknown';
+}
 
 /** For tests, and for a fresh instance to start from a known state. */
 export const resetRateLimit = () => limiter.resetLimits();
@@ -165,6 +220,24 @@ function requireOwner(owner) {
   return ethers.getAddress(owner);
 }
 
+
+/**
+ * The whole-service ceiling, checked on every path that spends the relayer.
+ *
+ * Separate from the per-address limit because they answer different questions:
+ * that one asks whether this person is being unreasonable, this one asks whether
+ * we are about to run out of money regardless of who is asking.
+ */
+async function requireDailyBudget(deps = {}) {
+  if (!(await (deps.withinDailyBudget ?? withinDailyBudget)())) {
+    throw new RelayError(
+      429,
+      'budget_spent',
+      'This service has relayed as much as it will today. It resets on its own.',
+    );
+  }
+}
+
 /**
  * Submit a signed mint. The coach belongs to `owner`, whatever we do.
  */
@@ -182,6 +255,7 @@ export async function relayMint({ owner, configHash, configURI, deadline, signat
   if (!(await (deps.withinRateLimit ?? withinRateLimit)(address))) {
     throw new RelayError(429, 'too_many', 'That is more coaches than anybody needs in an hour.');
   }
+  await requireDailyBudget(deps);
 
   const wallet = deps.wallet ?? relayerWallet();
   await assertFunded(wallet);
@@ -230,6 +304,7 @@ export async function relaySetPrice({ owner, tokenId, pricePerDay, deadline, sig
   if (!(await (deps.withinRateLimit ?? withinRateLimit)(address))) {
     throw new RelayError(429, 'too_many', 'That is a lot of price changes in an hour.');
   }
+  await requireDailyBudget(deps);
 
   const wallet = deps.wallet ?? relayerWallet();
   await assertFunded(wallet);
@@ -255,6 +330,7 @@ export async function relayEvolve(
   if (!(await (deps.withinRateLimit ?? withinRateLimit)(address))) {
     throw new RelayError(429, 'too_many', 'That coach has learned enough for one hour.');
   }
+  await requireDailyBudget(deps);
 
   const wallet = deps.wallet ?? relayerWallet();
   await assertFunded(wallet);

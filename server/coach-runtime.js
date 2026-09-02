@@ -359,16 +359,120 @@ export function systemPrompt(config) {
  * says it does not do. A silent fallback to one would make the claim false
  * while every screen still displayed it.
  */
-export async function runOn0GCompute({ config, question }) {
-  const { createZGComputeNetworkBroker } = await import('@0gfoundation/0g-compute-ts-sdk');
+/** How long one provider gets before we move to the next. */
+const INFERENCE_TIMEOUT_MS = 45_000;
 
-  const wallet = serviceWallet();
-  const broker = await createZGComputeNetworkBroker(wallet);
+/**
+ * Ask one provider, and only return an answer the enclave signed for.
+ *
+ * `processResponse` is the whole point of this function. It does two jobs the
+ * SDK deliberately couples: it verifies the provider's signature over the
+ * response, and it settles the fee for it. Skipping it — which this code did —
+ * meant the attestation claim was decided once from a marketplace listing and
+ * never checked against the reply, *and* that we had been taking inference
+ * without paying for it.
+ *
+ * Two details from the SDK's own documentation, both easy to get wrong:
+ *
+ *   - `content` is the **usage** JSON, not the answer. Passing prose makes the
+ *     fee parse fail quietly, so nothing settles and nothing says so.
+ *   - the return is `boolean | null`, and `null` means *verification was
+ *     skipped* because no chat id was available. Treating that as success is
+ *     precisely the fail-open this app exists not to do, so only `true` counts.
+ */
+async function askProvider(broker, provider, body) {
+  /*
+   * The signer has to be acknowledged before a request will settle. Checked
+   * first rather than acknowledged unconditionally: it is an on-chain write,
+   * and doing it on every question would spend gas to learn what a view call
+   * already knows.
+   */
+  const status = await broker.inference.checkProviderSignerStatus(provider).catch(() => null);
+  if (status && !status.isAcknowledged) {
+    await broker.inference.acknowledgeProviderSigner(provider);
+  }
 
-  const services = await broker.inference.listService();
-  const attested = pickAttested(services);
+  const { endpoint, model } = await broker.inference.getServiceMetadata(provider);
+  const payload = { ...body, model };
 
-  if (!attested) {
+  /*
+   * Minted per attempt. The headers carry a single-use nonce the provider
+   * settles against, so reusing them across a retry buys a 401 rather than a
+   * second answer.
+   */
+  const headers = await broker.inference.getRequestHeaders(provider, JSON.stringify(payload));
+
+  const response = await fetch(`${endpoint}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(payload),
+    // Node's fetch has no default timeout: without this a provider that accepts
+    // the connection and never answers holds the request open indefinitely.
+    signal: AbortSignal.timeout(INFERENCE_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    throw new Error(`provider returned ${response.status}`);
+  }
+
+  const json = await response.json();
+  const answer = json?.choices?.[0]?.message?.content;
+  if (!answer) throw new Error('provider returned no content');
+
+  // `ZG-Res-Key` is where the provider puts the id its signature covers; the
+  // completion id is the documented fallback for providers that omit it.
+  const chatId = response.headers.get('ZG-Res-Key') || response.headers.get('zg-res-key') || json?.id;
+
+  const verified = await broker.inference.processResponse(
+    provider,
+    chatId,
+    JSON.stringify(json?.usage ?? {}),
+  );
+
+  if (verified !== true) {
+    /*
+     * The provider was listed as attested and then produced a response its
+     * enclave will not vouch for. That is exactly the case a listing-time check
+     * cannot see, and the answer is discarded rather than shown.
+     */
+    throw new Error(
+      verified === null
+        ? 'no chat id came back, so the response could not be verified'
+        : 'the response failed enclave verification',
+    );
+  }
+
+  return answer;
+}
+
+/**
+ * Run the coach on 0G Compute, inside a TEE, and nowhere else.
+ *
+ * The refusal below is the privacy claim in code. This app exists because a
+ * training history should not be handed to somebody else's server, so an
+ * unattested provider is not a degraded option — it is the thing the product
+ * says it does not do. A silent fallback to one would make the claim false
+ * while every screen still displayed it.
+ *
+ * Every attested provider is tried in turn, because a single one being out of
+ * balance or briefly unreachable says nothing about the next — and because
+ * every candidate is attested, walking the list can never degrade the
+ * guarantee. When the list runs out the request fails. There is no unattested
+ * last resort, deliberately.
+ */
+export async function runOn0GCompute({ config, question }, deps = {}) {
+  const makeBroker =
+    deps.createBroker ??
+    (async () => {
+      const { createZGComputeNetworkBroker } = await import('@0gfoundation/0g-compute-ts-sdk');
+      return createZGComputeNetworkBroker(serviceWallet());
+    });
+
+  const broker = await makeBroker();
+
+  const attested = pickAttestedProviders(await broker.inference.listService());
+
+  if (attested.length === 0) {
     throw new CoachError(
       503,
       'no_tee',
@@ -376,10 +480,7 @@ export async function runOn0GCompute({ config, question }) {
     );
   }
 
-  const { endpoint, model } = await broker.inference.getServiceMetadata(attested.provider);
-
   const body = {
-    model,
     messages: [
       { role: 'system', content: systemPrompt(config) },
       { role: 'user', content: question },
@@ -388,26 +489,28 @@ export async function runOn0GCompute({ config, question }) {
     max_tokens: 400,
   };
 
-  const headers = await broker.inference.getRequestHeaders(
-    attested.provider,
-    JSON.stringify(body),
-  );
+  const failures = [];
 
-  const response = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new CoachError(502, 'model_failed', `0G Compute returned ${response.status}.`);
+  for (const provider of attested) {
+    try {
+      return await askProvider(broker, provider, body);
+    } catch (e) {
+      failures.push(`${String(provider).slice(0, 10)}…: ${e.message || e}`);
+    }
   }
 
-  const json = await response.json();
-  const answer = json?.choices?.[0]?.message?.content;
-  if (!answer) throw new CoachError(502, 'model_failed', 'The model returned nothing usable.');
-
-  return answer;
+  /*
+   * Every attested provider was asked and none produced a verified answer.
+   * Reported as the TEE being unavailable rather than as a model failure,
+   * because that is what it is — and because the alternative a reader might
+   * reach for, running this somewhere else, is the thing being refused.
+   */
+  console.error('0G Compute: no attested provider produced a verified response', failures);
+  throw new CoachError(
+    503,
+    'no_tee',
+    'No TEE-attested provider on 0G Compute would vouch for its answer, and this coach does not run outside one.',
+  );
 }
 
 /**
@@ -437,12 +540,31 @@ function isAttested(value) {
 }
 
 export function pickAttested(services) {
+  const [provider] = pickAttestedProviders(services);
+  return provider ? { provider } : null;
+}
+
+/**
+ * Every attested provider, in the order the marketplace listed them.
+ *
+ * A list rather than the first match, because one provider being out of
+ * balance, mid-restart or briefly unreachable is common and says nothing about
+ * the next. Filtering to attested *before* anything is tried is what makes
+ * walking the list safe: there is no ordering of this array that reaches an
+ * unattested provider, so a retry can never quietly become a downgrade.
+ */
+export function pickAttestedProviders(services) {
+  const providers = [];
+
   for (const service of services ?? []) {
     const tuple = Array.isArray(service) ? service : null;
     const provider = tuple ? String(tuple[0]) : service?.provider;
     const teeVerified = tuple ? tuple[10] : service?.teeVerified;
 
-    if (provider && isAttested(teeVerified)) return { provider };
+    if (provider && isAttested(teeVerified) && !providers.includes(provider)) {
+      providers.push(provider);
+    }
   }
-  return null;
+
+  return providers;
 }

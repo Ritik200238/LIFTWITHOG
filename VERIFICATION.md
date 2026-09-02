@@ -46,11 +46,11 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 
 ```bash
 npm --prefix frontend test     # 542 tests — app logic, nutrition, coach memory, sync, offline
-npm test                       # 107 tests  — server, storage backends, rate limits, auth, sync
+npm test                       # 121 tests  — server, storage backends, rate limits, auth, sync
 cd contracts && forge test     # 90 tests  — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier
 ```
 
-739 in total. `node scripts/counts.mjs` prints these by running the suites, and
+753 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
@@ -141,6 +141,11 @@ the deployed contract by `scripts/prove-transfer.mjs`.
 | Fetch a coach sealed for a different service key | `422 bad_config` — named as that, not as tampering |
 | Exceed the per-address hourly limit | `429 too_many` |
 | Exceed the whole service's daily budget | `429 budget_spent` — keyed on a constant, so a fresh address does not help |
+| Hire a coach by quoting a transaction hash you did not send | `403 not_the_renter` — the payment must name you, and a cached answer is only returned to that address |
+| Hire a coach with a `Rented` event from a contract you deployed | `402 payment_not_found` — the log must come from our contract |
+| Hire a coach with a payment for a different coach | `402 payment_not_found` |
+| Hire a coach on a rental that has since expired | `403 no_access` — the chain is asked, not the receipt |
+| Quote a coach nobody has listed | `409 not_for_rent` — a different answer from "you have not paid", which would be retried forever |
 | Forge `X-Forwarded-For` to reset a limit | ignored — the caller is identified by a header the caller cannot write |
 | Relay when the wallet is nearly empty | `503 relayer_empty`, before spending rather than during |
 

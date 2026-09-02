@@ -23,7 +23,7 @@ test('every refusal the failure matrix names exists in the code', async () => {
   const verifier = await readFile(new URL('contracts/src/AttestedTransferVerifier.sol', root), 'utf8');
   const server = (
     await Promise.all(
-      ['server/coach.js', 'server/coach-runtime.js', 'server/relayer.js', 'server/server.js'].map((f) =>
+      ['server/coach.js', 'server/coach-runtime.js', 'server/relayer.js', 'server/server.js', 'server/x402.js'].map((f) =>
         readFile(new URL(f, root), 'utf8'),
       ),
     )

@@ -44,6 +44,10 @@ const COACH_ABI = [
   'function hasAccess(uint256 tokenId, address user) view returns (bool)',
   'function coachOf(uint256 tokenId) view returns (bytes32, string, uint64, uint64)',
   'function ownerOf(uint256 tokenId) view returns (address)',
+  // Read by the 402 quote: what a coach costs, and who gets paid.
+  'function rentalPrice(uint256 tokenId) view returns (uint256)',
+  // Read by the discovery listing, which is bounded by it.
+  'function totalMinted() view returns (uint256)',
 ];
 
 export class CoachError extends Error {
@@ -331,7 +335,7 @@ export async function recall(request, deps) {
   };
 }
 
-async function readCoachRecord(contract, tokenId) {
+export async function readCoachRecord(contract, tokenId) {
   try {
     const [configHash, configURI, version] = await contract.coachOf(tokenId);
     return { configHash, configURI, version: Number(version) };

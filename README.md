@@ -4,7 +4,7 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-739%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-753%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-90%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
@@ -269,9 +269,20 @@ sequenceDiagram
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
 | Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**739 tests**: 542 frontend · 107 server · 90 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier).
+**753 tests**: 542 frontend · 121 server · 90 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier).
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
+
+**A coach another agent can hire.** Everything else here assumes a browser and a
+device key. `GET /api/coach/5/service` answers **HTTP 402** with the price, the payee and
+the contract call that pays it; `POST` takes the transaction hash and returns the answer
+it bought. Payment is verified against *our own* `Rented` event — not a third-party token
+transfer, which is what the only comparable implementation checks and what a purpose-built
+contract could forge — and the access it granted is then confirmed against the chain.
+
+A transaction hash is public the instant it lands, so the payment must name the caller as
+its renter, and a cached answer goes only to that address. Paired with the ERC-8004
+registration, that makes this coach hireable by any agent that can read an agent card.
 
 **The rules the coach is bound by are published, not described.** "It gives safe advice"
 is not a checkable claim and everyone makes it. The literal system prompt and every

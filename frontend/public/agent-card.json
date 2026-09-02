@@ -48,6 +48,16 @@
     {
       "type": "web",
       "url": "https://liftwithog.vercel.app"
+    },
+    {
+      "type": "x402",
+      "description": "A coach another agent can hire, over HTTP. GET answers 402 with the price, the payee and the contract call that pays it; POST takes the transaction hash and returns the answer it bought. Everything else here assumes a browser and a device key — this is the same coach exposed the way software buys things.",
+      "quote": "https://liftwithog.vercel.app/api/coach/{tokenId}/service",
+      "redeem": "https://liftwithog.vercel.app/api/coach/{tokenId}/service",
+      "method": { "quote": "GET", "redeem": "POST" },
+      "settlement": "Payment is verified against this project's own Rented event, emitted by the contract named under standards.erc7857 — not against a third-party token transfer. The access it granted is then confirmed against the chain, so an expired rental buys nothing.",
+      "replay": "A transaction hash is public the instant it lands, so a payment is only spendable by the address named as its renter, and a cached answer is only returned to that address.",
+      "discovery": "GET /api/coaches lists what is currently for rent."
     }
   ]
 }

@@ -9,7 +9,8 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse
 } from '@simplewebauthn/server';
 import webpush from 'web-push';
-import { CoachError, advise, recall } from './coach.js';
+import { CoachError, advise, leaksConfig, readCoachRecord, recall } from './coach.js';
+import { listing, quote, redeem } from './x402.js';
 import {
   RelayError,
   callerIp,
@@ -851,6 +852,73 @@ const routes = {
     }
   },
 
+  /**
+   * A coach another agent can hire, over HTTP.
+   *
+   * `GET` answers 402 with what it costs and how to pay; `POST` takes the
+   * transaction hash and hands back the answer it bought. Everything else in
+   * this API assumes a browser and a device key — this is the same coach
+   * exposed the way software buys things, which is what makes the ERC-8004
+   * registration mean something to a machine.
+   */
+  /** Coaches for rent, so an agent can find one before paying for it. */
+  'GET /api/coaches': async (_req, res) => {
+    try {
+      return json(res, 200, await listing());
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('coach listing failed:', e);
+      return json(res, 502, { error: 'chain_unreachable', message: 'The marketplace could not be read.' });
+    }
+  },
+
+  'GET /api/coach/:tokenId/service': async (req, res) => {
+    try {
+      const terms = await quote(req.params.tokenId);
+      /*
+       * 402 with the terms, which is the whole convention: the status says
+       * "pay", and the body says what and where. A 200 carrying a price would
+       * need a client that knows to look.
+       */
+      return json(res, 402, terms);
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('x402 quote failed:', e);
+      return json(res, 500, { error: 'server_error', message: 'That could not be quoted.' });
+    }
+  },
+
+  'POST /api/coach/:tokenId/service': async (req, res) => {
+    const body = await readBody(req);
+
+    if (!(await withinQuestionLimit(callerIp(req)))) {
+      return json(res, 429, { error: 'too_many', message: 'That is a lot of questions in an hour.' });
+    }
+
+    try {
+      const result = await redeem(
+        {
+          tokenId: req.params.tokenId,
+          txHash: body.txHash,
+          question: body.question,
+          caller: body.caller,
+        },
+        {
+          readCoach: readCoachRecord,
+          loadConfig: loadConfigFromStorage,
+          runModel: runOn0GCompute,
+          leaksConfig,
+        },
+      );
+
+      return json(res, 200, result);
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('x402 redeem failed:', e);
+      return json(res, 500, { error: 'server_error', message: 'The coach could not answer.' });
+    }
+  },
+
   'POST /api/admin/invites/revoke': async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const body = await readBody(req);
@@ -872,8 +940,29 @@ const routes = {
 export async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const key = req.method + ' ' + url.pathname;
-  const handler = routes[key];
+
+  /*
+   * Exact match first, then the one parameterised shape.
+   *
+   * Every route here is a fixed path, which is a fine trade for an API this
+   * small — until something has to be addressed as a resource. The 402
+   * endpoint does: an agent hiring a coach is told about `coach/5`, and a
+   * query string would work but would not look like a thing you can point at.
+   * So one pattern rather than a router.
+   */
+  let handler = routes[key];
+  let params = null;
+
+  if (!handler) {
+    const service = /^\/api\/coach\/(\d+)\/service$/.exec(url.pathname);
+    if (service) {
+      handler = routes[`${req.method} /api/coach/:tokenId/service`];
+      params = { tokenId: service[1] };
+    }
+  }
+
   if (!handler) return json(res, 404, { error: 'not found' });
+  req.params = params ?? {};
 
   try {
     /*

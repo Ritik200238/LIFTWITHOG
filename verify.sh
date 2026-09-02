@@ -37,10 +37,20 @@ check() {
 
   ran=$((ran + 1))
   printf '  %-9s %s ... ' "[$tag]" "$desc"
-  if "$@" >/dev/null 2>&1; then
+
+  # Output is captured rather than discarded, and printed when a check fails.
+  #
+  # Silencing it keeps the summary readable, which is the whole point of this
+  # script — but the first time CI went red, the summary said which check failed
+  # and nothing about why, and the answer was not reproducible locally. A report
+  # that cannot explain its own failure sends you to re-run things by hand,
+  # which is the situation this script exists to remove.
+  local output
+  if output=$("$@" 2>&1); then
     printf 'PASS\n'; pass=$((pass + 1))
   else
     printf 'FAIL\n'; fail=$((fail + 1))
+    printf '%s\n' "$output" | tail -30 | sed 's/^/             | /'
   fi
 }
 

@@ -111,7 +111,13 @@ describe('reading the market off the chain', () => {
    * were written for locally, and asserted nothing at all in CI. It took the
    * first CI run to notice, which is the whole argument for having one.
    */
-  beforeEach(() => vi.stubEnv('VITE_COACH_ADDRESS', '0x' + '11'.repeat(20)))
+  beforeEach(() => {
+    vi.stubEnv('VITE_COACH_ADDRESS', '0x' + '11'.repeat(20))
+    // Reset before, not only after. The static import at the top of this file
+    // already loaded the module — and its address — before any stub existed, so
+    // without this the first test in the block reads the cached copy.
+    vi.resetModules()
+  })
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.resetModules()

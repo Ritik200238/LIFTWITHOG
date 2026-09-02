@@ -14,6 +14,7 @@ import { CoachError, OG_RPC, OG_CHAIN_ID } from './coach.js';
 import { looksSealed, openAsService, servicePublicKeyFrom } from './coachEnvelope.js';
 import { createStore } from './store.js';
 import { signatureFor } from './attestation.js';
+import { loadComputeSdk } from './computeSdk.js';
 
 /** The mirror. See `blobKey` in store.js for why a second copy exists at all. */
 const mirror = createStore();
@@ -561,12 +562,14 @@ async function askProvider(broker, provider, body) {
  * every candidate is attested, walking the list can never degrade the
  * guarantee. When the list runs out the request fails. There is no unattested
  * last resort, deliberately.
+ *
+ * See `computeSdk.js` for why the SDK is required rather than imported.
  */
 export async function runOn0GCompute({ config, question }, deps = {}) {
   const makeBroker =
     deps.createBroker ??
     (async () => {
-      const { createZGComputeNetworkBroker } = await import('@0gfoundation/0g-compute-ts-sdk');
+      const { createZGComputeNetworkBroker } = loadComputeSdk();
       return createZGComputeNetworkBroker(serviceWallet());
     });
 

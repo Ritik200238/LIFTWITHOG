@@ -99,6 +99,8 @@ check guards "vercel.json is a config Vercel will accept" \
   bash -c 'cd server && node --test vercelConfig.test.js'
 check guards "importing a module writes nothing to disk" \
   bash -c 'cd server && node --test storePath.test.js'
+check guards "the 0G Compute SDK actually loads" \
+  bash -c 'cd server && node --test computeSdk.test.js'
 
 # ---------------------------------------------------------------- mutation
 

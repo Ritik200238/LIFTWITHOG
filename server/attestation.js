@@ -29,6 +29,8 @@
  * reason, or a signature somebody else can check. Never a badge on faith.
  */
 
+import { loadComputeSdk } from './computeSdk.js';
+
 /**
  * The provider's signature over one answer, and the address it must recover to.
  *
@@ -38,11 +40,19 @@
 export async function signatureFor({ broker, provider, chatId, model, endpoint }) {
   if (!chatId) return { signed: false, reason: 'the provider returned no chat id to sign over' };
 
+  /*
+   * Required rather than imported — see `computeSdk.js`.
+   * The package's ESM entry re-exports from a CommonJS chunk, which Node's ESM
+   * loader refuses; `await import` of it threw and was caught here as "the SDK
+   * does not expose a verifier", which read like a missing feature and was
+   * really a loading failure. The stronger proof was off in production for that
+   * reason alone.
+   */
   let InferenceVerifier;
   try {
-    ({ InferenceVerifier } = await import('@0gfoundation/0g-compute-ts-sdk'));
-  } catch {
-    return { signed: false, reason: 'the compute SDK does not expose a verifier here' };
+    ({ InferenceVerifier } = loadComputeSdk());
+  } catch (e) {
+    return { signed: false, reason: `the compute SDK could not be loaded: ${e.message || e}` };
   }
 
   /*

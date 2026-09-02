@@ -8,6 +8,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC7857} from "./interfaces/IERC7857.sol";
 import {IERC7857Authorize} from "./interfaces/IERC7857Authorize.sol";
+import {IERC7857Cloneable} from "./interfaces/IERC7857Cloneable.sol";
 import {ITransferProofVerifier} from "./interfaces/ITransferProofVerifier.sol";
 
 /**
@@ -46,7 +47,7 @@ import {ITransferProofVerifier} from "./interfaces/ITransferProofVerifier.sol";
  *      Stated plainly because the difference is the entire product claim, and a
  *      contract comment that overstates it would be the worst place to be wrong.
  */
-contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
+contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Cloneable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice A coach's encrypted brain, as it stands right now.
@@ -86,6 +87,21 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
     mapping(uint256 tokenId => uint256) private _pricePerDay;
 
     /**
+     * @dev What a coach costs to clone, and where each clone came from.
+     *
+     *      Renting a coach borrows a trainer's method for a while. Cloning takes
+     *      a copy that then trains on somebody else's data and diverges — which
+     *      is what actually happens when a person buys a programme, and what the
+     *      rental model cannot express.
+     *
+     *      `_parentOf` is the part that makes it an economy rather than a copy
+     *      button: the descent is on chain, permanently, so a trainer whose
+     *      method spreads through three generations of clones can prove it.
+     */
+    mapping(uint256 tokenId => uint256) private _clonePrice;
+    mapping(uint256 childId => uint256 parentId) private _parentOf;
+
+    /**
      * @dev Everyone ever granted access to a coach, for `authorizedUsersOf`.
      *
      *      Validity still lives in `_access` under the current epoch — this set
@@ -113,6 +129,8 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
     event AccessRevoked(uint256 indexed tokenId, address indexed user);
     event RentalPriceSet(uint256 indexed tokenId, uint256 pricePerDay);
     event Rented(uint256 indexed tokenId, address indexed renter, uint64 expiresAt, uint256 paid);
+    event ClonePriceSet(uint256 indexed tokenId, uint256 price);
+    event CoachCloned(uint256 indexed parentId, uint256 indexed childId, address indexed owner, uint256 paid);
 
     error NotCoachOwner();
     error NoSuchCoach();
@@ -122,6 +140,8 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
     error WrongPayment(uint256 required);
     error BadDuration();
     error PayoutFailed();
+    error NotCloneable();
+    error CloneOfNothing();
 
     /**
      * @dev The v1 deployment at 0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A was
@@ -156,6 +176,14 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
 
     bytes32 private constant PRICE_TYPEHASH =
         keccak256("SetRentalPrice(address owner,uint256 tokenId,uint256 pricePerDay,uint256 nonce,uint256 deadline)");
+
+    bytes32 private constant CLONE_PRICE_TYPEHASH =
+        keccak256("SetClonePrice(address owner,uint256 tokenId,uint256 price,uint256 nonce,uint256 deadline)");
+
+    bytes32 private constant CLONE_TYPEHASH =
+        keccak256(
+            "CloneCoach(address owner,uint256 parentId,bytes32 configHash,bytes32 configURIHash,uint256 nonce,uint256 deadline)"
+        );
 
     bytes32 private constant EVOLVE_TYPEHASH =
         keccak256(
@@ -342,6 +370,161 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
 
         _pricePerDay[tokenId] = pricePerDay;
         emit RentalPriceSet(tokenId, pricePerDay);
+    }
+
+    // ----------------------------------------------------------------- clone
+
+    /**
+     * @notice Offer this coach for cloning, at a price. Zero withdraws the offer.
+     *
+     * @dev Renting borrows a method for a while; cloning takes a copy that then
+     *      trains on somebody else's data and diverges. That is what actually
+     *      happens when a person buys a programme, and the rental model cannot
+     *      express it — the copy has to become theirs, and has to stop being the
+     *      trainer's problem, while the trainer keeps the credit.
+     */
+    function setClonePrice(uint256 tokenId, uint256 price) external {
+        _requireOwner(tokenId);
+        _clonePrice[tokenId] = price;
+        emit ClonePriceSet(tokenId, price);
+    }
+
+    /// @notice The same, signed by a device that holds no coin.
+    function setClonePriceFor(
+        address owner,
+        uint256 tokenId,
+        uint256 price,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
+        address current = _ownerOf(tokenId);
+        if (current == address(0)) revert NoSuchCoach();
+        if (current != owner) revert NotCoachOwner();
+
+        _useSignature(
+            owner,
+            keccak256(abi.encode(CLONE_PRICE_TYPEHASH, owner, tokenId, price, _nonces[owner], deadline)),
+            deadline,
+            signature
+        );
+
+        _clonePrice[tokenId] = price;
+        emit ClonePriceSet(tokenId, price);
+    }
+
+    /**
+     * @notice Take a copy of a coach, pay its trainer, and start your own line.
+     *
+     * @dev The economic centre of this contract, and the thing rentals cannot do.
+     *      A trainer's method spreads; every copy records where it came from; the
+     *      trainer's credit is on chain through every generation and cannot be
+     *      edited out by whoever holds a clone three steps down.
+     *
+     *      The child is a **new coach with its own brain**, not a pointer at the
+     *      parent's. The caller supplies a `configHash` and `configURI` of their
+     *      own — in practice the parent's method re-sealed for the new owner, the
+     *      same operation an intelligent transfer performs — so a clone diverges
+     *      from its parent the first time it learns and the parent's later
+     *      versions never reach it. Cloning is not a subscription by another name.
+     *
+     *      Payment is forwarded to the parent's owner inside this call, exactly
+     *      as `rent` does, and this contract never holds it.
+     *
+     *      Relayed like everything else here: the new owner is named in the
+     *      signed message, so whoever submits it can pay the fee and cannot take
+     *      the clone.
+     */
+    function cloneFor(
+        address owner,
+        uint256 parentId,
+        bytes32 configHash,
+        string calldata configURI,
+        uint256 deadline,
+        bytes calldata signature
+    ) external payable returns (uint256 tokenId) {
+        address parentOwner = _ownerOf(parentId);
+        if (parentOwner == address(0)) revert NoSuchCoach();
+        if (configHash == bytes32(0) || bytes(configURI).length == 0) revert EmptyConfig();
+
+        uint256 price = _clonePrice[parentId];
+        if (price == 0) revert NotCloneable();
+        if (msg.value != price) revert WrongPayment(price);
+
+        _useSignature(
+            owner,
+            keccak256(
+                abi.encode(
+                    CLONE_TYPEHASH,
+                    owner,
+                    parentId,
+                    configHash,
+                    keccak256(bytes(configURI)),
+                    _nonces[owner],
+                    deadline
+                )
+            ),
+            deadline,
+            signature
+        );
+
+        tokenId = _nextId++;
+        _safeMint(owner, tokenId);
+
+        _coaches[tokenId] = Coach({
+            configHash: configHash,
+            configURI: configURI,
+            version: 1,
+            updatedAt: uint64(block.timestamp)
+        });
+
+        // Written before the payout, so a re-entrant parent owner cannot observe
+        // a clone that exists without a recorded parent.
+        _parentOf[tokenId] = parentId;
+
+        emit CoachMinted(tokenId, owner, configHash);
+        emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
+        emit CoachCloned(parentId, tokenId, owner, msg.value);
+
+        // Last, as in `rent`: the contract is an authorisation ledger and holds
+        // nothing, so the money leaves in the same call that brought it.
+        (bool paid, ) = payable(parentOwner).call{value: msg.value}("");
+        if (!paid) revert PayoutFailed();
+    }
+
+    /// @notice What cloning this coach costs, or zero if it is not on offer.
+    function clonePrice(uint256 tokenId) external view returns (uint256) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+        return _clonePrice[tokenId];
+    }
+
+    /// @notice Which coach this one was cloned from, or zero if it is an original.
+    function parentOf(uint256 tokenId) external view returns (uint256) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+        return _parentOf[tokenId];
+    }
+
+    /**
+     * @notice How far down a line of descent this coach sits. An original is 1.
+     *
+     * @dev Bounded by `maxDepth` rather than walking until it stops, because the
+     *      chain of parents is written by users and a view that walks it without
+     *      a limit is a view that can be made to exceed the call gas cap — which
+     *      would make a coach's own lineage permanently unreadable.
+     */
+    function generationOf(uint256 tokenId, uint256 maxDepth) external view returns (uint256 generation, bool complete) {
+        if (_ownerOf(tokenId) == address(0)) revert NoSuchCoach();
+
+        generation = 1;
+        uint256 at = tokenId;
+
+        for (uint256 i = 0; i < maxDepth; i++) {
+            uint256 parent = _parentOf[at];
+            if (parent == 0) return (generation, true);
+            generation += 1;
+            at = parent;
+        }
+
+        return (generation, false);
     }
 
     // ------------------------------------------------------------------ mint
@@ -696,10 +879,72 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize {
         }
     }
 
-    /// @notice This token speaks ERC-721 and ERC-7857, core and authorization.
+    /**
+     * @notice The standard's clone: an attested copy, to somebody else.
+     *
+     * @dev The 7857 spelling of what `cloneFor` does commercially. This one is
+     *      gated on the same attestation an intelligent transfer needs — the
+     *      copy's brain must have been re-encrypted for the receiver, and the
+     *      verifier says whether it was — and takes no payment, because the
+     *      standard does not describe one.
+     *
+     *      Both exist on purpose. `iCloneFrom` is what an indexer, a marketplace
+     *      or another 7857 contract expects to find. `cloneFor` is the path this
+     *      product actually uses: relayed, so the new owner needs no coin, and
+     *      priced, so the trainer is paid.
+     */
+    function iCloneFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        TransferValidityProof[] calldata proofs
+    ) external returns (uint256 newTokenId) {
+        address owner = _ownerOf(tokenId);
+        if (owner == address(0)) revert NoSuchCoach();
+        if (owner != from) revert NotCoachOwner();
+
+        // Ordinary ERC-721 authorisation still applies: the oracle attests to
+        // re-encryption, it does not replace the owner's consent to copy.
+        if (msg.sender != from && !isApprovedForAll(from, msg.sender) && getApproved(tokenId) != msg.sender) {
+            revert NotCoachOwner();
+        }
+
+        if (transferVerifier == address(0)) revert VerifierNotConfigured();
+        if (!ITransferProofVerifier(transferVerifier).attestTransfer(from, to, tokenId, proofs)) {
+            revert TransferProofRejected();
+        }
+
+        Coach storage parent = _coaches[tokenId];
+
+        newTokenId = _nextId++;
+        _safeMint(to, newTokenId);
+
+        /*
+         * The copy points at the parent's ciphertext for exactly as long as it
+         * takes the new owner to evolve it, which re-seals under their own key.
+         * That is the honest reading of "clone" here: the same brain, then two
+         * histories.
+         */
+        _coaches[newTokenId] = Coach({
+            configHash: parent.configHash,
+            configURI: parent.configURI,
+            version: 1,
+            updatedAt: uint64(block.timestamp)
+        });
+
+        _parentOf[newTokenId] = tokenId;
+
+        emit CoachMinted(newTokenId, to, parent.configHash);
+        emit IntelligentDataSet(newTokenId, _intelligentDataOf(newTokenId));
+        emit CoachCloned(tokenId, newTokenId, to, 0);
+        emit IntelligentClone(from, to, tokenId, newTokenId);
+    }
+
+    /// @notice This token speaks ERC-721 and ERC-7857, core, authorization and cloning.
     function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
         return interfaceId == type(IERC7857).interfaceId
             || interfaceId == type(IERC7857Authorize).interfaceId
+            || interfaceId == type(IERC7857Cloneable).interfaceId
             || super.supportsInterface(interfaceId);
     }
 

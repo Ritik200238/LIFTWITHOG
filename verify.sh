@@ -93,8 +93,12 @@ check release "no document claims a test count by hand" \
   bash -c '! grep -rnE "\*\*6(41|68) tests|529 frontend|164 (seeded|deliberate)" README.md ARCHITECTURE.md VERIFICATION.md'
 check release "the security documents exist and name their open risks" \
   bash -c 'grep -q "Open risks" SECURITY.md && grep -q "Non-capabilities" THREAT-MODEL.md'
+# Every address this project has ever deployed, except the current one. A stale
+# address in a document is the failure that once had README showing two
+# different owners for token #1, and it is invisible to every other check here
+# because they all read the chain rather than the prose.
 check release "no stale contract address survives in the documents" \
-  bash -c '! grep -rn "0x640eecC824D54d7ECF05fa423E18673E70342809\|0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A" README.md VERIFICATION.md ARCHITECTURE.md frontend/public/agent-card.json'
+  bash -c '! grep -rni "0x640eecC824D54d7ECF05fa423E18673E70342809\|0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A\|0x70c4dE9D0edbE53733821558Bf6b14b64451e56E\|0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2\|0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B" README.md VERIFICATION.md ARCHITECTURE.md SECURITY.md SUBMISSION.md frontend/public/agent-card.json scripts/evidence.mjs render.yaml server/.env.example'
 
 # -------------------------------------------------------------------- live
 #
@@ -103,7 +107,7 @@ check release "no stale contract address survives in the documents" \
 # they are not folded into the suites above.
 
 RPC="${OG_RPC_URL:-https://evmrpc-testnet.0g.ai}"
-COACH="${COACH_ADDRESS:-0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2}"
+COACH="${COACH_ADDRESS:-0x0253fb92F9e88E82Fb0632C076C88204e4400025}"
 
 rpc_call() {
   curl -s --max-time 20 -X POST "$RPC" \

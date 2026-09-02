@@ -324,6 +324,89 @@ contract CoachHandler is Test {
         totalPaidIn += cost;
     }
 
+    /**
+     * Offer a coach for cloning, sometimes.
+     *
+     * `bound(price, 0, …)` deliberately includes zero, which withdraws the
+     * offer — so the sequences include a coach listed, cloned, delisted, and
+     * cloned again by somebody who did not notice.
+     */
+    function setClonePrice(uint256 tokenSeed, uint96 price) external {
+        if (tokens.length == 0) return;
+        uint256 id = tokens[tokenSeed % tokens.length];
+        vm.prank(coach.ownerOf(id));
+        coach.setClonePrice(id, bound(price, 0, 1 ether));
+    }
+
+    /**
+     * Buy a clone.
+     *
+     * The second path on which money moves through this contract, and therefore
+     * the second one the "never holds funds" invariant has to cover. Added with
+     * cloning rather than after it: an invariant that only watches the paths it
+     * watched yesterday is an invariant about yesterday.
+     */
+    function cloneCoach(uint256 tokenSeed, uint256 actorSeed, uint256 keySeed) external {
+        if (tokens.length == 0) return;
+        uint256 parent = tokens[tokenSeed % tokens.length];
+
+        uint256 price = coach.clonePrice(parent);
+        if (price == 0) return;
+
+        address payer = _actor(actorSeed);
+        if (payer.balance < price) return;
+
+        (address owner, uint256 key) = makeAddrAndKey(string(abi.encodePacked("clone", vm.toString(keySeed))));
+
+        bytes32 configHash = keccak256(abi.encode(keySeed, parent));
+        bytes memory signature = _signClone(owner, key, parent, configHash);
+
+        vm.prank(payer);
+        try coach.cloneFor{value: price}(owner, parent, configHash, "og://clone", block.timestamp + 1 hours, signature)
+        returns (uint256 child) {
+            tokens.push(child);
+            totalPaidIn += price;
+        } catch {
+            // A nonce already spent for this owner, most often. Not a property
+            // failure — the run simply continues with the next call.
+        }
+    }
+
+    function _signClone(address owner, uint256 key, uint256 parentId, bytes32 configHash)
+        private
+        view
+        returns (bytes memory)
+    {
+        (, string memory name, string memory version, uint256 chainId, address verifying, , ) = coach.eip712Domain();
+
+        bytes32 domain = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes(name)),
+                keccak256(bytes(version)),
+                chainId,
+                verifying
+            )
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "CloneCoach(address owner,uint256 parentId,bytes32 configHash,bytes32 configURIHash,uint256 nonce,uint256 deadline)"
+                ),
+                owner,
+                parentId,
+                configHash,
+                keccak256(bytes("og://clone")),
+                coach.nonceOf(owner),
+                block.timestamp + 1 hours
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, keccak256(abi.encodePacked(hex"1901", domain, structHash)));
+        return abi.encodePacked(r, s, v);
+    }
+
     function transfer(uint256 tokenSeed, uint256 actorSeed) external {
         if (tokens.length == 0) return;
         uint256 id = tokens[tokenSeed % tokens.length];

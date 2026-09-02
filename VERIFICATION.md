@@ -16,11 +16,11 @@ the address the day it does.
 
 | Claim | Check |
 |---|---|
-| `CoachAgent` (ERC-7857) is deployed and readable | [`0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2`](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2) on the 0G explorer |
-| It answers for both 7857 interfaces **on chain** | `cast call 0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
+| `CoachAgent` (ERC-7857) is deployed and readable | [`0x0253fb92F9e88E82Fb0632C076C88204e4400025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) on the 0G explorer |
+| It answers for both 7857 interfaces **on chain** | `cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
 | …and says **no** to an interface nothing implements | same call with `0xdeadbeef` → `false`. This is the row that makes the two above it mean anything: a stub answering `true` to everything passes them and fails only this. |
-| The ERC-7857 transfer actually transfers | `node --env-file=server/.env scripts/prove-transfer.mjs` — mints, re-keys for a fresh buyer, calls `iTransferFrom`, then shows a replayed attestation and one signed for a different buyer both refused. [transfer tx](https://chainscan-galileo.0g.ai/tx/0x4b4bc5ae2cc2e1f61140ad41c3bc7ad799b80ed0319517937b7b9cd2d228bb99) |
-| The transfer verifier is what the coach says it is | `cast call 0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2 "transferVerifier()(address)"` → [`0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B`](https://chainscan-galileo.0g.ai/address/0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B), read off the contract doing the guarding rather than configured here |
+| The ERC-7857 transfer actually transfers | `node --env-file=server/.env scripts/prove-transfer.mjs` — mints, re-keys for a fresh buyer, calls `iTransferFrom`, then shows a replayed attestation and one signed for a different buyer both refused. [transfer tx](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea) |
+| The transfer verifier is what the coach says it is | `cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 "transferVerifier()(address)"` → [`0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B`](https://chainscan-galileo.0g.ai/address/0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B), read off the contract doing the guarding rather than configured here |
 | Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc-testnet.0g.ai` — non-zero, and grows as the app is used |
 | The brain is hash-anchored | `getIntelligentDatas(tokenId)` returns the keccak256 the server verifies ciphertext against before every answer |
 | The contract never holds funds | read its balance on the explorer — zero — then see the invariant that keeps it so: `invariant_ContractNeverHoldsFunds` in `contracts/test/CoachAgentFuzz.t.sol` |
@@ -47,10 +47,10 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 ```bash
 npm --prefix frontend test     # 542 tests — app logic, nutrition, coach memory, sync, offline
 npm test                       # 132 tests  — server, storage backends, rate limits, auth, sync
-cd contracts && forge test     # 90 tests  — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier
+cd contracts && forge test     # 103 tests — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier · 13 clone
 ```
 
-764 in total. `node scripts/counts.mjs` prints these by running the suites, and
+777 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
@@ -72,10 +72,10 @@ number that reaches a person's diet or a loaded bar."
 `node --env-file=server/.env scripts/prove-gasless.mjs` generates a key on the
 spot, funds it with nothing, and drives both actions through the relayer. From a
 run of it: coach **#5**, owner
-[`0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43`](https://chainscan-galileo.0g.ai/address/0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43),
+[`0x885715F1f33aFfBaD28b21C7a048be40336da42e`](https://chainscan-galileo.0g.ai/address/0x885715F1f33aFfBaD28b21C7a048be40336da42e),
 listed at 0.0003 0G/day, balance **0.0 0G** —
-[mint](https://chainscan-galileo.0g.ai/tx/0x86ded4a19776a96cf49ef4abcd8d85c403e778bbdada5201b18388e20042ac70)
-· [listing](https://chainscan-galileo.0g.ai/tx/0xb0d24b1ae3985241a20ce1b997091f6564bddcb4434d765191a359b465a0d38e).
+[mint](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1)
+· [listing](https://chainscan-galileo.0g.ai/tx/0x2f73ae2b66167c9877ef6de816e2d1b5da1e9c776b5ce9154b02ae4a9584b2a1).
 
 Or do it by hand: mint a coach in the app (no wallet involved), open
 **Settings → Proof**, and read the owner address it shows on the explorer. The EIP-712 domain the device signs under is pinned in
@@ -146,6 +146,11 @@ the deployed contract by `scripts/prove-transfer.mjs`.
 | Hire a coach with a payment for a different coach | `402 payment_not_found` |
 | Hire a coach on a rental that has since expired | `403 no_access` — the chain is asked, not the receipt |
 | Quote a coach nobody has listed | `409 not_for_rent` — a different answer from "you have not paid", which would be retried forever |
+| Clone a coach its owner has not offered | `NotCloneable()` |
+| Clone for anything other than the exact price | `WrongPayment(required)` |
+| Price somebody else's coach for cloning | `NotCoachOwner()` |
+| Edit where a clone came from | there is no function that writes the lineage except cloning |
+| Walk a lineage deeper than the caller allows | `generationOf` returns `complete: false` rather than exceeding the gas cap |
 | Publish a progress card about a coach you do not own | `403 not_owner` |
 | Edit a card's claim after signing it | the signature recovers to a different address than the card names, and `valid` is false |
 | Claim more versions, or a longer history, than the chain records | the version and the mint event are re-read; `valid` is false |

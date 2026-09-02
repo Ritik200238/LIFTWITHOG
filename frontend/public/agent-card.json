@@ -27,7 +27,7 @@
       "supported": true,
       "note": "Genuine ERC-7857 Agentic ID. supportsInterface(0x4b396f04) and supportsInterface(0x35d39512) both return true on the deployed contract.",
       "contract": {
-        "16602": "0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2"
+        "16602": "0x0253fb92F9e88E82Fb0632C076C88204e4400025"
       }
     },
     "erc721": {

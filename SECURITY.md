@@ -175,13 +175,13 @@ rather than continuing under a published key. `LEAKED_SECRET_SHA256` in
 ## Current evidence
 
 ```
-CoachAgent                 0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2   (0G Galileo, 16602)
-AttestedTransferVerifier   0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B
+CoachAgent                 0x0253fb92F9e88E82Fb0632C076C88204e4400025   (0G Galileo, 16602)
+AttestedTransferVerifier   0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B
 ```
 
 ```bash
 npm run evidence                                        # every check, read live from 0G
-node scripts/counts.mjs                                 # 764 tests: 542 + 132 + 90
+node scripts/counts.mjs                                 # 777 tests: 542 + 132 + 103
 node scripts/mutate.mjs                                 # 174 seeded faults, 169 caught
 node --env-file=server/.env scripts/prove-gasless.mjs   # owned and listed, holding 0.0 0G
 node --env-file=server/.env scripts/prove-transfer.mjs  # ERC-7857 transfer, and two refusals

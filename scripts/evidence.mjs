@@ -16,7 +16,7 @@ import { ethers } from 'ethers'
 const RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai'
 const CHAIN_ID = 16602
 const EXPLORER = 'https://chainscan-galileo.0g.ai'
-const COACH = process.env.COACH_ADDRESS || '0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2'
+const COACH = process.env.COACH_ADDRESS || '0x0253fb92F9e88E82Fb0632C076C88204e4400025'
 
 const ABI = [
   'function name() view returns (string)',

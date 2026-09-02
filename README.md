@@ -4,11 +4,11 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-764%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-777%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
-[![contract](https://img.shields.io/badge/contract-90%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
+[![contract](https://img.shields.io/badge/contract-103%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
-[![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2)
+[![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)
 [![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
 
 **The AI coach you own. Not a subscription — property.**
@@ -44,7 +44,7 @@ inverts that. The coach is an **ERC-7857 Agentic ID** on 0G Chain that *your dev
   about yourself, not a counter.
 - 🔑 **No wallet. No gas. Still yours.** A key generated on your phone signs EIP-712 messages;
   our relayer pays the fee. The signature names the owner, so the relayer **can pay but cannot
-  redirect ownership**. *Proven on chain: coach `#5`'s owner holds `0.0 0G` and owns it anyway.*
+  redirect ownership**. *Proven on chain: coach `#4`'s owner holds `0.0 0G` and owns it anyway.*
 - 🔒 **Advice that can prove where it ran.** Every answer comes from a TEE-attested enclave on
   0G Compute, attestation verified per response. No attested provider live? The app **refuses**
   — it never silently falls back to an unattested one. Privacy is a checked property here,
@@ -65,14 +65,14 @@ Built for the **0G Buildathon**. Designed to outlive it.
 ## The proof — read the chain, not the README
 
 `CoachAgent` is live on 0G Galileo at
-[`0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2`](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2),
+[`0x0253fb92F9e88E82Fb0632C076C88204e4400025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025),
 wired to a transfer verifier at
-[`0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B`](https://chainscan-galileo.0g.ai/address/0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B).
+[`0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B`](https://chainscan-galileo.0g.ai/address/0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B).
 Ask it — not us — whether it really speaks ERC-7857:
 
 ```bash
 $ for id in 0x4b396f04 0x35d39512 0x80ac58cd 0xdeadbeef; do
-    cast call 0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2 \
+    cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 \
       "supportsInterface(bytes4)(bool)" $id --rpc-url https://evmrpc-testnet.0g.ai
   done
 true     # 0x4b396f04  ERC-7857
@@ -91,15 +91,15 @@ The same four are read live, in your browser, on [/#/verify](https://liftwithog.
 ### Owning a coach costs the owner nothing
 
 ```text
-ownerOf(5)               → 0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43
-rentalPrice(5)           → 0.0003 0G / day
+ownerOf(4)               → 0x885715F1f33aFfBaD28b21C7a048be40336da42e
+rentalPrice(4)           → 0.0003 0G / day
 balance of that owner    → 0.0 0G   ← owns it, listed it, has never held a coin
 ```
 
-Coach `#5` above came from `scripts/prove-gasless.mjs`, which generates a key on the spot,
+Coach `#4` above came from `scripts/prove-gasless.mjs`, which generates a key on the spot,
 funds it with nothing, and drives both actions through the relayer:
-[mint](https://chainscan-galileo.0g.ai/tx/0x86ded4a19776a96cf49ef4abcd8d85c403e778bbdada5201b18388e20042ac70)
-· [listing](https://chainscan-galileo.0g.ai/tx/0xb0d24b1ae3985241a20ce1b997091f6564bddcb4434d765191a359b465a0d38e).
+[mint](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1)
+· [listing](https://chainscan-galileo.0g.ai/tx/0x2f73ae2b66167c9877ef6de816e2d1b5da1e9c776b5ce9154b02ae4a9584b2a1).
 
 The relayer cannot take what it pays for: `owner` is a field inside every message the
 device signs, so a relayer wanting the coach for itself would be submitting a signature
@@ -122,15 +122,15 @@ on the spot, has the attestor sign that exact hand-over, and calls `iTransferFro
 ```text
 minting…        coach #1
 transferring…   done
-  owner is now  0x24B0f79D33cc07AE6C65d01ACDb5bcF7CE31C1ab
+  owner is now  0x412eF98C76535656D5B6d68b2d93dad9cF83E511
 
 refusals, against the same deployed contract:
   ✓ the same attestation, replayed        — refused
   ✓ an attestation signed for somebody else — refused
 ```
 
-[mint](https://chainscan-galileo.0g.ai/tx/0x213039d56c8f15b06d16e64aa9a3d4f9c530790cf858448ebabd7d1919583903)
-· [transfer](https://chainscan-galileo.0g.ai/tx/0x4b4bc5ae2cc2e1f61140ad41c3bc7ad799b80ed0319517937b7b9cd2d228bb99)
+[mint](https://chainscan-galileo.0g.ai/tx/0x6e290e70711350dcf9b1f160060cc5d195f31dc11713a1541384366d300235e4)
+· [transfer](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea)
 
 The refusals are half the proof: a transfer that always succeeds is not a check.
 
@@ -269,9 +269,40 @@ sequenceDiagram
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
 | Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**764 tests**: 542 frontend · 132 server · 90 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier).
+**777 tests**: 542 frontend · 132 server · 103 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier, 13 clone).
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
+
+**Coaching methods spread, and the trainer keeps the credit.** ERC-7857 defines `clone()`;
+nobody on 0G has a working clone *economy*. Renting borrows a method for a while; cloning
+takes a copy that trains on somebody else's data and diverges — which is what actually
+happens when a person buys a programme. The descent is on chain and cannot be edited out,
+including by whoever holds a third-generation copy.
+
+```text
+$ node --env-file=server/.env scripts/prove-clone.mjs
+
+trainer   0xF7a3Ed4d…faffBF  (generated now, holds 0.0 0G)
+  minting the original …………………… coach #15
+  cloning #15 for a new owner ……… coach #16   the trainer received the full price
+  cloning #16 for a third owner …… coach #17   #16's owner received the full price
+
+  parentOf(17) → #16      parentOf(16) → #15      parentOf(15) → #0
+  generationOf(17) → 3, walk complete: true
+  the trainer now holds 0.001 0G — all of it from clones
+  contract balance 0.0 0G
+```
+
+[generation 2](https://chainscan-galileo.0g.ai/tx/0xdda37f7b0c09d900f6224ac4c27c1dc225335b55509a2a88b790a67c03aae21c)
+· [generation 3](https://chainscan-galileo.0g.ai/tx/0x69b752d7d4cce130cbdf482511891e6a8513ec7876f039d1fb555aa8d86a7d0a)
+
+**Not one address in that line has ever held a coin** — trainer included. The relayer paid
+every fee and every clone price; the money still reached the right owner, because the
+contract forwards it inside the call that brought it and has no withdraw function.
+
+The standard's own `iCloneFrom` is implemented too, attestation-gated like a transfer, so
+an indexer or marketplace finds what it expects. `supportsInterface(0xd79f01c7)` returns
+true on the deployed contract.
 
 **A progress card a stranger can check.** Gym people already post their lifts, and the
 number is always somebody's word for it. Three things about a coach are facts nobody can
@@ -360,12 +391,12 @@ Also: `npm run evidence` · [VERIFICATION.md](VERIFICATION.md).
 Nothing below needs an extension, an account, a signature, or a coin. Three links
 and one command:
 
-1. **[The contract](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2)**
+1. **[The contract](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)**
    — every coach ever minted, every version, every listing.
-2. **[The transfer](https://chainscan-galileo.0g.ai/tx/0x4b4bc5ae2cc2e1f61140ad41c3bc7ad799b80ed0319517937b7b9cd2d228bb99)**
+2. **[The transfer](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea)**
    — an ERC-7857 intelligent transfer that moved a coach, not a revert.
-3. **[The gasless mint](https://chainscan-galileo.0g.ai/tx/0x86ded4a19776a96cf49ef4abcd8d85c403e778bbdada5201b18388e20042ac70)**
-   — and the [owner it went to](https://chainscan-galileo.0g.ai/address/0xF003D9116147AF7Bbc1E50b7bc3b894a827C0D43),
+3. **[The gasless mint](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1)**
+   — and the [owner it went to](https://chainscan-galileo.0g.ai/address/0x885715F1f33aFfBaD28b21C7a048be40336da42e),
    holding nothing.
 4. `./verify.sh live` — reads all of the above over RPC, including the control.
 
@@ -385,8 +416,8 @@ the wallet is short, and skips any step already done.
 
 | Requirement | Where |
 |---|---|
-| 0G contract address + explorer | [`0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2`](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2) on Galileo — mainnet (Aristotle `16661`) ships via the same one-command deploy, this line gains that address the day it lands |
-| On-chain activity | 5 coaches minted, 3 listed for rent, versions climbing — [explorer](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2), or the live [/#/verify](https://liftwithog.vercel.app/#/verify) counter |
+| 0G contract address + explorer | [`0x0253fb92F9e88E82Fb0632C076C88204e4400025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) on Galileo — mainnet (Aristotle `16661`) ships via the same one-command deploy, this line gains that address the day it lands |
+| On-chain activity | 5 coaches minted, 3 listed for rent, versions climbing — [explorer](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025), or the live [/#/verify](https://liftwithog.vercel.app/#/verify) counter |
 | Proof of 0G integration | `supportsInterface` answered by deployed bytecode, `npm run evidence`, [VERIFICATION.md](VERIFICATION.md) |
 | Architecture | [ARCHITECTURE.md](ARCHITECTURE.md) — diagrams, flows, trust model, honest non-integrations |
 | Security | [SECURITY.md](SECURITY.md) — ten fixed findings with evidence, six open risks · [THREAT-MODEL.md](THREAT-MODEL.md) — attacker model, abuse paths, what is not defended |

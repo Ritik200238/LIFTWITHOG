@@ -213,9 +213,52 @@ export const useCoach = create((set, get) => ({
       const onChain = await (await chain()).readCoach(readProvider(), tokenId)
       set({ version: onChain.version })
       save({ ...get(), version: onChain.version })
+
+      /*
+       * A coach that has learned, on a device holding no record of it.
+       *
+       * That is a reinstall, a cleared site, or simply a second phone — and it
+       * used to mean the screen headed "What it knows" was empty while the
+       * record sat on 0G Storage, hashed on chain, intact. The one feature
+       * demonstrating that a coach outlives its device was the one a reinstall
+       * destroyed.
+       *
+       * Only when there is a gap worth filling: a coach past version 1 with
+       * nothing remembered locally. Costs a request on exactly the devices that
+       * need one, and never on the device that already has the record.
+       */
+      if (onChain.version > 1 && (get().memory ?? []).length === 0) {
+        await get().recallMemory()
+      }
     } catch {
       // Offline, or a wallet on the wrong network. The cached view stands; it
       // is a version number, not something anybody acts on blindly.
+    }
+  },
+
+  /**
+   * Pull the coaching record back from 0G, for a device that has none.
+   *
+   * Quiet by design, like `maybeEvolve`: it is a repair, and a repair that
+   * interrupts somebody with an error is worse than one that waits for the next
+   * time the app opens. The screen shows its own empty state meanwhile.
+   */
+  recallMemory: async () => {
+    const { tokenId } = get()
+    if (!tokenId) return { recalled: false }
+
+    try {
+      const { deviceSignerForAsk, recallMemory } = await import('../lib/coachAsk.js')
+      const signer = await deviceSignerForAsk()
+      const { memory } = await recallMemory(signer, tokenId)
+
+      if (!memory.length) return { recalled: false }
+
+      set({ memory })
+      save({ ...get(), memory })
+      return { recalled: true, count: memory.length }
+    } catch {
+      return { recalled: false }
     }
   },
 

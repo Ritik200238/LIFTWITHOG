@@ -658,3 +658,104 @@ test('nothing attested means nothing is returned, so the caller refuses', async 
   assert.equal(pickAttested(null), null);
   assert.equal(pickAttested(undefined), null);
 });
+
+/**
+ * Giving an owner back what their coach learned.
+ *
+ * The coaching record lived in one browser's local storage, so a new phone or a
+ * cleared site showed an empty screen while the record itself sat on 0G Storage,
+ * hashed on chain, intact. A product arguing that a coach outlives the device it
+ * was made on cannot have its clearest demonstration of that be the thing a
+ * reinstall destroys.
+ */
+
+const RECALL_OWNER = '0x' + '1f'.repeat(20);
+
+const recallRequest = async (wallet, tokenId, now) => ({
+  tokenId: String(tokenId),
+  issuedAt: now,
+  signature: await wallet.signMessage(
+    ['LIFTWITHOG coach request', `coach: ${tokenId}`, `issued: ${now}`].join('\n'),
+  ),
+});
+
+test('an owner gets their coaching record back, and only the memory', async () => {
+  const { recall } = await import('./coach.js');
+  const wallet = ethers.Wallet.createRandom();
+  const now = Date.now();
+
+  const memory = [{ version: 3, notes: [{ kind: 'progress', text: 'Squat: 100 kg → 105 kg.' }] }];
+  const config = JSON.stringify({
+    sessions: 40,
+    bodyweight: 78.5,
+    memory,
+    memoryDigest: 'v3:\n  - Squat: 100 kg → 105 kg.',
+  });
+
+  const result = await recall(await recallRequest(wallet, 7, now), {
+    now,
+    contract: {
+      ownerOf: async () => wallet.address,
+      coachOf: async () => [ethers.ZeroHash, 'og://root', 3n, 0n],
+    },
+    loadConfig: async () => config,
+  });
+
+  assert.deepEqual(result.memory, memory);
+  assert.equal(result.version, 3);
+
+  /*
+   * The rest of the payload must not travel. `leaksConfig` exists to stop the
+   * model reciting the profile; an endpoint that returned the whole object
+   * would hand over exactly what that check withholds.
+   */
+  const serialised = JSON.stringify(result);
+  assert.ok(!serialised.includes('78.5'), 'a bodyweight left with the memory');
+  assert.ok(!serialised.includes('memoryDigest'), 'the prompt digest left with the memory');
+});
+
+test('a renter cannot read the notes a coach kept about somebody else', async () => {
+  /*
+   * Deliberately stricter than `advise`. Renting buys questions, not a reading
+   * of another person's training history — so this checks `ownerOf`, where the
+   * ask path checks `hasAccess`.
+   */
+  const { recall } = await import('./coach.js');
+  const renter = ethers.Wallet.createRandom();
+  const now = Date.now();
+
+  const request = await recallRequest(renter, 7, now);
+
+  await assert.rejects(
+    () =>
+      recall(request, {
+        now,
+        contract: {
+          ownerOf: async () => RECALL_OWNER,
+          // Access granted — and still refused, which is the point.
+          hasAccess: async () => true,
+          coachOf: async () => [ethers.ZeroHash, 'og://root', 3n, 0n],
+        },
+        loadConfig: async () => '{}',
+      }),
+    (error) => error.code === 'not_owner' && error.status === 403,
+  );
+});
+
+test('a seeded coach with no memory is empty, not an error', async () => {
+  // House coaches carry a method description rather than a profile object.
+  const { recall } = await import('./coach.js');
+  const wallet = ethers.Wallet.createRandom();
+  const now = Date.now();
+
+  const result = await recall(await recallRequest(wallet, 2, now), {
+    now,
+    contract: {
+      ownerOf: async () => wallet.address,
+      coachOf: async () => [ethers.ZeroHash, 'og://root', 1n, 0n],
+    },
+    loadConfig: async () => 'You coach a six-day Push/Pull/Legs split.',
+  });
+
+  assert.deepEqual(result.memory, []);
+});

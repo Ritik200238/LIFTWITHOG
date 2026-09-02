@@ -9,7 +9,7 @@ import {
   generateAuthenticationOptions, verifyAuthenticationResponse
 } from '@simplewebauthn/server';
 import webpush from 'web-push';
-import { CoachError, advise } from './coach.js';
+import { CoachError, advise, recall } from './coach.js';
 import {
   RelayError,
   callerIp,
@@ -822,6 +822,32 @@ const routes = {
        */
       console.error('coach advice failed:', e);
       return json(res, 500, { error: 'server_error', message: 'The coach could not answer.' });
+    }
+  },
+
+  /**
+   * What this coach has learned, for the person who owns it.
+   *
+   * The coaching record is the product's answer to "it learns from your
+   * training", and it lived in one browser's local storage — so changing phone
+   * emptied the screen while the record itself sat on 0G Storage, hashed on
+   * chain, intact. Owner-only, and only the memory comes back: the rest of the
+   * payload is what the ask path takes care never to emit.
+   */
+  'POST /api/coach/recall': async (req, res) => {
+    const body = await readBody(req);
+
+    try {
+      const { memory, version } = await recall(
+        { tokenId: body.tokenId, issuedAt: body.issuedAt, signature: body.signature },
+        { loadConfig: loadConfigFromStorage },
+      );
+
+      return json(res, 200, { memory, version });
+    } catch (e) {
+      if (e instanceof CoachError) return json(res, e.status, { error: e.code, message: e.message });
+      console.error('coach recall failed:', e);
+      return json(res, 500, { error: 'server_error', message: 'That could not be read.' });
     }
   },
 

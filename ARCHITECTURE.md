@@ -77,9 +77,10 @@ verifiable, and older than any app that reads it.
 
 **Why 0G specifically — with the arithmetic, because the claim is falsifiable.**
 
-The architecture's bet is that the coach evolves after **every** workout. That
-one decision is what makes the version count mean something, and it is also
-what makes the cost question decisive.
+The architecture's bet is that the coach evolves **automatically**, without
+anybody deciding a fee is worth paying. That is what makes the version count a
+record of training rather than of somebody's budget, and it is what makes the
+cost question decisive.
 
 An evolve is a storage write plus a chain transaction, and it does not happen
 after every workout — `SESSIONS_PER_EVOLVE` in `frontend/src/lib/flywheel.js`
@@ -151,7 +152,7 @@ arithmetic above is the answer.
 | `authorizeUsage / revokeAuthorization` | open-ended executor grants (7857) |
 | `rent()` | paid, **expiring** access: payment reaches the trainer in the same transaction that grants it |
 | epoch counter | a sale voids every grant in **constant gas** — a coach with a thousand renters must never become impossible to sell |
-| `iTransferFrom` + immutable verifier | transfer with re-encryption proof; deployed verifier-less it **refuses rather than pretends** |
+| `iTransferFrom` + immutable verifier | transfer with a re-encryption proof that binds the sealed key, the recipient's public key and a nonce that is spent — [proven on chain](https://chainscan-galileo.0g.ai/tx/0x4b4bc5ae2cc2e1f61140ad41c3bc7ad799b80ed0319517937b7b9cd2d228bb99), with a replayed attestation and one signed for another buyer both refused |
 
 Design positions worth naming: the contract holds no funds and has no
 withdraw, owner, admin, pause or upgrade path. Nobody — including us — can
@@ -300,7 +301,7 @@ Same code, two postures: convenience on Vercel, custody on your own box.
 
 ## Engineering discipline
 
-- **728 tests**: 543 frontend (vitest) · 97 server (node:test) · 88 contract
+- **734 tests**: 543 frontend (vitest) · 103 server (node:test) · 88 contract
   (Foundry: 42 unit, 9 fuzz properties, 5 invariants driven through random
   call sequences, 16 on the ERC-7857 surface).
 - **Mutation testing** (`node scripts/mutate.mjs`): 174 deliberate faults —

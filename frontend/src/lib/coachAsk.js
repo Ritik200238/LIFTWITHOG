@@ -108,3 +108,43 @@ export async function walletSigner() {
   const { ethers } = await import('ethers')
   return new ethers.BrowserProvider(window.ethereum).getSigner()
 }
+
+/**
+ * What this coach has learned, fetched back from 0G.
+ *
+ * The coaching record is the app's answer to "it learns from your training",
+ * and it lived in one browser's local storage — so a new phone, or cleared site
+ * data, showed an empty screen while the record itself sat on 0G Storage,
+ * hashed on chain, intact. A product whose argument is that a coach outlives
+ * the device it was made on cannot have its clearest demonstration of that be
+ * the thing a reinstall destroys.
+ *
+ * It has to come from the server: the payload is sealed to the service key, so
+ * this browser could not open it even holding the bytes. Owner-only on the
+ * server side — a renter may ask a coach questions, not read the notes it kept
+ * about somebody else's body.
+ */
+export async function recallMemory(signer, tokenId, opts = {}) {
+  const issuedAt = opts.now ?? Date.now()
+  const signature = await signer.signMessage(challengeFor(tokenId, issuedAt))
+
+  const response = await fetch('/api/coach/recall', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tokenId: String(tokenId), issuedAt, signature }),
+  })
+
+  const payload = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new CoachAskError(
+      payload.message || `That could not be read (${response.status}).`,
+      payload.error || 'request_failed',
+    )
+  }
+
+  return {
+    memory: Array.isArray(payload.memory) ? payload.memory : [],
+    version: Number(payload.version) || 0,
+  }
+}

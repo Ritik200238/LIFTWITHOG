@@ -265,6 +265,72 @@ export async function advise(request, deps) {
   return { answer: String(answer ?? '').trim(), address };
 }
 
+/**
+ * Give an owner back what their coach has learned.
+ *
+ * The coaching record is the answer to "it learns from your training", and it
+ * lived in one browser's local storage. Change phone, clear site data, or open
+ * the app anywhere else, and the screen headed *What it knows* was empty — while
+ * the record itself sat on 0G Storage, hashed on chain, perfectly intact. The
+ * product's own argument is that a coach outlives the device it was made on, and
+ * the one screen demonstrating that could not survive a reinstall.
+ *
+ * It cannot be recovered in the browser: the payload is sealed to this service,
+ * so only this service can open it. That is the same trade the ask path makes,
+ * and it is why this endpoint exists rather than a decryption in the client.
+ *
+ * **Owner only** — deliberately narrower than `advise`. A renter may ask a coach
+ * questions; they have no business reading the notes it kept about somebody
+ * else's body. `hasAccess` would have let them, which is why this checks
+ * `ownerOf` instead.
+ */
+export async function recall(request, deps) {
+  const { tokenId, issuedAt, signature } = request;
+  const now = deps.now ?? Date.now();
+
+  const address = recoverCaller({ tokenId, issuedAt, signature }, now);
+  const contract = deps.contract ?? coachReader(deps.provider ?? defaultProvider());
+
+  let owner;
+  try {
+    owner = await contract.ownerOf(tokenId);
+  } catch (error) {
+    throw new CoachError(404, 'no_such_coach', `No coach ${tokenId}: ${error.shortMessage || error.message}`);
+  }
+
+  if (ethers.getAddress(owner) !== address) {
+    throw new CoachError(403, 'not_owner', 'Only the owner of a coach can read what it remembers.');
+  }
+
+  const { configURI, configHash, version } = await readCoachRecord(contract, tokenId);
+  const config = await deps.loadConfig(configURI, configHash);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(config);
+  } catch {
+    /*
+     * A seeded house coach carries a method description rather than a profile,
+     * and has no memory to return. Not an error — there is simply nothing here.
+     */
+    return { memory: [], version, address };
+  }
+
+  /*
+   * Only the memory leaves, never the profile.
+   *
+   * The record is the sentences somebody is entitled to read about their own
+   * training. The rest of the payload is the material the ask path is careful
+   * never to emit, and an endpoint that returned the whole object would undo
+   * `leaksConfig` by simply handing over what it exists to withhold.
+   */
+  return {
+    memory: Array.isArray(parsed.memory) ? parsed.memory : [],
+    version,
+    address,
+  };
+}
+
 async function readCoachRecord(contract, tokenId) {
   try {
     const [configHash, configURI, version] = await contract.coachOf(tokenId);

@@ -22,6 +22,7 @@
  * has to know the other exists.
  */
 
+import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -393,5 +394,24 @@ function postgresStore(databaseUrl) {
  * DATABASE_URL decides. Nothing else in the server knows which one it got.
  */
 export function createStore({ databaseUrl = process.env.DATABASE_URL, dataDir } = {}) {
-  return databaseUrl ? postgresStore(databaseUrl) : fileStore(dataDir || process.env.DATA_DIR || '/data');
+  return databaseUrl ? postgresStore(databaseUrl) : fileStore(dataDir || defaultDataDir());
+}
+
+/**
+ * Where files go when nothing says otherwise.
+ *
+ * `/data` was the default, and it is the right path in the container — the
+ * image sets DATA_DIR to it and render.yaml mounts a disk there, so production
+ * is unaffected by this. Everywhere else it was wrong in two directions at
+ * once: on Linux it is root-owned, so importing a module that made a store
+ * failed outright, and on Windows it resolves to the root of the current drive,
+ * where it had quietly been accumulating storage blobs for weeks. Neither is
+ * something a person running the tests asked for.
+ *
+ * The fallback is inside the server directory instead, next to the code that
+ * writes it, ignored by git, and removable without thinking about it.
+ */
+export function defaultDataDir() {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  return path.join(path.dirname(fileURLToPath(import.meta.url)), '.data');
 }

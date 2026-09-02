@@ -36,7 +36,17 @@ import { ethers } from 'ethers';
 import { CoachError, OG_CHAIN_ID, OG_RPC, coachReader, defaultProvider } from './coach.js';
 import { createStore } from './store.js';
 
-const store = createStore();
+/**
+ * The idempotency store, made on first use rather than on import.
+ *
+ * A module that creates its store at import time does filesystem work as a
+ * side effect of being read. Importing this file to test a pure function, or to
+ * check that the image copies it, created a directory — and on a Linux runner,
+ * where the old default was root-owned, importing it failed before a single
+ * test ran.
+ */
+let _store = null;
+const store = () => (_store ??= createStore());
 
 /** The event our contract emits when somebody pays for access. */
 const RENTED = 'event Rented(uint256 indexed tokenId, address indexed renter, uint64 expiresAt, uint256 paid)';
@@ -127,7 +137,7 @@ export async function redeem({ tokenId, txHash, question, caller }, deps = {}) {
    * instant it lands, so the second caller is whoever is watching the chain.
    * The replay shortcut had quietly become a way to never pay at all.
    */
-  const existing = await store.readState?.(jobKey(txHash)).catch(() => null);
+  const existing = await store().readState?.(jobKey(txHash)).catch(() => null);
   if (existing?.answer) {
     if (caller && existing.renter && ethers.getAddress(caller) !== ethers.getAddress(existing.renter)) {
       throw new CoachError(403, 'not_the_renter', 'That payment was made by somebody else.');
@@ -196,7 +206,7 @@ export async function redeem({ tokenId, txHash, question, caller }, deps = {}) {
   const result = { answer: String(answer ?? '').trim(), tokenId: String(tokenId), renter };
 
   // Consumed after the work succeeded, so a failure mid-way is retryable.
-  await store.writeState?.(jobKey(txHash), result).catch(() => {});
+  await store().writeState?.(jobKey(txHash), result).catch(() => {});
 
   return { ...result, replayed: false };
 }

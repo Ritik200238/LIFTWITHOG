@@ -97,6 +97,8 @@ check guards "no proof is claimed that cannot be re-checked" \
   bash -c 'cd server && node --test attestation.test.js'
 check guards "vercel.json is a config Vercel will accept" \
   bash -c 'cd server && node --test vercelConfig.test.js'
+check guards "importing a module writes nothing to disk" \
+  bash -c 'cd server && node --test storePath.test.js'
 
 # ---------------------------------------------------------------- mutation
 

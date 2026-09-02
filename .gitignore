@@ -35,3 +35,7 @@ npm-debug.log*
 # is the one env file that belongs in the repo.
 .vercel
 .env.local
+
+# The file store's local home. `/data` is the container path, set explicitly
+# by the image and by render.yaml; this is where a local run or a test writes.
+server/.data/

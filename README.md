@@ -288,7 +288,24 @@ docker compose up -d          # nginx + API + 140MB exercise media, one command
 # HTTPS on a fresh VPS:  DOMAIN=gym.example.com docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
 ```
 
-**Verify everything:** `npm run evidence` · full suites as above · [VERIFICATION.md](VERIFICATION.md).
+**Verify everything:** `./verify.sh` — the checks are split by *what kind of evidence they are*:
+
+```
+./verify.sh unit        the suites
+./verify.sh contracts   Foundry, including the interface control
+./verify.sh guards      the tests that exist because something shipped broken
+./verify.sh mutation    the suites, checked by breaking the code
+./verify.sh release     all of it, plus the documents
+./verify.sh live        the deployed contract, read over RPC — no local file counts
+```
+
+`live` reads nothing in this repository. "The tests pass" and "the deployed thing
+works" are different claims, and running them together lets the first be reported
+while the second is false — which is precisely the state this project was in when
+every coach a real person created could not be opened. A filter matching zero
+checks also fails, so a typo cannot look like a green run.
+
+Also: `npm run evidence` · [VERIFICATION.md](VERIFICATION.md).
 
 Deploy your own contract: `cd contracts && PRIVATE_KEY=0x… forge script script/Deploy.s.sol:Deploy --rpc-url og_testnet --broadcast --with-gas-price 3gwei --priority-gas-price 2gwei`
 

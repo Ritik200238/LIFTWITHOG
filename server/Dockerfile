@@ -10,7 +10,7 @@ RUN npm install --omit=dev && npm cache clean --force
 # only shows itself at run time, never at build time.
 # coachEnvelope.js is what opens a coach; without it the image starts and every
 # question fails, which is the same class of run-time-only breakage.
-COPY server.js store.js coach.js coach-runtime.js coachEnvelope.js relayer.js sync.js ./
+COPY server.js store.js coach.js coach-runtime.js coachEnvelope.js ogProvider.js relayer.js sync.js ./
 
 # Where users, passkeys, per-user state and the session secret live. On Render
 # this is a mounted disk when one is attached, and ephemeral when it is not —

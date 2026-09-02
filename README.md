@@ -259,6 +259,12 @@ sequenceDiagram
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
 
+**What we have actually got wrong, and what is still open:**
+**[SECURITY.md](SECURITY.md)** lists ten findings from this codebase with the code and the
+test that closed each, then six risks that are still open.
+**[THREAT-MODEL.md](THREAT-MODEL.md)** has the attacker model — including what an attacker
+*cannot* do and why, enforced by code rather than by policy.
+
 ---
 
 ## Run it yourself
@@ -301,6 +307,7 @@ the wallet is short, and skips any step already done.
 | On-chain activity | 5 coaches minted, 3 listed for rent, versions climbing — [explorer](https://chainscan-galileo.0g.ai/address/0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2), or the live [/#/verify](https://liftwithog.vercel.app/#/verify) counter |
 | Proof of 0G integration | `supportsInterface` answered by deployed bytecode, `npm run evidence`, [VERIFICATION.md](VERIFICATION.md) |
 | Architecture | [ARCHITECTURE.md](ARCHITECTURE.md) — diagrams, flows, trust model, honest non-integrations |
+| Security | [SECURITY.md](SECURITY.md) — ten fixed findings with evidence, six open risks · [THREAT-MODEL.md](THREAT-MODEL.md) — attacker model, abuse paths, what is not defended |
 | 0G modules used & how | table above, with file-level links |
 | Reproduction steps | "Run it yourself", above — hosted and sovereign |
 
@@ -326,6 +333,6 @@ everything above `1.0.0` in the [CHANGELOG](CHANGELOG.md) is this project's work
 
 <div align="center">
 
-**[Live app](https://liftwithog.vercel.app)** · **[Verify](https://liftwithog.vercel.app/#/verify)** · **[Architecture](ARCHITECTURE.md)** · **[Every claim, checked](VERIFICATION.md)** · **[Changelog](CHANGELOG.md)**
+**[Live app](https://liftwithog.vercel.app)** · **[Verify](https://liftwithog.vercel.app/#/verify)** · **[Architecture](ARCHITECTURE.md)** · **[Every claim, checked](VERIFICATION.md)** · **[Security](SECURITY.md)** · **[Threat model](THREAT-MODEL.md)** · **[Changelog](CHANGELOG.md)**
 
 </div>

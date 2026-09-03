@@ -49,14 +49,21 @@ function Sheet({ sheet }) {
     return (
       <div>
         <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-        <div className="center">{sheet.render(close)}</div>
+        <div className="center" role="dialog" aria-modal="true">{sheet.render(close)}</div>
       </div>
     )
   }
   return (
     <div>
       <div className="mback" onClick={() => { if (!sheet.locked) close() }} />
-      <div className="sheet" ref={ref} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div
+        className="sheet"
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
         <div className="grab" />
         {sheet.render(close)}
       </div>
@@ -122,6 +129,32 @@ export default function Modals() {
   }, [sheets.length > 0])
 
   // lock the page behind any open sheet (iOS-safe)
+  /*
+   * Escape closes the top sheet — the keyboard's version of the back gesture.
+   *
+   * The whole app runs on sheets, and until now the only ways out were a tap on
+   * the backdrop, a drag, or the device's back button. All three are touch or
+   * platform gestures, so somebody on a keyboard could open the exercise picker
+   * and have no way to leave it. It mirrors the back handler exactly, including
+   * the lock: a locked sheet — the finish summary, a mid-write flow — refuses
+   * both.
+   */
+  useEffect(() => {
+    if (!sheets.length) return
+
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      const ui = useUI.getState()
+      const top = ui.sheets[ui.sheets.length - 1]
+      if (!top || top.locked) return
+      e.preventDefault()
+      ui.closeSheet(top.id)
+    }
+
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [sheets.length])
+
   useEffect(() => {
     if (!sheets.length) return
     const y = window.scrollY || 0

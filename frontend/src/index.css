@@ -1320,6 +1320,12 @@ h4.sec{
     display:flex;flex-direction:column;align-items:center;
   }
   #app > *{width:100%;max-width:760px}
+  /*
+   * A sign-in form is not a page of content. Three buttons stretched across
+   * 760px read as a banner and give the eye no shape to aim at, so the entry
+   * screen keeps a form's width wherever it appears.
+   */
+  #app > .narrow{max-width:420px}
   /* Where a screen really does hold two things, it gets the room for them. */
   #app > .cols,#app > .wide{max-width:1080px}
 

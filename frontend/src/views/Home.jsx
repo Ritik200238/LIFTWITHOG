@@ -55,7 +55,17 @@ export default function Home() {
 
   return <div className="narrow">
     <div className="hdr">
-      <div><h1>{user ? t('Hi {0}', user.name) : 'LIFTWITHOG'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
+      {/*
+        * The date above the greeting, which is the handoff's order and the
+        * right one. A phone screen opened at 6am does not need to be told
+        * which app it is — the wordmark was the largest thing on the most-used
+        * screen and said nothing. The date is the orienting fact; the line
+        * under it is the only place the product speaks to the person.
+        */}
+      <div>
+        <div className="eyebrow">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+        <h1>{user ? t('Hi {0}', user.name) : t('Ready when you are.')}</h1>
+      </div>
       <button className="iconbtn" onClick={() => nav('/settings')} aria-label={t('Settings')}><Icon name="gear" /></button>
     </div>
 

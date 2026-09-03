@@ -140,6 +140,57 @@ a hardware enclave. That sentence is in the verifier contract's own source, not 
 
 ---
 
+## What this contract cannot do to you
+
+Most of what an agent NFT promises is undone by the admin key nobody mentions.
+A pausable token is one wallet away from freezing every owner; an upgradeable
+one can be rewritten under them; a swappable verifier means the rules of
+ownership are a setting. Those are all normal, and all of them mean the agent is
+yours until somebody decides otherwise.
+
+This contract has none of them, and the absence is checkable in one command:
+
+```bash
+grep -rc "Ownable\|AccessControl\|onlyOwner\|onlyRole\|Pausable\|whenNotPaused\|UUPS\|upgradeTo\|_authorizeUpgrade\|selfdestruct\|delegatecall" contracts/src
+# every file: 0
+```
+
+| Power a contract usually keeps | Here | Where to check |
+|---|---|---|
+| Pause transfers, minting or use | **Does not exist.** No `Pausable`, no `whenNotPaused` anywhere | the grep above |
+| Upgrade the logic under owners | **Does not exist.** No proxy, no UUPS, no `_authorizeUpgrade` | the grep above |
+| An owner or admin role | **Does not exist.** No `Ownable`, no `AccessControl`, no `onlyOwner`, no `onlyRole` | the grep above |
+| Swap the transfer verifier | **Impossible.** `address public immutable transferVerifier` | [`CoachAgent.sol:123`](contracts/src/CoachAgent.sol) |
+| Swap the attestor behind that verifier | **Impossible.** `address public immutable attestor` | [`AttestedTransferVerifier.sol:48`](contracts/src/AttestedTransferVerifier.sol) |
+| Hold or divert your money | **Cannot.** Rent and clone fees leave in the same call, proven by an invariant | `invariant_ContractNeverHoldsFunds`, `testFuzz_TheTrainerIsPaidEverythingAndTheContractKeepsNothing` |
+| Destroy the contract | **Does not exist.** No `selfdestruct`, no `delegatecall` | the grep above |
+
+The cost of this is real and stated rather than hidden: **there is no admin to
+rescue anybody either.** A bug cannot be paused around, and the attestor key
+cannot be rotated — if it leaks, the answer is a new deployment that owners
+migrate to by choice. That trade is deliberate. Property whose rules can be
+changed under it by a third party is custody wearing a different name, and an
+attestation that never expires is a bearer token, which is why attestations
+carry a signed deadline instead ([`AttestedTransferVerifier.sol:86`](contracts/src/AttestedTransferVerifier.sol)).
+
+## What the server cannot read
+
+| | How it is enforced | Where to check |
+|---|---|---|
+| Your coach's method | Sealed on the device with ECDH + AES-256-GCM before it is sent; the server relays ciphertext it has no key for | [`server/coachEnvelope.js`](server/coachEnvelope.js) |
+| Your training history in a backup | Encrypted on the device; the server pays the storage fee and never sees plaintext | [`frontend/src/lib/ogVault.js`](frontend/src/lib/ogVault.js) |
+| — asserted, not asserted about | A test fails if a workout or a number appears in what leaves the browser | `ogVault.test.js:71` — *"sends ciphertext, never the training history"* |
+
+## What the coach refuses to do
+
+Advice is produced inside a TEE-attested enclave on 0G Compute or not at all.
+`processResponse` is checked per response and only `true` passes — `null` means
+verification was *skipped* and is refused too, because the quietest way to end
+up fail-open is to treat a missing answer as a yes
+([`coach-runtime.js:513-535`](server/coach-runtime.js)). Every attested provider
+is tried; when the list runs out the request fails with `503 no_tee`. There is
+no unattested last resort, and `coachCompute.test.js` fails if one is added.
+
 ## The product
 
 <div align="center">

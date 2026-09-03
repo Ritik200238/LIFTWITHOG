@@ -113,6 +113,8 @@ check release "no document claims a test count by hand" \
   bash -c '! grep -rnE "\*\*6(41|68) tests|529 frontend|164 (seeded|deliberate)" README.md ARCHITECTURE.md VERIFICATION.md'
 check release "the security documents exist and name their open risks" \
   bash -c 'grep -q "Open risks" SECURITY.md && grep -q "Non-capabilities" THREAT-MODEL.md'
+check release "the contract still has no admin, pause or upgrade" \
+  bash -c '! grep -rqE "Ownable|AccessControl|onlyOwner|onlyRole|Pausable|whenNotPaused|UUPS|upgradeTo|_authorizeUpgrade|selfdestruct|delegatecall" contracts/src'
 # Every address this project has ever deployed, except the current one. A stale
 # address in a document is the failure that once had README showing two
 # different owners for token #1, and it is invisible to every other check here

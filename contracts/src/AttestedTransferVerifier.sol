@@ -55,6 +55,43 @@ contract AttestedTransferVerifier is ITransferProofVerifier {
      */
     mapping(uint256 nonce => bool used) public spent;
 
+    /**
+     * @notice How an expiry is carried inside a nonce.
+     *
+     * @dev The proof struct is `IERC7857.OwnershipProof`, vendored verbatim from
+     *      0G, and it has three fields: a sealed key, a signature, and a
+     *      `uint256 nonce`. There is nowhere to put a validity window, and
+     *      adding one would mean editing the vendored interface — which changes
+     *      selectors and makes this 7857 in name only.
+     *
+     *      So the nonce carries both, the way Permit2 packs a word and a bit
+     *      into one: the top 64 bits are a unix expiry, the bottom 192 are the
+     *      unique part. The digest already covers the whole nonce, so the
+     *      expiry is signed by the attestor without a single byte of interface
+     *      change, and cannot be edited by whoever relays the proof.
+     *
+     *      Why it matters: without it an attestation is good forever. The
+     *      re-encryption it vouches for happened at a moment, and a proof that
+     *      outlives that moment by a year is a bearer token sitting in public
+     *      calldata. Spending the nonce stops it being used twice; the expiry
+     *      stops it being used *late* — a proof signed for a sale that never
+     *      settled cannot be presented next year against the same pair of
+     *      addresses.
+     *
+     *      It does not solve attestor key compromise. Nothing here does: a
+     *      stolen key mints fresh proofs with fresh expiries. That is the
+     *      accepted cost of having no admin who can rotate it, and it is stated
+     *      plainly in SECURITY.md rather than implied away here.
+     */
+    uint256 private constant NONCE_BITS = 192;
+
+    /// @notice The expiry packed into a nonce, as unix seconds.
+    /// @dev Shifting by 192 leaves at most 64 bits, so the cast cannot truncate.
+    // forge-lint: disable-next-line(unsafe-typecast)
+    function expiryOf(uint256 nonce) public pure returns (uint64) {
+        return uint64(nonce >> NONCE_BITS);
+    }
+
     error NoAttestor();
     error NoProof();
 
@@ -85,6 +122,7 @@ contract AttestedTransferVerifier is ITransferProofVerifier {
 
         IERC7857.TransferValidityProof calldata proof = proofs[0];
         if (spent[proof.ownershipProof.nonce]) return false;
+        if (_expired(proof.ownershipProof.nonce)) return false;
 
         return _signedByAttestor(from, to, tokenId, proof);
     }
@@ -107,6 +145,7 @@ contract AttestedTransferVerifier is ITransferProofVerifier {
         uint256 nonce = proof.ownershipProof.nonce;
 
         if (spent[nonce]) return false;
+        if (_expired(nonce)) return false;
         if (!_signedByAttestor(from, to, tokenId, proof)) return false;
 
         spent[nonce] = true;
@@ -148,6 +187,21 @@ contract AttestedTransferVerifier is ITransferProofVerifier {
                     nonce
                 )
             );
+    }
+
+    /**
+     * @dev Is this proof past its stated moment?
+     *
+     * A zero expiry is refused rather than treated as "never expires". An
+     * unbounded attestation is the thing this exists to remove, and letting the
+     * absence of a value mean the most permissive reading is how that comes
+     * back by accident.
+     */
+    function _expired(uint256 nonce) private view returns (bool) {
+        uint64 validUntil = expiryOf(nonce);
+        if (validUntil == 0) return true;
+        // forge-lint: disable-next-line(block-timestamp)
+        return block.timestamp > validUntil;
     }
 
     function _signedByAttestor(

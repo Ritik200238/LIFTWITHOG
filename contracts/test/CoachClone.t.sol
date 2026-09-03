@@ -226,7 +226,7 @@ contract CoachCloneTest is Test {
         uint256 parent = _mint(trainer);
 
         IERC7857.TransferValidityProof[] memory proofs =
-            _proof(attestorKey, trainer, athlete, parent, 1);
+            _proof(attestorKey, trainer, athlete, parent, _live(1));
 
         vm.prank(trainer);
         uint256 child = coach.iCloneFrom(trainer, athlete, parent, proofs);
@@ -242,7 +242,7 @@ contract CoachCloneTest is Test {
         (, uint256 impostorKey) = makeAddrAndKey("impostor");
 
         IERC7857.TransferValidityProof[] memory proofs =
-            _proof(impostorKey, trainer, athlete, parent, 1);
+            _proof(impostorKey, trainer, athlete, parent, _live(1));
 
         vm.prank(trainer);
         vm.expectRevert(CoachAgent.TransferProofRejected.selector);
@@ -253,7 +253,7 @@ contract CoachCloneTest is Test {
         uint256 parent = _mint(trainer);
 
         IERC7857.TransferValidityProof[] memory proofs =
-            _proof(attestorKey, trainer, stranger, parent, 1);
+            _proof(attestorKey, trainer, stranger, parent, _live(1));
 
         vm.prank(stranger);
         vm.expectRevert(CoachAgent.NotCoachOwner.selector);
@@ -307,6 +307,12 @@ contract CoachCloneTest is Test {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, keccak256(abi.encodePacked(hex"1901", domain, structHash)));
         return abi.encodePacked(r, s, v);
+    }
+
+    /// @dev A nonce carrying a live expiry in its top 64 bits — see
+    ///      `AttestedTransferVerifier.expiryOf`. A bare nonce reads as expired.
+    function _live(uint256 nonce) private view returns (uint256) {
+        return ((block.timestamp + 1 hours) << 192) | nonce;
     }
 
     function _proof(uint256 key, address from, address to, uint256 tokenId, uint256 nonce)

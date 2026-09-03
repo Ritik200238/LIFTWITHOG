@@ -53,6 +53,22 @@ contract AttestedTransferVerifierTest is Test {
     }
 
     /// A proof signed by whoever `key` is, over the given move.
+    /**
+     * @dev A nonce with an expiry packed into its top 64 bits.
+     *
+     * The verifier reads the high 64 bits of the nonce as a unix expiry — see
+     * `AttestedTransferVerifier.expiryOf`. Tests that do not care about
+     * freshness use this so their proofs are live; the ones that do care build
+     * the nonce themselves.
+     */
+    function _live(uint256 nonce) internal view returns (uint256) {
+        return _withExpiry(nonce, block.timestamp + 1 hours);
+    }
+
+    function _withExpiry(uint256 nonce, uint256 validUntil) internal pure returns (uint256) {
+        return (validUntil << 192) | nonce;
+    }
+
     function _proof(uint256 key, address from, address to, uint256 tokenId, uint256 nonce)
         private
         view
@@ -95,7 +111,7 @@ contract AttestedTransferVerifierTest is Test {
     function test_AnAttestedTransferMovesTheCoach() public {
         uint256 id = _mint(seller);
 
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(1));
 
         vm.prank(seller);
         coach.iTransferFrom(seller, buyer, id, proofs);
@@ -112,7 +128,7 @@ contract AttestedTransferVerifierTest is Test {
         coach.authorizeUsage(id, stranger);
         assertTrue(coach.isAuthorizedUser(id, stranger));
 
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(1));
 
         vm.prank(seller);
         coach.iTransferFrom(seller, buyer, id, proofs);
@@ -125,7 +141,7 @@ contract AttestedTransferVerifierTest is Test {
     function test_SomebodyElsesSignatureIsRefused() public {
         uint256 id = _mint(seller);
         (, uint256 impostorKey) = makeAddrAndKey("impostor");
-        IERC7857.TransferValidityProof[] memory proofs = _proof(impostorKey, seller, buyer, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(impostorKey, seller, buyer, id, _live(1));
 
         vm.prank(seller);
         vm.expectRevert(CoachAgent.TransferProofRejected.selector);
@@ -135,7 +151,7 @@ contract AttestedTransferVerifierTest is Test {
     function test_AnAttestationForAnotherCoachIsRefused() public {
         uint256 mine = _mint(seller);
         uint256 theirs = _mint(stranger);
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, theirs, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, theirs, _live(1));
 
         vm.prank(seller);
         vm.expectRevert(CoachAgent.TransferProofRejected.selector);
@@ -146,7 +162,7 @@ contract AttestedTransferVerifierTest is Test {
         // The one that matters commercially: re-pointing a genuine attestation
         // at a different destination would be a way to steal a paid-for sale.
         uint256 id = _mint(seller);
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, stranger, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, stranger, id, _live(1));
 
         vm.prank(seller);
         vm.expectRevert(CoachAgent.TransferProofRejected.selector);
@@ -165,7 +181,7 @@ contract AttestedTransferVerifierTest is Test {
     function test_SwappingTheSealedKeyUnderAGenuineAttestationIsRefused() public {
         uint256 id = _mint(seller);
 
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(1));
         proofs[0].ownershipProof.sealedKey = hex"deadbeef";
 
         vm.prank(seller);
@@ -176,7 +192,7 @@ contract AttestedTransferVerifierTest is Test {
     function test_SwappingTheTargetKeyIsRefused() public {
         uint256 id = _mint(seller);
 
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(1));
         proofs[0].accessProof.targetPublicKey = hex"03999999";
 
         vm.prank(seller);
@@ -189,7 +205,7 @@ contract AttestedTransferVerifierTest is Test {
         // lets anybody turn a refused transfer into a crash.
         uint256 id = _mint(seller);
 
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 1);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(1));
         proofs[0].ownershipProof.signature = hex"00";
 
         vm.prank(seller);
@@ -209,7 +225,7 @@ contract AttestedTransferVerifierTest is Test {
      */
     function test_AnAttestationCannotBeUsedTwiceEvenAfterTheCoachComesBack() public {
         uint256 id = _mint(seller);
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 7);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(7));
 
         vm.prank(seller);
         coach.iTransferFrom(seller, buyer, id, proofs);
@@ -229,8 +245,8 @@ contract AttestedTransferVerifierTest is Test {
         // The other half: spending nonces must not brick the coach.
         uint256 id = _mint(seller);
 
-        IERC7857.TransferValidityProof[] memory first = _proof(attestorKey, seller, buyer, id, 7);
-        IERC7857.TransferValidityProof[] memory second = _proof(attestorKey, seller, buyer, id, 8);
+        IERC7857.TransferValidityProof[] memory first = _proof(attestorKey, seller, buyer, id, _live(7));
+        IERC7857.TransferValidityProof[] memory second = _proof(attestorKey, seller, buyer, id, _live(8));
 
         vm.prank(seller);
         coach.iTransferFrom(seller, buyer, id, first);
@@ -264,7 +280,7 @@ contract AttestedTransferVerifierTest is Test {
 
     function test_ReadingAProofDoesNotSpendIt() public {
         uint256 id = _mint(seller);
-        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, 3);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, id, _live(3));
 
         assertTrue(verifier.verifyTransfer(seller, buyer, id, proofs), "a good proof did not read as good");
         assertTrue(verifier.verifyTransfer(seller, buyer, id, proofs), "reading it consumed it");
@@ -284,5 +300,94 @@ contract AttestedTransferVerifierTest is Test {
         vm.prank(seller);
         vm.expectRevert(AttestedTransferVerifier.NoProof.selector);
         coach.iTransferFrom(seller, buyer, id, none);
+    }
+
+    /* ------------------------------------------------------------------
+       Freshness. An attestation vouches for a re-encryption that happened at
+       a moment; these are the tests that stop it outliving that moment.
+       ------------------------------------------------------------------ */
+
+    function test_AnExpiredAttestationIsRefused() public {
+        uint256 tokenId = _mint(seller);
+        uint256 nonce = _withExpiry(77, block.timestamp + 10 minutes);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, tokenId, nonce);
+
+        // Good now.
+        assertTrue(verifier.verifyTransfer(seller, buyer, tokenId, proofs));
+
+        vm.warp(block.timestamp + 11 minutes);
+
+        // The same bytes, one minute past their stated life.
+        assertFalse(verifier.verifyTransfer(seller, buyer, tokenId, proofs), "an expired proof read as good");
+        assertFalse(verifier.attestTransfer(seller, buyer, tokenId, proofs), "an expired proof was accepted");
+    }
+
+    function test_AnExpiredProofIsNotSpentSoTheNonceStaysUsable() public {
+        /*
+         * Refusing must not consume the nonce. If it did, anybody could burn a
+         * pending sale's nonce by submitting it one second late, and the honest
+         * transfer would then fail as a replay.
+         */
+        uint256 tokenId = _mint(seller);
+        uint256 nonce = _withExpiry(88, block.timestamp + 1 minutes);
+        IERC7857.TransferValidityProof[] memory stale = _proof(attestorKey, seller, buyer, tokenId, nonce);
+
+        vm.warp(block.timestamp + 2 minutes);
+        assertFalse(verifier.attestTransfer(seller, buyer, tokenId, stale));
+        assertFalse(verifier.spent(nonce), "a refused proof was marked spent");
+    }
+
+    function test_AnAttestationWithNoExpiryIsRefused() public {
+        /*
+         * Zero is refused rather than read as "never expires". Letting a
+         * missing value mean the most permissive thing is how an unbounded
+         * proof comes back by accident — and every proof written before this
+         * change has a zero here.
+         */
+        uint256 tokenId = _mint(seller);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, tokenId, 99);
+
+        assertEq(verifier.expiryOf(99), 0);
+        assertFalse(verifier.verifyTransfer(seller, buyer, tokenId, proofs));
+        assertFalse(verifier.attestTransfer(seller, buyer, tokenId, proofs));
+    }
+
+    function test_TheExpiryIsSignedSoItCannotBeExtended() public {
+        /*
+         * The load-bearing one. The expiry lives inside the nonce, and the
+         * nonce is inside the digest — so moving the deadline changes the
+         * message and the signature stops recovering to the attestor. A relayer
+         * holding a valid proof cannot give it a longer life.
+         */
+        uint256 tokenId = _mint(seller);
+        uint256 shortLived = _withExpiry(101, block.timestamp + 1 minutes);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, tokenId, shortLived);
+
+        // Rewrite only the expiry, keeping the attestor's signature.
+        proofs[0].ownershipProof.nonce = _withExpiry(101, block.timestamp + 3650 days);
+
+        assertFalse(verifier.verifyTransfer(seller, buyer, tokenId, proofs), "an extended deadline was accepted");
+    }
+
+    function testFuzz_AProofIsGoodUntilItsSecondAndNotAfter(uint32 life, uint32 elapsed) public {
+        life = uint32(bound(life, 1, 365 days));
+        elapsed = uint32(bound(elapsed, 0, 2 * uint256(life)));
+
+        uint256 tokenId = _mint(seller);
+        uint256 start = block.timestamp;
+        uint256 nonce = _withExpiry(uint256(life), start + life);
+        IERC7857.TransferValidityProof[] memory proofs = _proof(attestorKey, seller, buyer, tokenId, nonce);
+
+        vm.warp(start + elapsed);
+
+        assertEq(
+            verifier.verifyTransfer(seller, buyer, tokenId, proofs),
+            elapsed <= life,
+            "the boundary is not exactly the stated second"
+        );
+    }
+
+    function testFuzz_TheExpiryReadBackIsTheExpiryPacked(uint64 validUntil, uint192 unique) public view {
+        assertEq(verifier.expiryOf((uint256(validUntil) << 192) | uint256(unique)), validUntil);
     }
 }

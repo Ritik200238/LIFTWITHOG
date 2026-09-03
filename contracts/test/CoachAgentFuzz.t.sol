@@ -255,6 +255,116 @@ contract CoachAgentFuzzTest is Test {
     }
 
     /// Nobody who never paid, and was never granted, has access — whoever they are.
+    /* ------------------------------------------------------------------
+       The clone economy. Renting lends a method for a while; cloning sells a
+       copy that then diverges. Both move money, and only renting had its
+       payout pinned — so these are the two properties the clone path was
+       relying on being read carefully rather than being tested.
+       ------------------------------------------------------------------ */
+
+    function testFuzz_ACloneIsPaidEntirelyToTheParentOwnerAndTheContractKeepsNothing(
+        uint96 price,
+        uint256 buyerKey
+    ) public {
+        price = uint96(bound(price, 1, 50 ether));
+        buyerKey = bound(buyerKey, 1, type(uint128).max);
+        address buyer = vm.addr(buyerKey);
+        vm.assume(_payableActor(buyer) && buyer != trainer);
+
+        uint256 parent = _mint(trainer);
+        vm.prank(trainer);
+        coach.setClonePrice(parent, price);
+
+        uint256 trainerBefore = trainer.balance;
+        vm.deal(buyer, price);
+
+        bytes memory sig = _signCloneAs(buyer, buyerKey, parent, CONFIG);
+        vm.prank(buyer);
+        uint256 child = coach.cloneFor{value: price}(buyer, parent, CONFIG, "og://clone", block.timestamp + 1 hours, sig);
+
+        assertEq(trainer.balance - trainerBefore, price, "the parent owner was not paid the whole price");
+        assertEq(address(coach).balance, 0, "the contract kept part of a clone fee");
+        assertEq(coach.ownerOf(child), buyer);
+        assertEq(coach.parentOf(child), parent, "the clone lost its parent");
+    }
+
+    function testFuzz_GenerationCountsTheRealChain(uint8 depth) public {
+        /*
+         * `generationOf` walks `_parentOf` upward with a depth cap, and the
+         * lineage is the thing a trainer would point at to claim their method
+         * spread. An off-by-one here is a false provenance claim, so the walk
+         * is checked against a chain of known length.
+         */
+        depth = uint8(bound(depth, 1, 12));
+
+        // Generations are 1-indexed: a coach with no parent is generation 1,
+        // its clone is 2. Checked against a chain of known length rather than
+        // assumed, because an off-by-one here is a false provenance claim.
+
+        uint256 id = _mint(trainer);
+        (uint256 rootGen, bool rootComplete) = coach.generationOf(id, 32);
+        assertEq(rootGen, 1, "a coach with no parent is not the first generation");
+        assertTrue(rootComplete);
+
+        for (uint256 k = 1; k <= depth; k++) {
+            uint256 buyerKey = 1000 + k;
+            address buyer = vm.addr(buyerKey);
+
+            address parentOwner = coach.ownerOf(id);
+            vm.prank(parentOwner);
+            coach.setClonePrice(id, 1 wei);
+
+            vm.deal(buyer, 1 wei);
+            bytes memory sig = _signCloneAs(buyer, buyerKey, id, CONFIG);
+            vm.prank(buyer);
+            id = coach.cloneFor{value: 1 wei}(buyer, id, CONFIG, "og://clone", block.timestamp + 1 hours, sig);
+
+            (uint256 gen, bool complete) = coach.generationOf(id, 32);
+            assertEq(gen, k + 1, "generation did not match the real chain length");
+            assertTrue(complete, "a chain shorter than the cap reported incomplete");
+        }
+
+        // And the cap is honest: asked to look less far than the chain runs,
+        // it says so rather than reporting a shallower generation as fact.
+        if (depth >= 2) {
+            (, bool complete) = coach.generationOf(id, depth - 1);
+            assertFalse(complete, "a truncated walk claimed to be complete");
+        }
+    }
+
+    function _signCloneAs(address owner, uint256 key, uint256 parentId, bytes32 configHash)
+        private
+        view
+        returns (bytes memory)
+    {
+        bytes32 domain = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("LIFTWITHOG Coach")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(coach)
+            )
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256(
+                    "CloneCoach(address owner,uint256 parentId,bytes32 configHash,bytes32 configURIHash,uint256 nonce,uint256 deadline)"
+                ),
+                owner,
+                parentId,
+                configHash,
+                keccak256(bytes("og://clone")),
+                coach.nonceOf(owner),
+                block.timestamp + 1 hours
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 st) = vm.sign(key, keccak256(abi.encodePacked(hex"1901", domain, structHash)));
+        return abi.encodePacked(r, st, v);
+    }
+
     function testFuzz_StrangersNeverHaveAccess(address stranger) public {
         vm.assume(_payableActor(stranger));
         vm.assume(stranger != trainer);

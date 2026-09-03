@@ -6,6 +6,7 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC7857} from "./interfaces/IERC7857.sol";
 import {IERC7857Authorize} from "./interfaces/IERC7857Authorize.sol";
 import {IERC7857Cloneable} from "./interfaces/IERC7857Cloneable.sol";
@@ -47,7 +48,9 @@ import {ITransferProofVerifier} from "./interfaces/ITransferProofVerifier.sol";
  *      Stated plainly because the difference is the entire product claim, and a
  *      contract comment that overstates it would be the worst place to be wrong.
  */
-contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Cloneable {
+contract CoachAgent is ERC721,
+    ReentrancyGuard, EIP712, IERC7857, IERC7857Authorize, IERC7857Cloneable
+{
     using EnumerableSet for EnumerableSet.AddressSet;
 
     /// @notice A coach's encrypted brain, as it stands right now.
@@ -241,14 +244,30 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Clon
         );
 
         tokenId = _nextId++;
-        _safeMint(owner, tokenId);
 
+        /*
+         * The record before the mint, not after.
+         *
+         * `_safeMint` calls `onERC721Received` on a contract owner, and that
+         * callback runs before anything written after it. Written afterwards,
+         * the coach existed for the length of that call with a zero
+         * `configHash` and version 0 — so a contract receiving a coach could
+         * read its own token as having no brain, and `getIntelligentDatas`
+         * would answer for a coach that had not been configured yet.
+         *
+         * Nothing is stealable through it: this path has no price, no access
+         * grant and no payout. It is still the wrong order, and
+         * checks-effects-interactions is not a rule you keep only where you can
+         * name the exploit.
+         */
         _coaches[tokenId] = Coach({
             configHash: configHash,
             configURI: configURI,
             version: 1,
             updatedAt: uint64(block.timestamp)
         });
+
+        _safeMint(owner, tokenId);
 
         emit CoachMinted(tokenId, owner, configHash);
 
@@ -441,7 +460,7 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Clon
         string calldata configURI,
         uint256 deadline,
         bytes calldata signature
-    ) external payable returns (uint256 tokenId) {
+    ) external payable nonReentrant returns (uint256 tokenId) {
         address parentOwner = _ownerOf(parentId);
         if (parentOwner == address(0)) revert NoSuchCoach();
         if (configHash == bytes32(0) || bytes(configURI).length == 0) revert EmptyConfig();
@@ -468,18 +487,22 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Clon
         );
 
         tokenId = _nextId++;
-        _safeMint(owner, tokenId);
 
+        /*
+         * Every write before `_safeMint`, for the reason given in `mintFor`:
+         * the receiver's `onERC721Received` runs before anything after it, and
+         * a clone observed mid-callback used to have no brain and — worse here
+         * — no recorded parent, which is the field the whole lineage hangs on.
+         */
         _coaches[tokenId] = Coach({
             configHash: configHash,
             configURI: configURI,
             version: 1,
             updatedAt: uint64(block.timestamp)
         });
-
-        // Written before the payout, so a re-entrant parent owner cannot observe
-        // a clone that exists without a recorded parent.
         _parentOf[tokenId] = parentId;
+
+        _safeMint(owner, tokenId);
 
         emit CoachMinted(tokenId, owner, configHash);
         emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
@@ -542,14 +565,17 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Clon
         if (configHash == bytes32(0) || bytes(configURI).length == 0) revert EmptyConfig();
 
         tokenId = _nextId++;
-        _safeMint(msg.sender, tokenId);
 
+        // Written before the mint, for the reason in `mintFor`: the receiver's
+        // callback runs before anything after `_safeMint`.
         _coaches[tokenId] = Coach({
             configHash: configHash,
             configURI: configURI,
             version: 1,
             updatedAt: uint64(block.timestamp)
         });
+
+        _safeMint(msg.sender, tokenId);
 
         emit CoachMinted(tokenId, msg.sender, configHash);
         emit IntelligentDataSet(tokenId, _intelligentDataOf(tokenId));
@@ -650,7 +676,7 @@ contract CoachAgent is ERC721, EIP712, IERC7857, IERC7857Authorize, IERC7857Clon
      *      overpayment is a second value transfer and a reentrancy surface,
      *      bought to support a mistake a wallet will not make.
      */
-    function rent(uint256 tokenId, uint256 dayCount) external payable {
+    function rent(uint256 tokenId, uint256 dayCount) external payable nonReentrant {
         address owner = _ownerOf(tokenId);
         if (owner == address(0)) revert NoSuchCoach();
 

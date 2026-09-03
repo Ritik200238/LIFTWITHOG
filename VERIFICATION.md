@@ -45,12 +45,12 @@ contract custodies nothing, and a TEE-attested provider is currently live on
 ## The test suites
 
 ```bash
-npm --prefix frontend test     # 542 tests — app logic, nutrition, coach memory, sync, offline
-npm test                       # 151 tests  — server, storage backends, rate limits, auth, sync
-cd contracts && forge test     # 103 tests — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier · 13 clone
+npm --prefix frontend test     # 555 tests — app logic, nutrition, coach memory, sync, offline
+npm test                       # 157 tests  — server, storage backends, rate limits, auth, sync
+cd contracts && forge test     # 111 tests — 42 unit · 9 fuzz · 5 invariant · 20 ERC-7857 · 14 verifier · 13 clone
 ```
 
-796 in total. `node scripts/counts.mjs` prints these by running the suites, and
+823 in total. `node scripts/counts.mjs` prints these by running the suites, and
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
@@ -62,7 +62,7 @@ node scripts/mutate.mjs
 
 Breaks the code on purpose — 174 seeded faults across the nutrition engine,
 meal planner, coach memory, sync merge, plate math, warm-up ramps and the
-service-worker manifest — and fails unless the tests notice. 169 are caught; the 5 survivors
+service-worker manifest — and fails unless the tests notice. 172 are caught; the 2 survivors
 are each proven equivalent in the script itself, with measured evidence. This
 is the difference between "the tests pass" and "the tests would catch a wrong
 number that reaches a person's diet or a loaded bar."

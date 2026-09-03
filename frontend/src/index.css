@@ -1174,6 +1174,42 @@ h4.sec{
 /* --------------------------------------------------- desktop (≥1000px) --- */
 .cols{display:block}
 
+
+/* ------------------------------------------------- the coach card ------- */
+/*
+ * The design's "Ledger" variant: a mark, a name, what it knows, one action,
+ * and a measured bar toward the next version. Quiet and data-forward, which is
+ * the right register for a thing whose whole claim is that its history cannot
+ * be invented after the fact.
+ */
+.coachcard-top{display:flex;align-items:center;gap:11px}
+.coachcard-mark{
+  width:34px;height:34px;border-radius:10px;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--ui);color:var(--on-ui);
+  font-size:11px;font-weight:700;letter-spacing:.04em;
+}
+.coachcard-id{flex:1;min-width:0}
+.coachcard-name{font-size:15px;font-weight:600;letter-spacing:-.006em;line-height:1.2}
+.coachcard-sub{font-size:11px;line-height:1.35;color:var(--label-3);margin-top:3px}
+.coachcard-ask{width:auto;flex:none;padding:9px 15px;border-radius:var(--r-sm)}
+
+/* The bar sits on the card's own rule, so it reads as a measure of the card
+   rather than as another control. */
+.coachcard-bar{
+  height:3px;border-radius:2px;background:var(--surface-2);
+  margin:15px 0 9px;overflow:hidden;
+}
+.coachcard-bar i{
+  display:block;height:100%;background:var(--ui);border-radius:2px;
+  transition:width var(--med) var(--ease);
+}
+.coachcard-foot{
+  display:flex;justify-content:space-between;gap:12px;
+  font-size:11px;line-height:1.35;color:var(--label-3);
+}
+.coachcard-foot span:last-child{text-align:right}
+
 /* ----------------------------------------------- touch targets ---------- */
 /*
  * The controls below are small by design and must stay small: a filter chip

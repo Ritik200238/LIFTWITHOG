@@ -17,11 +17,14 @@ import { useCoach } from '../store/useCoach.js'
 import { t } from '../lib/i18n.js'
 import { useUI } from '../store/useUI.js'
 import { buildCoachProfile, MIN_SESSIONS_FOR_CONFIDENCE } from '../lib/coachProfile.js'
-import { sessionsUntilNextEvolve } from '../lib/flywheel.js'
+import { sessionsUntilNextEvolve, SESSIONS_PER_EVOLVE } from '../lib/flywheel.js'
 import { DEMO } from '../lib/demo.js'
 import { nav } from '../lib/nav.js'
 import Icon from './Icon.jsx'
 import { Button } from './ui.jsx'
+import { askTheCoach, defaultQuestion } from '../lib/askFlow.js'
+import { effectiveRoutine } from '../lib/history.js'
+import { todayISO } from '../lib/format.js'
 
 export default function CoachCard() {
   const S = useStore((s) => s.S)
@@ -48,6 +51,20 @@ export default function CoachCard() {
   const sessionsKnown = profile.sessions
   const hasNew = coach.hasSomethingToLearn(S)
 
+  /*
+   * How far through the current block of training the coach is, as a fraction
+   * rather than a sentence. Derived from the same call the caption uses, so the
+   * bar and the words can never disagree — a bar that says one thing while the
+   * text says another is worse than no bar.
+   */
+  const untilEvolve = sessionsUntilNextEvolve(coach, sessionsKnown)
+  const evolvePct = untilEvolve == null
+    ? 0
+    : Math.round(((SESSIONS_PER_EVOLVE - untilEvolve) / SESSIONS_PER_EVOLVE) * 100)
+
+  // What the Ask button asks about when nobody has typed a question.
+  const todayRoutine = effectiveRoutine(S, todayISO())
+
   // The newest sentence the coach wrote about this person, if it has written any.
   const latestNote = coach.memory?.[0]?.notes?.[0]?.text ?? null
 
@@ -70,25 +87,42 @@ export default function CoachCard() {
   }
 
   return (
-    <div className="card" style={{ marginTop: 12 }}>
-      <div className="row between" style={{ marginBottom: 8 }}>
-        <div>
-          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="sparkles" /> Your coach
-          </h3>
-          <div className="muted small">
+    <div className="card coachcard" style={{ marginTop: 12 }}>
+      {/*
+        * The coach, as the design draws it: a mark, a name, what it knows, and
+        * one thing to do with it.
+        *
+        * The old header said "Your coach" above a version string, which spends
+        * the most valuable line on the screen restating the section it is in.
+        * The name carries the id instead, and the sentence underneath is what
+        * it has actually learned — which is the thing that makes a version
+        * number mean anything.
+        */}
+      <div className="coachcard-top">
+        <span className="coachcard-mark" aria-hidden="true">OG</span>
+
+        <div className="coachcard-id">
+          <div className="coachcard-name">
+            {coach.tokenId ? `${t('Your coach')} #${coach.tokenId}` : t('Your coach')}
+          </div>
+          <div className="coachcard-sub">
             {coach.tokenId
-              ? `Version ${coach.version} · knows ${sessionsKnown} ${
-                  sessionsKnown === 1 ? 'session' : 'sessions'
-                }`
-              : 'Owned by you, on 0G. It outlives this app.'}
+              ? t('{0} learned · yours', sessionsKnown === 1
+                  ? t('{0} session', sessionsKnown)
+                  : t('{0} sessions', sessionsKnown))
+              : t('Owned by you, on 0G. It outlives this app.')}
           </div>
         </div>
 
+        {/*
+          * Ask lives on the card because the card is the coach. It was only on
+          * the workout start screen, which is a place you go to train rather
+          * than to ask something.
+          */}
         {coach.tokenId && (
-          <span className="tag acc" title={t('Its id on 0G Chain')}>
-            #{coach.tokenId}
-          </span>
+          <Button className="coachcard-ask" size="sm" onClick={() => askTheCoach(defaultQuestion(todayRoutine))}>
+            {t('Ask')}
+          </Button>
         )}
       </div>
 
@@ -131,8 +165,19 @@ export default function CoachCard() {
       )}
 
       {coach.tokenId && (
-        <div className="muted small">
-          {(() => {
+        <>
+          {/*
+            * The countdown, drawn as well as said. It records by itself every
+            * block of training, so this is progress rather than a button — and
+            * a bar moving is what makes the flywheel something somebody
+            * notices instead of a background task nobody knows about.
+            */}
+          <div className="coachcard-bar" aria-hidden="true">
+            <i style={{ width: `${evolvePct}%` }} />
+          </div>
+          <div className="coachcard-foot">
+            <span>{t('Version {0}', coach.version)}</span>
+            <span>{(() => {
             /*
              * The loop, said out loud. It records by itself every block of
              * training — so this is a countdown, not a button, and the number
@@ -148,8 +193,9 @@ export default function CoachCard() {
             return `It records what it learned in ${until} more ${
               until === 1 ? 'session' : 'sessions'
             }.`
-          })()}
-        </div>
+          })()}</span>
+          </div>
+        </>
       )}
 
       {/*

@@ -186,7 +186,7 @@ function AboutYou({ S, update, missing = [] }) {
       <Section title={t('About you')}>
         <Row
           icon="scale"
-          iconTint="var(--acc)"
+          iconTint="var(--ui)"
           title={t('Weight')}
           subtitle={missing.includes('weight') ? t('Not logged yet') : undefined}
           accessory="chevron"

@@ -598,7 +598,7 @@ function ExConfig({ ex, existing, onSave, onDelete, close, routine, destination 
     </div>}
     {/* ---------- bodyweight + per side (issues #31/#32/#33) ---------- */}
     {!cardio && <div className="sect-b" style={{ marginBottom: 8 }}>
-      <Row icon="figureStrength" iconTint="var(--acc)" title={t('Bodyweight')}
+      <Row icon="figureStrength" iconTint="var(--ui)" title={t('Bodyweight')}
         subtitle={bw ? t('No weight to enter — just log the reps.') : t('Ask for a weight on every set.')}>
         <Switch checked={bw} onChange={v => setC(x => ({ ...x, bodyweight: v, weight: v ? 0 : x.weight }))} />
       </Row>

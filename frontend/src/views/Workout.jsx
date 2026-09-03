@@ -16,7 +16,7 @@ import { nextPrescription, applyPrescription } from '../lib/progression.js'
 import { plateLabel, platesFor } from '../lib/plates.js'
 import { warmupFor } from '../lib/warmup.js'
 import { glyphOf } from '../lib/glyphs.js'
-import { askCoach, deviceSignerForAsk } from '../lib/coachAsk.js'
+import { askTheCoach, defaultQuestion } from '../lib/askFlow.js'
 import { COACH_ADDRESS } from '../lib/coachConfig.js'
 import { useCoach } from '../store/useCoach.js'
 
@@ -76,63 +76,7 @@ function StartChooser() {
          * configuration and the key to it on the machine of whoever is asking,
          * which makes a rented coach worth exactly one request.
          */
-        const tokenId = useCoach.getState().tokenId
-        if (!tokenId) {
-          useUI.getState().toast(t('Create your coach first — it is on the home screen.'))
-          return
-        }
-
-        try {
-          useUI.getState().toast(t('Asking your coach…'))
-          /*
-           * The device key signs, not a browser wallet. Requiring
-           * `window.ethereum` here contradicted the app's own claim that a
-           * coach needs no wallet, and made this button unusable in a
-           * home-screen app where that object does not exist.
-           */
-          const signer = await deviceSignerForAsk()
-          /*
-           * `todayR` is null on a rest day and this dereferenced it, so the
-           * question threw before it was ever sent and the raw JavaScript
-           * error was toasted at the person.
-           */
-          const question = todayR
-            ? `Today is ${todayR.name}. Based on my history, what should I aim for?`
-            : 'I have no session scheduled today. Based on my history, what should I do?'
-
-          const answer = await askCoach(signer, tokenId, question)
-          confirmSheet({
-            title: t('Your coach says'),
-            message: answer,
-            confirmText: t('Got it'),
-            onConfirm: () => {}
-          })
-        } catch (e) {
-          /*
-           * A referral is the one refusal that is not a failure. The coach was
-           * asked about an injury, a pregnancy or a dose and said "not me",
-           * which is the correct answer — showing it as an error toast would
-           * make the product feel broken at exactly the moment it behaves best.
-           */
-          if (e.referral) {
-            const named = e.referral.specialists?.length
-              ? t('Some coaches on the marketplace may be a better fit.')
-              : ''
-            confirmSheet({
-              title: t('Not this coach'),
-              message: `${e.referral.message}
-
-${named}`.trim(),
-              confirmText: e.referral.specialists?.length ? t('See the marketplace') : t('Got it'),
-              onConfirm: () => { if (e.referral.specialists?.length) nav('/coaches') },
-            })
-            return
-          }
-
-          // Reported as the failure it is. This used to toast "0G AI Coach
-          // ready!" with the error appended, so a refusal read as a success.
-          useUI.getState().toast(e.message || t('Your coach could not answer.'))
-        }
+        askTheCoach(defaultQuestion(todayR))
       }}>{t('Ask a question')}</Button>
     </div>}
     {/* Not "other". These are the routines — the reason the screen exists. */}

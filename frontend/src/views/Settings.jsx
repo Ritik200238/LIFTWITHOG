@@ -77,11 +77,11 @@ export default function Settings() {
     {/* ---------- account (demo and mobile builds have nothing to sign in to) ---------- */}
     <Section title={MOBILE ? t('Your data') : DEMO ? t('Demo') : t('Account')}>
       {MOBILE ? <>
-        <Row icon="lock" iconTint="var(--acc)" title={t('All data stays on this phone')} subtitle={t('No account, no cloud — back it up anytime with Export below.')} />
+        <Row icon="lock" iconTint="var(--ui)" title={t('All data stays on this phone')} subtitle={t('No account, no cloud — back it up anytime with Export below.')} />
         <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host LIFTWITHOG')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : DEMO ? <>
-        <Row icon="sparkles" iconTint="var(--acc)" title={t('You’re in the demo')} subtitle={t('Example data, stored only in this browser — change anything you like.')} />
+        <Row icon="sparkles" iconTint="var(--ui)" title={t('You’re in the demo')} subtitle={t('Example data, stored only in this browser — change anything you like.')} />
         <Row icon="reset" iconTint="var(--blue)" title={t('Reset demo data')} accessory="chevron"
           onClick={() => confirmSheet({ title: t('Reset demo data?'), message: t('Puts the example plan, workouts and weigh-ins back the way they started.'), confirmText: t('Reset'), onConfirm: () => { resetDemo(); nav('/home'); toast(t('Demo data reset')) } })} />
         <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host LIFTWITHOG')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
@@ -92,7 +92,7 @@ export default function Settings() {
         <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={() => confirmSheet({ title: t('Sign out?'), message: t('Your data is synced to your profile first, then cleared from this device.'), confirmText: t('Sign out'), danger: true, onConfirm: () => { signOut(); nav('/home') } })} />
         <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
       </> : webauthnOK() ? <>
-        <Row icon="sparkles" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
+        <Row icon="sparkles" iconTint="var(--ui)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
         <Row icon="person" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={signInHere} />
       </> : (
         <Row icon="lock" iconTint="var(--grey)" title={t('Passkeys not supported in this browser.')} />
@@ -180,7 +180,7 @@ export default function Settings() {
         * First in this section, because it is the answer to the question the
         * rest of it raises: is any of this real. Nobody has to open it.
         */}
-      <Row icon="sparkles" iconTint="var(--acc)" title={t('Proof')}
+      <Row icon="sparkles" iconTint="var(--ui)" title={t('Proof')}
         subtitle={t('Your coach, your device, and the chain — read live')}
         accessory="chevron"
         onClick={() => nav('/proof')} />
@@ -203,7 +203,7 @@ export default function Settings() {
         * The sheets sign with the device key, show the code in full, remember
         * it, and confirm before replacing anything.
         */}
-      <Row icon="sparkles" iconTint="var(--acc)" title={t('Back up to 0G Storage')}
+      <Row icon="sparkles" iconTint="var(--ui)" title={t('Back up to 0G Storage')}
         subtitle={t('Encrypted on this device. Only your key can open it.')}
         accessory="chevron"
         onClick={vaultBackupSheet} />
@@ -217,7 +217,7 @@ export default function Settings() {
 
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}
     <Section title={t('Data')}>
-      <Row icon="sparkles" iconTint="var(--acc)" title={t('Load starter plan (PPL)')} accessory="chevron" onClick={loadStarterPlan} />
+      <Row icon="sparkles" iconTint="var(--ui)" title={t('Load starter plan (PPL)')} accessory="chevron" onClick={loadStarterPlan} />
       <Row icon="shuffle" iconTint="var(--teal)" title={t('Import from another app')}
         subtitle={t('FitNotes, Strong, Hevy — or body weight from Apple Health')}
         accessory="chevron" onClick={() => importRef.current.click()} />

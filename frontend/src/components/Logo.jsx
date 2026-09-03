@@ -1,20 +1,23 @@
 /**
  * The mark.
  *
- * A weight plate, drawn as one even-odd path of concentric circles: the outer
- * band, a thin lip, the face, and the hole. It is three things at once and all
- * of them are the product — a plate is what gets lifted, the shape is the 0 in
- * 0G, and a disc with a hole is what a token has always looked like.
+ * One ring. A weight plate seen from the front, the 0 in 0G, and the shape a
+ * token has always had — and because it is a single closed band, it is the same
+ * object at 110px and at 16px.
  *
- * Inline SVG rather than an image so it takes `currentColor`: ink on paper,
- * paper on ink, ember where it is the action. One drawing, no variants to keep
- * in step. `ring` is the same object hollowed for use as the O in the wordmark,
- * where a solid disc read as a bullet.
+ * The first version drew the plate properly: outer band, lip, face, hole. It
+ * was more faithful and worse. At any size a phone actually renders it, four
+ * concentric edges collapse into grey mush, and the wordmark's O read as a
+ * bullet. Detail that only survives at 512px is decoration.
+ *
+ * Inline SVG rather than an image so it takes `currentColor` — ink on paper,
+ * paper on ink, ember where it is the action, from one drawing.
  */
 const circle = (r) => `M${120 - r},120a${r},${r} 0 1,0 ${2 * r},0a${r},${r} 0 1,0 -${2 * r},0`
 
-const PLATE = [100, 86, 82, 23].map(circle).join(' ')
-const RING = [100, 68, 60, 56].map(circle).join(' ')
+const PLATE = [100, 62].map(circle).join(' ')
+/* Slightly thinner as a letter, so it sits at the wordmark's stroke weight. */
+const RING = [100, 66].map(circle).join(' ')
 
 export default function Logo({ size = 24, ring = false, className = '', ...rest }) {
   return (

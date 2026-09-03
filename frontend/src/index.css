@@ -362,7 +362,7 @@ h4.sec{
 .lrow-i{
   width:29px;height:29px;border-radius:7px;flex:none;font-size:18px;
   display:flex;align-items:center;justify-content:center;
-  background:var(--tint,var(--acc));color:#fff;
+  background:var(--tint,var(--ui));color:var(--on-ui);
 }
 .lrow-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .lrow-t{font-size:17px;letter-spacing:-.012em;line-height:1.25}
@@ -406,11 +406,36 @@ h4.sec{
  */
 .btn.primary{background:var(--acc-2);color:#fff}
 .btn.primary:active{background:var(--acc);color:#fff}
-.btn.tinted{background:var(--acc-soft);color:var(--acc-txt)}
+/*
+ * Tinted was a soft wash of the accent, used for the second action on a screen
+ * — "New" beside a routine list, "Log" beside a chart. Under a red accent that
+ * is a pink button competing with the real one. It becomes the same neutral
+ * pill as plain, one step firmer.
+ */
+.btn.tinted{background:var(--surface-2);border-color:var(--surface-3);color:var(--label)}
 .btn.danger{background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red)}
 .btn:not(.primary):not(.ghost):not(.plain):not(.tinted):not(.danger){border-color:var(--surface-3)}
-.btn.ghost,.btn.plain{background:none;color:var(--acc-txt);font-weight:600}
-.btn.ghost:active,.btn.plain:active{background:var(--surface-2)}
+/*
+ * The default button, and the reason the first pass came out red everywhere.
+ *
+ * `Button`'s default variant is "plain", and plain was accent-coloured text —
+ * so every button in the app that had not asked for a look was painted in the
+ * accent. Invisible while that was a mid-green; with a red accent the login
+ * screen alone had three red actions and no way to tell which one mattered.
+ *
+ * The prototype's secondary is a quiet neutral pill (its "Edit" beside a black
+ * "Start"), so that is what plain is now: ink on a warm fill, with a hairline
+ * because on this paper a fill alone has no edge against the page. Ghost is the
+ * same thing without the fill. Neither spends the accent.
+ *
+ * `.btn.link` is the one that stays accent-coloured, for the places that really
+ * are links — "Read the source", "Build my own plan" — and it has to be asked
+ * for by name.
+ */
+.btn.plain{background:var(--surface-2);border-color:var(--surface-3);color:var(--label);font-weight:600}
+.btn.ghost{background:none;color:var(--label);font-weight:600}
+.btn.link{background:none;color:var(--acc-txt);font-weight:600}
+.btn.ghost:active,.btn.plain:active,.btn.link:active{background:var(--surface-2)}
 .btn.sm{padding:9px 14px;width:auto;font-size:13px;border-radius:var(--r-sm);gap:5px}
 .btn.sm .icn{font-size:16px}
 .btn.xs{padding:5px 10px;width:auto;font-size:13px;border-radius:7px;gap:4px}
@@ -503,7 +528,15 @@ h4.sec{
   color:var(--label-3);border-radius:6px;padding:4px 7px;font-size:11px;
   font-weight:600;letter-spacing:.02em;text-transform:capitalize;
 }
-.tag.acc{background:var(--acc-soft);color:var(--acc-txt)}
+/*
+ * Not accent-coloured, despite the name.
+ *
+ * This marks the *notable* item in a list — a scheduled routine, a rented
+ * coach's price, a personal best. The prototype gives those ink on a warm fill
+ * and keeps colour for the action, and the class kept its name so ninety call
+ * sites did not have to change.
+ */
+.tag.acc{background:var(--surface-2);color:var(--label);border:1px solid var(--surface-3)}
 
 /* ------------------------------------------------------- touch targets -- */
 /*
@@ -1140,6 +1173,31 @@ h4.sec{
 
 /* --------------------------------------------------- desktop (≥1000px) --- */
 .cols{display:block}
+
+/* ----------------------------------------------- touch targets ---------- */
+/*
+ * The controls below are small by design and must stay small: a filter chip
+ * grown to 44px is a button, and a row of them is a wall. A segmented control
+ * with 44px segments stops reading as one object.
+ *
+ * So the *target* grows and the paint does not. Each gets a transparent
+ * ::after centred on it, stretched to at least 44px in both directions, which
+ * is what a finger actually lands on. Measured in the browser rather than
+ * assumed: this is the fix for the chips, segments, switches and the (i)
+ * button that a sweep found at 28-31px tall.
+ *
+ * `pointer-events` stays on the parent — the overlay only enlarges the region
+ * that already belongs to it, so nothing steals a neighbour's tap.
+ */
+.chip,.seg>button,.sw,.helpbtn,.swatch{position:relative}
+.chip::after,.seg>button::after,.sw::after,.helpbtn::after,.swatch::after{
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:100%;height:100%;min-width:44px;min-height:44px;
+}
+/* Inside a scroller the overlay must not add scrollable width. */
+.chips,.seg{position:relative}
+.chips .chip::after{min-width:0}
+
 /* ============================== desktop ==============================
  *
  * The prototype is a phone, and correctly so: sets get logged standing up with

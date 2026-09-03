@@ -17,49 +17,68 @@
    ========================================================================== */
 
 /* ---------------------------------------------------------------- tokens -- */
+/*
+ * Two palettes, one language.
+ *
+ * The direction came from the design team as a 390x844 light prototype:
+ * Instrument Sans, warm off-white paper, near-black ink, hairline borders and
+ * a single red-orange accent. Colour is spent on one thing, and everything
+ * else is paper and ink.
+ *
+ * `:root` stays the dark half because `applyPrefs` writes `data-theme` on the
+ * first paint either way, and every theme-specific rule further down this file
+ * is already written against `[data-theme="light"]`. Flipping the selectors
+ * would have meant rewriting those; flipping the *default* in the store is one
+ * line and no risk.
+ *
+ * The dark half is not in the prototype — the handoff lists it as still to
+ * come. It is built here in the same language rather than reusing the old
+ * blue-black: warm near-neutrals so a person switching themes sees the same
+ * product at a different time of day, not a different app.
+ *
+ * Every text value below was computed against the surfaces it actually sits
+ * on, not chosen by eye. The numbers are in the comments so the next person
+ * can re-run them rather than trust them.
+ */
 :root {
-  /* surfaces — dark is the default */
-  --bg:        #000000;
-  --bg-el:     #0e0e10;   /* elevated backdrop (sheets, bars) */
-  --surface:   #1c1c1e;   /* card / grouped-list fill */
-  --surface-2: #2c2c2e;   /* pressed + nested fill */
-  --surface-3: #3a3a3c;   /* controls (segmented track, switch off) */
+  /* surfaces — warm dark, the same neutrals as the light half seen at night */
+  --bg:        #0e0e0d;
+  --bg-el:     #141413;   /* elevated backdrop (sheets, bars) */
+  --surface:   #1a1a18;   /* card / grouped-list fill */
+  --surface-2: #232320;   /* pressed + nested fill */
+  --surface-3: #2e2e2a;   /* controls (segmented track, switch off), borders */
 
-  /* text */
-  --label:     #ffffff;
-  --label-2:   rgba(235,235,245,.60);
-  /* Was .32 — Apple's tertiaryLabel, and 2.65:1 against these surfaces, which
-     fails AA for the small text it is used on (heatmap months, helper lines
-     under buttons). .55 is the least that clears 4.5:1 on the darkest surface
-     the app paints, so the tier stays dimmer than secondary and stays legible. */
-  --label-3:   rgba(235,235,245,.55);
-  --label-4:   rgba(235,235,245,.18);
+  /* text — ratios against --surface / --surface-2 */
+  --label:     #f6f5f3;   /* 16.00 / 14.46 */
+  --label-2:   #b5b3ad;   /* 8.31 / 7.52 */
+  --label-3:   #8a8a84;   /* 5.02 / 4.54 — the least that clears AA on both */
+  --label-4:   #46453f;   /* decorative only: empty dots, disabled marks */
 
   /* lines */
-  --sep:       rgba(84,84,88,.60);
-  --sep-op:    rgba(84,84,88,.34);   /* for edges sitting over blur */
+  --sep:       rgba(246,245,243,.14);
+  --sep-op:    rgba(246,245,243,.10);   /* for edges sitting over blur */
   --hair:      .5px;
 
-  /* system palette (iOS dark values) */
-  --blue:#0a84ff; --green:#30d158; --red:#ff453a; --orange:#ff9f0a;
-  --yellow:#ffd60a; --teal:#40c8e0; --indigo:#5e5ce6; --pink:#ff375f;
-  --purple:#bf5af2; --mint:#63e6e2; --brown:#ac8e68; --grey:#8e8e93;
+  /* status palette, warmed to sit beside the accent */
+  --blue:#4a9eff; --green:#3ecf7e; --red:#ff5a3d; --orange:#ff9f0a;
+  --yellow:#f5c518; --teal:#45c8c0; --indigo:#7b78ff; --pink:#ff5c8a;
+  --purple:#c07af2; --mint:#63e6e2; --brown:#ac8e68; --grey:#8a8a84;
 
   /* accent (per-account, synced) */
-  --acc:  var(--green);
-  --acc-2:#248a3d;
+  --acc:  #e8452c;
+  --acc-2:#bf3520;
   /*
-   * The accent as *text*. On black every system accent is far past AA, so this
-   * is simply the accent — the light theme is where it has to change, and a
-   * token means the rules below never have to know which theme they are in.
+   * The accent as *text*. #e8452c measures 4.41 on --surface and 3.99 on
+   * --surface-2, so it fails AA where it is used for links and tags. Lightened
+   * along the same hue until it clears both: 6.16 / 5.57.
    */
-  --acc-txt: var(--acc);
-  --on-acc:#000000;
-  --acc-soft: color-mix(in srgb, var(--acc) 16%, transparent);
-  --acc-line: color-mix(in srgb, var(--acc) 38%, transparent);
+  --acc-txt: #ff6a4d;
+  --on-acc:#ffffff;
+  --acc-soft: color-mix(in srgb, var(--acc) 20%, transparent);
+  --acc-line: color-mix(in srgb, var(--acc) 42%, transparent);
 
-  /* geometry */
-  --r-sm:8px; --r:12px; --r-lg:16px; --r-xl:22px; --r-card:14px;
+  /* geometry — the prototype's own vocabulary */
+  --r-sm:8px; --r:11px; --r-lg:16px; --r-xl:22px; --r-card:14px; --r-pill:26px;
   --pad:16px;
   --icon-stroke:1.7;
 
@@ -72,73 +91,99 @@
 }
 
 :root[data-theme="light"] {
-  --bg:        #f2f2f7;
-  --bg-el:     #f7f7fa;
-  --surface:   #ffffff;
-  --surface-2: #ececef;
-  --surface-3: #e3e3e8;
+  /*
+   * The prototype's palette, verbatim where it passes and darkened where it
+   * does not. Warm paper, near-black ink, one hairline border colour.
+   */
+  --bg:        #efeeeb;   /* the page */
+  --bg-el:     #f6f5f3;   /* sheets and bars */
+  --surface:   #f6f5f3;   /* card fill */
+  --surface-2: #edebe7;   /* pressed + nested, segmented track */
+  --surface-3: #e4e2de;   /* the border colour; controls */
 
-  --label:     #000000;
-  /* Dark text fades faster on white than light text does on black: Apple's .60
-     secondary measures 3.30:1 here, under the 4.5 AA needs. The tiers keep
-     their order, they just start further down. */
-  --label-2:   rgba(60,60,67,.78);
-  --label-3:   rgba(60,60,67,.70);
-  --label-4:   rgba(60,60,67,.16);
+  --label:     #111112;   /* 17.32 on --surface, 18.87 on white */
+  /*
+   * The prototype's two muted greys are #6B6B70 and #8A8A90. The second
+   * measures 2.88-3.43 against the surfaces it is painted on, which fails AA
+   * for the small text it carries — the same fault the dark tiers were fixed
+   * for once already. The tiers keep their order and their hue; they start
+   * further down.
+   */
+  --label-2:   #5c5c61;   /* 5.58 worst case */
+  --label-3:   #67676c;   /* 4.72 worst case */
+  --label-4:   #a3a3a8;   /* decorative only, never text */
 
-  --sep:       rgba(60,60,67,.29);
-  --sep-op:    rgba(60,60,67,.20);
+  --sep:       #e4e2de;
+  --sep-op:    rgba(17,17,18,.10);
 
-  --blue:#007aff; --green:#34c759; --red:#ff3b30; --orange:#ff9500;
-  --yellow:#ffcc00; --teal:#30b0c7; --indigo:#5856d6; --pink:#ff2d55;
-  --purple:#af52de; --mint:#00c7be; --brown:#a2845e; --grey:#8e8e93;
-  --acc-2:#248a3d;
+  --blue:#0b6fd8; --green:#1f7a46; --red:#c8321c; --orange:#a15e00;
+  --yellow:#856a00; --teal:#217887; --indigo:#4a48c4; --pink:#c42a5c;
+  --purple:#8b3fb0; --mint:#0f7d78; --brown:#7d6144; --grey:#67676c;
+
+  --acc-2:#a52d1a;
   --on-acc:#ffffff;
 }
 
-/* accents — Apple's system colours, so a recolour never looks off-system */
-:root[data-accent="lime"]  { --acc:var(--green);  --acc-2:#248a3d; --on-acc:#000 }
-:root[data-accent="sky"]   { --acc:var(--blue);   --acc-2:#0060df; --on-acc:#fff }
-:root[data-accent="orange"]{ --acc:var(--orange); --acc-2:#c76b00; --on-acc:#000 }
-:root[data-accent="violet"]{ --acc:var(--purple); --acc-2:#8944ab; --on-acc:#fff }
-:root[data-accent="pink"]  { --acc:var(--pink);   --acc-2:#d70036; --on-acc:#fff }
-:root[data-accent="red"]   { --acc:var(--red);    --acc-2:#d70015; --on-acc:#fff }
-:root[data-accent="teal"]  { --acc:var(--teal);   --acc-2:#0071a4; --on-acc:#000 }
-:root[data-accent="gold"]  { --acc:var(--yellow); --acc-2:#b25000; --on-acc:#000 }
-/* Label colour on a filled accent button is picked per accent by measured contrast,
-   not by taste. Button text is 17px/600, so the AA bar is 3:1 (large text). White on
-   the light-theme green is 2.22:1 and on teal 2.57:1 — both fail, and green is the
-   DEFAULT accent, so every primary button in light mode was failing. Black scores
-   9.46 / 8.16 there. Blue, purple, pink and red keep white (3.5–4.1:1), which both
-   passes and matches the platform convention. */
 /*
- * The same argument, one step further: accent-coloured TEXT on a light surface.
- * Filled buttons were fixed above; links, ghost buttons, the selected tab, the
- * "PR" tags and the tinted rows are accent text on white, and there the default
- * green measured 1.99:1 — text you can see is there and cannot read.
+ * Accents.
  *
- * Each value below is the accent darkened until it clears 4.5:1 against BOTH
- * light surfaces the app paints (#ffffff cards and the #f2f2f7 page), computed
- * rather than eyeballed. The hue is kept, so a green accent still reads green.
+ * The design ships one: the red-orange that carries every primary action. The
+ * picker stays, because it is a per-account setting people have already set,
+ * but the set is retuned to sit inside the warm palette rather than beside it
+ * — Apple's system colours read cold against this paper.
+ *
+ * Two values per accent, because one is never enough:
+ *   --acc      the fill. --on-acc must clear 4.5 on it.
+ *   --acc-txt  the same colour as *text*, moved until it clears 4.5 on every
+ *              surface the theme paints. Set per theme below.
  */
-:root[data-theme="light"] {
-  --acc-txt:#217f39;   /* lime, the default: 5.03:1 on white, 4.50:1 on the page */
-}
-:root[data-theme="light"][data-accent="lime"]  { --acc-txt:#217f39 }
-:root[data-theme="light"][data-accent="sky"]   { --acc-txt:#006ade }
-:root[data-theme="light"][data-accent="orange"]{ --acc-txt:#a15e00 }
-:root[data-theme="light"][data-accent="violet"]{ --acc-txt:#9c49c6 }
-:root[data-theme="light"][data-accent="pink"]  { --acc-txt:#d42547 }
-:root[data-theme="light"][data-accent="red"]   { --acc-txt:#d13027 }
-:root[data-theme="light"][data-accent="teal"]  { --acc-txt:#217887 }
-:root[data-theme="light"][data-accent="gold"]  { --acc-txt:#856a00 }
+:root[data-accent="ember"] { --acc:#e8452c; --acc-2:#bf3520 }
+:root[data-accent="ink"]   { --acc:#111112; --acc-2:#000000 }
+:root[data-accent="moss"]  { --acc:#1f7a46; --acc-2:#155c34 }
+:root[data-accent="sky"]   { --acc:#0b6fd8; --acc-2:#0857a8 }
+:root[data-accent="clay"]  { --acc:#a8622f; --acc-2:#834a22 }
+:root[data-accent="plum"]  { --acc:#8b3fb0; --acc-2:#6d3089 }
+:root[data-accent="teal"]  { --acc:#217887; --acc-2:#185b66 }
+:root[data-accent="gold"]  { --acc:#9a7500; --acc-2:#7a5c00 }
 
-:root[data-theme="light"][data-accent="lime"],
-:root[data-theme="light"][data-accent="teal"]  { --on-acc:#000 }
-:root[data-theme="light"][data-accent="sky"],
-:root[data-theme="light"][data-accent="violet"],
-:root[data-theme="light"][data-accent="pink"],
-:root[data-theme="light"][data-accent="red"]   { --on-acc:#fff }
+/*
+ * Dark: the fills above are tuned for paper, so as text on a dark surface they
+ * are too dark. Each is lightened along its own hue until it clears 4.5:1 on
+ * both --surface (#1a1a18) and --surface-2 (#232320), computed rather than
+ * eyeballed. #e8452c measures 4.41/3.99 and is the reason this block exists.
+ */
+:root[data-accent="ember"] { --acc-txt:#ff6a4d }
+:root[data-accent="ink"]   { --acc-txt:#f6f5f3; --on-acc:#111112 }
+:root[data-accent="moss"]  { --acc-txt:#4cc47c }
+:root[data-accent="sky"]   { --acc-txt:#5aa9ff }
+:root[data-accent="clay"]  { --acc-txt:#d9944f }
+:root[data-accent="plum"]  { --acc-txt:#c78ae0 }
+:root[data-accent="teal"]  { --acc-txt:#4fc0d1 }
+:root[data-accent="gold"]  { --acc-txt:#d4a92a }
+
+/*
+ * Light: the mirror image. The accent as a fill keeps the design's colour; the
+ * accent as *text* is darkened until it clears 4.5:1 against both #f6f5f3
+ * cards and the #efeeeb page. The prototype's own link hover, #c33a24, turns
+ * out to be exactly that value for ember (4.88 / 4.58) — so the design had
+ * already found it.
+ */
+:root[data-theme="light"][data-accent="ember"] { --acc-txt:#c33a24 }
+:root[data-theme="light"][data-accent="ink"]   { --acc-txt:#111112; --on-acc:#f6f5f3 }
+:root[data-theme="light"][data-accent="moss"]  { --acc-txt:#1f7a46 }
+:root[data-theme="light"][data-accent="sky"]   { --acc-txt:#0961bd }
+:root[data-theme="light"][data-accent="clay"]  { --acc-txt:#8a4f26 }
+:root[data-theme="light"][data-accent="plum"]  { --acc-txt:#8b3fb0 }
+:root[data-theme="light"][data-accent="teal"]  { --acc-txt:#1a606c }
+:root[data-theme="light"][data-accent="gold"]  { --acc-txt:#7a5c00 }
+
+/*
+ * The label on a filled accent button. Black on ember measures 4.78 and white
+ * 3.95, but the design puts white on it and white is what reads as a primary
+ * action — so the fill is what moves: --acc-2 is the pressed/solid variant and
+ * every filled button uses it where the label must pass. See .btn.primary.
+ */
+:root[data-accent="ink"] { --on-acc:#f6f5f3 }
 
 /* ---------------------------------------------------------------- reset -- */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -148,7 +193,7 @@ html{
 }
 body{
   background:var(--bg);color:var(--label);
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI',Roboto,system-ui,sans-serif;
+  font-family:'Instrument Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   font-size:17px;line-height:1.29;letter-spacing:-.01em;
   min-height:100vh;overscroll-behavior-y:none;overflow-x:clip;
   -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
@@ -206,23 +251,43 @@ body.resting #app{padding-bottom:calc(250px + var(--sab))}
 @keyframes viewfade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 #app.vfade{animation:viewfade var(--med) var(--ease)}
 
+/*
+ * The type scale, taken from the prototype.
+ *
+ *   30/1.12 600  page title      15/1   600  row title
+ *   22/1.15 600  card title      13/1.4 400  body and secondary
+ *   17/1   600  sheet title      12/1   600  section label, uppercase tracked
+ *
+ * One weight does the work of hierarchy — 600 for anything that names a thing,
+ * 400 for what it says. Size carries the rest. The old sheet reached for 700
+ * and 800 on nearly everything, which flattens hierarchy: when it all shouts,
+ * only position is left to read.
+ */
+h2{font-size:22px;line-height:1.15;font-weight:600;letter-spacing:-.014em}
+h3{font-size:17px;line-height:1.2;font-weight:600;letter-spacing:-.008em}
+
 /* large title, the way a nav bar does it */
 .hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:8px 0 18px}
-.hdr h1{font-size:34px;line-height:1.06;font-weight:700;letter-spacing:-.028em}
-.hdr .sub{color:var(--label-2);font-size:15px;letter-spacing:-.006em;margin-top:4px}
+.hdr h1{font-size:30px;line-height:1.12;font-weight:600;letter-spacing:-.022em}
+.hdr .sub{color:var(--label-3);font-size:13px;line-height:1.4;letter-spacing:0;margin-top:5px}
 
+/*
+ * 44px, not 36. The old size failed the touch floor this project claims to
+ * hold, and it is the control at the top-right of nearly every screen. The
+ * visual weight stays where it was: the box grew, the glyph did not.
+ */
 .iconbtn{
-  width:36px;height:36px;border-radius:50%;flex:none;
-  background:var(--surface);color:var(--label);
-  display:flex;align-items:center;justify-content:center;font-size:18px;
+  width:44px;height:44px;border-radius:50%;flex:none;
+  background:var(--surface);border:1px solid var(--surface-3);color:var(--label);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
   transition:background var(--fast),transform var(--fast);
 }
 .iconbtn:active{background:var(--surface-2);transform:scale(.92)}
 .iconbtn.on-ss{background:var(--acc-soft);color:var(--acc-txt)}
 
 h4.sec{
-  font-size:13px;font-weight:400;letter-spacing:-.004em;color:var(--label-2);
-  text-transform:none;margin:22px 0 8px;padding:0 4px;
+  font-size:12px;font-weight:600;letter-spacing:.07em;color:var(--label-3);
+  text-transform:uppercase;margin:24px 0 9px;padding:0 2px;
 }
 .card h2{
   font-size:13px;font-weight:400;letter-spacing:-.004em;color:var(--label-2);
@@ -234,19 +299,32 @@ h4.sec{
 .row.between{justify-content:space-between}
 
 /* ----------------------------------------------------------------- card -- */
+/*
+ * The bordered card is the design's structural signature. Every surface in the
+ * prototype is a warm fill inside a 1px hairline — not a shadow, not a darker
+ * block. On paper a fill alone has almost no edge, so without the border the
+ * whole layout dissolves; in dark the border is what stops cards reading as
+ * floating rectangles.
+ */
 .card{
-  background:var(--surface);border-radius:var(--r-card);
-  padding:16px;margin-bottom:12px;
+  background:var(--surface);border:1px solid var(--surface-3);
+  border-radius:var(--r-card);
+  padding:15px;margin-bottom:12px;
 }
 .card .big{font-size:30px;font-weight:600;letter-spacing:-.026em;line-height:1.1}
 
 /* ------------------------------------------------------ inset group list -- */
 .sect{margin-bottom:22px}
+/*
+ * TODAY / THIS WEEK / RECENT RECORDS. Small, uppercase and widely tracked, so a
+ * section reads as a label on the page rather than as a heading competing with
+ * the card titles under it.
+ */
 .sect-t{
-  font-size:13px;font-weight:400;color:var(--label-2);
-  letter-spacing:-.004em;padding:0 4px 7px;display:block;
+  font-size:12px;font-weight:600;color:var(--label-3);
+  text-transform:uppercase;letter-spacing:.07em;padding:0 2px 9px;display:block;
 }
-.sect-b{background:var(--surface);border-radius:var(--r-card);overflow:hidden}
+.sect-b{background:var(--surface);border:1px solid var(--surface-3);border-radius:var(--r-card);overflow:hidden}
 .sect-f{font-size:13px;color:var(--label-2);padding:7px 4px 0;line-height:1.38}
 
 .lrow{
@@ -289,19 +367,30 @@ h4.sec{
 /* -------------------------------------------------------------- buttons -- */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;
-  padding:14px 18px;border-radius:var(--r);font-size:17px;font-weight:600;
-  letter-spacing:-.012em;background:var(--surface-2);color:var(--label);
+  padding:15px 18px;border-radius:var(--r-pill);font-size:15px;font-weight:600;
+  letter-spacing:-.006em;background:var(--surface-2);color:var(--label);
+  border:1px solid transparent;
   transition:transform var(--fast) var(--ease),background var(--fast),opacity var(--fast);
 }
 .btn .icn{font-size:19px}
 .btn:active{transform:scale(.975)}
-.btn.primary{background:var(--acc);color:var(--on-acc)}
-.btn.primary:active{background:var(--acc-2)}
+/*
+ * The fill is --acc-2, not --acc.
+ *
+ * The design puts white on #e8452c, which measures 3.95:1 — under the 4.5 a
+ * 15px/600 label needs. Rather than change the label to black, which reads as a
+ * warning rather than an action, the fill drops to the same hue one step darker
+ * (5.61:1). Side by side with the prototype it is indistinguishable; to a
+ * screen reader's user it is the difference between legible and not.
+ */
+.btn.primary{background:var(--acc-2);color:#fff}
+.btn.primary:active{background:var(--acc);color:#fff}
 .btn.tinted{background:var(--acc-soft);color:var(--acc-txt)}
 .btn.danger{background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red)}
-.btn.ghost,.btn.plain{background:none;color:var(--acc-txt);font-weight:400}
+.btn:not(.primary):not(.ghost):not(.plain):not(.tinted):not(.danger){border-color:var(--surface-3)}
+.btn.ghost,.btn.plain{background:none;color:var(--acc-txt);font-weight:600}
 .btn.ghost:active,.btn.plain:active{background:var(--surface-2)}
-.btn.sm{padding:8px 14px;width:auto;font-size:15px;border-radius:var(--r-sm);gap:5px}
+.btn.sm{padding:9px 14px;width:auto;font-size:13px;border-radius:var(--r-sm);gap:5px}
 .btn.sm .icn{font-size:16px}
 .btn.xs{padding:5px 10px;width:auto;font-size:13px;border-radius:7px;gap:4px}
 .btn:disabled{opacity:.32;pointer-events:none}
@@ -390,8 +479,8 @@ h4.sec{
 .chev{color:var(--label);flex:none;font-size:15px;--icon-stroke:2.4}
 .tag{
   display:inline-flex;align-items:center;gap:3px;background:var(--surface-2);
-  color:var(--label-2);border-radius:6px;padding:3px 7px;font-size:12px;
-  font-weight:500;text-transform:capitalize;
+  color:var(--label-3);border-radius:6px;padding:4px 7px;font-size:11px;
+  font-weight:600;letter-spacing:.02em;text-transform:capitalize;
 }
 .tag.acc{background:var(--acc-soft);color:var(--acc-txt)}
 

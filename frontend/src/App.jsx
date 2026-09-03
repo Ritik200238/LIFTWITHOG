@@ -1,3 +1,4 @@
+import Logo from './components/Logo.jsx'
 import { resolveTheme, watchSystemTheme } from './lib/theme.js'
 import { Suspense, lazy, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
@@ -87,7 +88,7 @@ function Shell() {
   if (!ready && !authed) return (
     <div id="app">
       <div style={{ paddingTop: '44vh', display: 'flex', justifyContent: 'center', fontSize: 34, color: 'var(--label-3)' }}>
-        <Icon name="dumbbell" />
+        <Logo size={34} />
       </div>
     </div>
   )
@@ -108,11 +109,11 @@ function Shell() {
             * repository.
             */}
           {!authed && loc.pathname === '/verify' ? (
-            <Suspense fallback={<div className="center" style={{ paddingTop: '38vh', fontSize: 30, color: 'var(--label-3)' }}><Icon name="dumbbell" /></div>}>
+            <Suspense fallback={<div className="center" style={{ paddingTop: '38vh', fontSize: 30, color: 'var(--label-3)' }}><Logo size={34} /></div>}>
               <Verify />
             </Suspense>
           ) : !authed ? <Login /> : (
-            <Suspense fallback={<div className="center" style={{ paddingTop: '38vh', fontSize: 30, color: 'var(--label-3)' }}><Icon name="dumbbell" /></div>}>
+            <Suspense fallback={<div className="center" style={{ paddingTop: '38vh', fontSize: 30, color: 'var(--label-3)' }}><Logo size={34} /></div>}>
             <Routes>
               <Route path="/home" element={<Home />} />
               <Route path="/plan" element={<Plan />} />

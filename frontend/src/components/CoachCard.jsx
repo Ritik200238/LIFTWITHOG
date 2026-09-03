@@ -21,6 +21,7 @@ import { sessionsUntilNextEvolve, SESSIONS_PER_EVOLVE } from '../lib/flywheel.js
 import { DEMO } from '../lib/demo.js'
 import { nav } from '../lib/nav.js'
 import Icon from './Icon.jsx'
+import Logo from './Logo.jsx'
 import { Button } from './ui.jsx'
 import { askTheCoach, defaultQuestion } from '../lib/askFlow.js'
 import { effectiveRoutine } from '../lib/history.js'
@@ -99,7 +100,7 @@ export default function CoachCard() {
         * number mean anything.
         */}
       <div className="coachcard-top">
-        <span className="coachcard-mark" aria-hidden="true">OG</span>
+        <span className="coachcard-mark" aria-hidden="true"><Logo size={20} /></span>
 
         <div className="coachcard-id">
           <div className="coachcard-name">

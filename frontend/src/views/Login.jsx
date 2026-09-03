@@ -1,3 +1,4 @@
+import Logo, { Wordmark } from '../components/Logo.jsx'
 import { passkeyMessage, wasCancelled } from '../lib/passkeyError.js'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -50,8 +51,8 @@ export default function Login() {
     catch (e) { if (!wasCancelled(e)) useUI.getState().toast(passkeyMessage(e, { signingIn: true })) }
   }
   const head = <>
-    <div style={{ fontSize: 54, display: 'flex', justifyContent: 'center', color: 'var(--acc)' }}><Icon name="dumbbell" /></div>
-    <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-.028em', margin: '10px 0 4px' }}>LIFTWITHOG</h1>
+    <div style={{ display: 'flex', justifyContent: 'center', color: 'var(--label)', marginBottom: 6 }}><Logo size={64} /></div>
+    <h1><Wordmark size={30} /></h1>
     <div className="muted small" style={{ marginBottom: 12 }}>A sovereign AI-powered workout & body-weight tracker built on 0G</div>
   </>
   const wrap = { display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }

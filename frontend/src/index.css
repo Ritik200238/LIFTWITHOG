@@ -77,6 +77,26 @@
   --acc-soft: color-mix(in srgb, var(--acc) 20%, transparent);
   --acc-line: color-mix(in srgb, var(--acc) 42%, transparent);
 
+  /*
+   * Ink, as a *control* colour — and the reason this token exists.
+   *
+   * The prototype fills with ink twelve times and with the accent twice. The
+   * accent is spent on one thing per screen: the primary action, plus links.
+   * Everything else that is "on" — the selected tab, today in the week strip,
+   * a checked set, a chosen filter, the Ask button — is ink on paper or paper
+   * on ink.
+   *
+   * This app had been using --acc for every one of those states, which was
+   * invisible while the accent was a mid-green and became overwhelming the
+   * moment it turned red: nine red things on the home screen, none of them the
+   * action. Selection now reads as ink and the eye has one place to land.
+   *
+   * It also fixes the accent picker. Choosing "plum" used to repaint the whole
+   * chrome; now it changes the button you are meant to press.
+   */
+  --ui:    var(--label);
+  --on-ui: var(--bg);
+
   /* geometry — the prototype's own vocabulary */
   --r-sm:8px; --r:11px; --r-lg:16px; --r-xl:22px; --r-card:14px; --r-pill:26px;
   --pad:16px;
@@ -122,6 +142,7 @@
 
   --acc-2:#a52d1a;
   --on-acc:#ffffff;
+  --on-ui: #f6f5f3;
 }
 
 /*
@@ -283,7 +304,7 @@ h3{font-size:17px;line-height:1.2;font-weight:600;letter-spacing:-.008em}
   transition:background var(--fast),transform var(--fast);
 }
 .iconbtn:active{background:var(--surface-2);transform:scale(.92)}
-.iconbtn.on-ss{background:var(--acc-soft);color:var(--acc-txt)}
+.iconbtn.on-ss{background:var(--ui);color:var(--on-ui);border-color:var(--ui)}
 
 h4.sec{
   font-size:12px;font-weight:600;letter-spacing:.07em;color:var(--label-3);
@@ -352,7 +373,7 @@ h4.sec{
 .lrow-v{color:var(--label-2);font-size:17px;letter-spacing:-.012em;flex:0 1 auto;min-width:0;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
 .lrow-c{color:var(--label);font-size:15px;flex:none;--icon-stroke:2.4}
-.lrow-k{color:var(--acc-txt);font-size:17px;flex:none;--icon-stroke:2.4}
+.lrow-k{color:var(--ui);font-size:17px;flex:none;--icon-stroke:2.4}
 .lrow.danger,.lrow.danger .lrow-t{color:var(--red)}
 /* an (i) before a row's control: painted small and dim so the control stays the loud thing,
    but with a finger-sized target like everything else — the padding is the hit area and the
@@ -416,7 +437,7 @@ h4.sec{
    fade on the <svg> instead of in the stroke colour flattens the icon first and
    fades it as one shape — and it does that for every icon, not just this one. */
 #tabbar button .icn{font-size:25px;--icon-stroke:1.65;color:var(--label)}
-#tabbar button.on{color:var(--acc-txt)}
+#tabbar button.on{color:var(--ui)}
 #tabbar button.on .icn{--icon-stroke:2;color:inherit;opacity:1}
 #tabbar button.start{margin-top:-24px}
 #tabbar button.start .cir{
@@ -452,10 +473,10 @@ h4.sec{
 .wday .dot{width:5px;height:5px;border-radius:50%;background:transparent;margin:0 auto}
 .wday .dot.plan{background:var(--label-3)}
 .wday .dot.ovr{background:var(--orange)}
-.wday .dot.done{background:var(--acc)}
+.wday .dot.done{background:var(--ui)}
 .wday:active{background:var(--surface-2)}
 .wday.today .num{
-  background:var(--acc);color:var(--on-acc);font-weight:600;
+  background:var(--ui);color:var(--on-ui);font-weight:600;
   width:31px;height:31px;border-radius:50%;display:flex;align-items:center;
   justify-content:center;margin:2px auto;
 }
@@ -530,7 +551,7 @@ h4.sec{
   letter-spacing:-.006em;transition:background var(--fast),color var(--fast);
 }
 .chip:active{background:var(--surface-2)}
-.chip.on{background:var(--acc);color:var(--on-acc);font-weight:500}
+.chip.on{background:var(--ui);color:var(--on-ui);font-weight:600}
 
 /* =========================== CONTROLS ==================================== */
 
@@ -541,7 +562,7 @@ h4.sec{
   transition:box-shadow var(--fast);
 }
 .field::placeholder,.input::placeholder{color:var(--label-3)}
-.field:focus,.input:focus{box-shadow:inset 0 0 0 2px var(--acc)}
+.field:focus,.input:focus{box-shadow:inset 0 0 0 2px var(--ui)}
 .field.area,textarea.input{min-height:92px;resize:vertical;line-height:1.42}
 .exnote{
   background:var(--surface);border-radius:var(--r);padding:13px 15px;
@@ -581,7 +602,7 @@ h4.sec{
   box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);
   transition:transform var(--med) var(--ease),width var(--fast) var(--ease);
 }
-.sw.on{background:var(--acc)}
+.sw.on{background:var(--ui)}
 .sw.on .knob{transform:translateX(20px)}
 .sw:active .knob{width:31px}
 .sw.on:active .knob{transform:translateX(16px)}
@@ -645,7 +666,7 @@ h4.sec{
   transition:background var(--fast),transform var(--fast) var(--ease);
 }
 .goalrow:active{transform:scale(.985);background:var(--surface-2)}
-.goalrow.on{background:var(--acc-soft)}
+.goalrow.on{background:var(--surface-2);box-shadow:inset 0 0 0 1.5px var(--ui)}
 /* Bold, not tinted. Accent-coloured text sat at 3.9:1 on the tinted row in
    light mode — this is the name of the goal somebody chose, so it keeps the
    full-contrast label colour and lets the check and the background carry the
@@ -676,7 +697,7 @@ h4.sec{
   font-size:16px;color:var(--label);outline:none;text-align:right;
   font-variant-numeric:tabular-nums;
 }
-.numin:focus{box-shadow:0 0 0 2px var(--acc-soft)}
+.numin:focus{box-shadow:0 0 0 2px var(--ui)}
 
 /* native time input, restyled to sit in a row like a value label */
 .timef{
@@ -716,7 +737,7 @@ h4.sec{
   position:absolute;left:0;right:0;height:6px;border-radius:99px;
   background:var(--surface-3);overflow:hidden;
 }
-.sld-fill{display:block;height:100%;background:var(--acc);border-radius:99px}
+.sld-fill{display:block;height:100%;background:var(--ui);border-radius:99px}
 .sld-knob{
   position:absolute;width:26px;height:26px;border-radius:50%;background:#fff;
   transform:translateX(-50%);
@@ -733,18 +754,18 @@ h4.sec{
   transition:background var(--fast),box-shadow var(--fast),color var(--fast),transform var(--fast);
 }
 .chk .icn{font-size:16px;--icon-stroke:2.6}
-.chk.on{background:var(--acc);box-shadow:none;color:var(--on-acc)}
+.chk.on{background:var(--ui);box-shadow:none;color:var(--on-ui)}
 .chk:active,.ck:active{transform:scale(.9)}
 .ck svg{
   width:16px;height:16px;stroke:transparent;fill:none;stroke-width:2.6;
   stroke-linecap:round;stroke-linejoin:round;transition:stroke var(--fast);
 }
-.ck.on{background:var(--acc);box-shadow:none}
+.ck.on{background:var(--ui);box-shadow:none}
 .ck.on svg{stroke:var(--on-acc)}
 
 /* ------------------------------------------------------------- workout --- */
 .wprog{height:4px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin-bottom:16px}
-.wprog i{display:block;height:100%;background:var(--acc);border-radius:99px;transition:width var(--med) var(--ease)}
+.wprog i{display:block;height:100%;background:var(--ui);border-radius:99px;transition:width var(--med) var(--ease)}
 /* Not #fff. The exercise art is on a white ground, but hardcoding it here means
    a failed image renders as a blinding white slab in a dark app — which is what
    you get at a gym the moment the media host is slow. The image brings its own
@@ -806,7 +827,7 @@ h4.sec{
 .setrow.eff3 .stp button{width:23px}
 .setrow.eff3 .stp.eff button{width:20px}
 .setrow.eff3 .stp .num{font-size:14px}
-.setrow.done .n{background:var(--acc);color:var(--on-acc)}
+.setrow.done .n{background:var(--ui);color:var(--on-ui)}
 .setrow.done{opacity:.45}
 /* why the next target is what it is (issue #17) */
 .progline{
@@ -916,8 +937,8 @@ h4.sec{
   color:var(--label-3);
 }
 /* the row a working set usually lands on — the anchor the others are read against */
-.efftbl .r.on{background:var(--acc-soft)}
-.efftbl .r.on .n{color:var(--acc)}
+.efftbl .r.on{background:var(--surface-2)}
+.efftbl .r.on .n{color:var(--ui)}
 .efftbl .r.on .f{color:var(--label)}
 
 /* --- glyph picker (replaces the emoji grid) --- */
@@ -928,7 +949,7 @@ h4.sec{
   color:var(--label);transition:background var(--fast),color var(--fast),transform var(--fast);
 }
 .glyph-cell:active{transform:scale(.92)}
-.glyph-cell.on{background:var(--acc);color:var(--on-acc)}
+.glyph-cell.on{background:var(--ui);color:var(--on-ui)}
 
 /* --- big weight readout --- */
 .bwstep{display:flex;align-items:center;justify-content:center;gap:18px;margin:14px 0 6px}
@@ -974,10 +995,10 @@ h4.sec{
 .hm-grid{display:flex;gap:3px}
 .hm-col{display:flex;flex-direction:column;gap:3px}
 .hm-c{width:11px;height:11px;border-radius:3px;background:var(--surface-2);flex:none}
-.hm-c.l1{background:color-mix(in srgb,var(--acc) 30%,var(--surface-2))}
-.hm-c.l2{background:color-mix(in srgb,var(--acc) 55%,var(--surface-2))}
-.hm-c.l3{background:color-mix(in srgb,var(--acc) 78%,var(--surface-2))}
-.hm-c.l4{background:var(--acc)}
+.hm-c.l1{background:color-mix(in srgb,var(--ui) 30%,var(--surface-2))}
+.hm-c.l2{background:color-mix(in srgb,var(--ui) 55%,var(--surface-2))}
+.hm-c.l3{background:color-mix(in srgb,var(--ui) 78%,var(--surface-2))}
+.hm-c.l4{background:var(--ui)}
 .hm-c.today{box-shadow:0 0 0 1.5px var(--acc)}
 .hm-c.future{opacity:.3}
 .hm-legend{
@@ -1119,29 +1140,139 @@ h4.sec{
 
 /* --------------------------------------------------- desktop (≥1000px) --- */
 .cols{display:block}
+/* ============================== desktop ==============================
+ *
+ * The prototype is a phone, and correctly so: sets get logged standing up with
+ * one hand. Desktop is not in the handoff, so this is mine, and the question it
+ * answers is what a wide screen is actually *for* here.
+ *
+ * Nobody logs a working set at a desk. What people do at a desk is plan next
+ * week, read where their lifts went, price a coach, and check somebody's
+ * claims. So desktop is a planning workstation: the navigation stops being a
+ * thumb rail at the bottom and becomes a sidebar, and the screens that hold two
+ * things at once are allowed to show both.
+ *
+ * It is done entirely in CSS. The same markup the phone renders becomes the
+ * sidebar layout here — no branch in the components, no second tree to keep in
+ * step, and nothing that can work on one and rot on the other.
+ * ==================================================================== */
 @media (min-width:1000px){
-  #app{max-width:1080px;padding-top:32px}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  :root{ --rail:248px; --gutter:40px }
+
+  /* ------------------------------------------------ the navigation rail */
+  #tabbar{
+    left:0;right:auto;top:0;bottom:0;width:var(--rail);
+    flex-direction:column;justify-content:flex-start;align-items:stretch;
+    gap:2px;padding:26px 14px calc(20px + var(--sab));
+    background:var(--bg-el);
+    border-top:none;border-right:1px solid var(--surface-3);
+    backdrop-filter:none;-webkit-backdrop-filter:none;
+  }
+
+  /* The wordmark, which the phone puts in each screen's header and a sidebar
+     has room to say once. */
+  #tabbar::before{
+    content:"LIFTWITHOG";
+    font-size:13px;font-weight:700;letter-spacing:.10em;
+    color:var(--label);padding:0 12px 20px;order:-2;
+  }
+
+  /* flex:none, or the six items share the rail's full height and the nav
+     becomes a column of buttons a screen tall. */
+  #tabbar button{
+    flex:none;flex-direction:row;justify-content:flex-start;gap:13px;
+    width:100%;padding:10px 12px;border-radius:var(--r);
+    font-size:15px;font-weight:600;letter-spacing:-.006em;
+    color:var(--label-2);
+  }
+  #tabbar button .icn{font-size:19px}
+  #tabbar button span{font-size:15px;font-weight:600}
+  #tabbar button:hover{background:var(--surface-2);color:var(--label)}
+  #tabbar button.on{background:var(--surface-2);color:var(--label)}
+
+  /*
+   * Start keeps its accent, and keeps being the one accented thing on screen.
+   * On the phone it is a circle riding the bar because a thumb has to find it
+   * without looking; here it is a full-width action at the top of the rail,
+   * where the eye starts.
+   */
+  #tabbar button.start{
+    flex:none;flex-direction:row;margin:0 0 16px;padding:12px;
+    background:var(--acc-2);color:#fff;border-radius:var(--r-pill);
+    justify-content:center;gap:9px;box-shadow:none;
+  }
+  /* Start leads the rail, under the wordmark — the rest keep source order. */
+  #tabbar button.start{order:-1}
+  #tabbar button.start:hover{background:var(--acc)}
+  #tabbar button.start .cir{
+    width:auto;height:auto;background:none;color:#fff;box-shadow:none;font-size:18px;
+  }
+  #tabbar button.start span{color:#fff;font-size:15px;font-weight:600}
+  #tabbar button.start.rec{background:var(--orange)}
+
+  /* --------------------------------------------------------- the content */
+  #app{
+    margin:0 0 0 var(--rail);
+    max-width:none;
+    padding:34px var(--gutter) 80px;
+    /*
+     * A readable measure, centred in what is left beside the rail. Past about
+     * 760px a single column of prose stops being read and starts being
+     * scanned — and the screens here are mostly one column. The two-column
+     * ones opt in with .cols, which widens itself below.
+     */
+    display:flex;flex-direction:column;align-items:center;
+  }
+  #app > *{width:100%;max-width:760px}
+  /* Where a screen really does hold two things, it gets the room for them. */
+  #app > .cols,#app > .wide{max-width:1080px}
+
+  body.resting #app{padding-bottom:80px}
+
+  /* Screens that genuinely hold two things: plan and its routines, stats and
+     its charts, nutrition and its log. */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   .cols>*{min-width:0}
-  #app .list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #app .list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   #modal-root .list,.narrow .list{display:flex;flex-direction:column}
   .narrow{max-width:640px;margin:0 auto}
   .tiles{grid-template-columns:repeat(4,1fr)}
   .cols .tiles{grid-template-columns:1fr 1fr}
-  #tabbar{
-    left:50%;right:auto;bottom:16px;transform:translateX(-50%);width:520px;
-    border:var(--hair) solid var(--sep-op);border-radius:var(--r-xl);
-    padding:7px 10px 9px;box-shadow:0 12px 40px -10px rgba(0,0,0,.5);
+
+  /* Hover, which a phone has no concept of and a desktop expects. */
+  .lrow.tap:hover,.item:hover{background:var(--surface-2)}
+  .card{transition:border-color var(--fast)}
+
+  /* ------------------------------------------------------------- overlays
+   * A sheet that slides from the bottom of a 1400px window is a phone gesture
+   * performed on furniture. These become centred dialogs. */
+  .sheet{
+    left:50%;right:auto;bottom:auto;top:50%;
+    transform:translate(-50%,-50%);
+    margin:0;width:min(680px,calc(100vw - 80px));max-height:86vh;
+    border:1px solid var(--surface-3);border-radius:var(--r-xl);
   }
-  #tabbar button.start{margin-top:-26px}
-  .sheet{left:50%;right:auto;margin-left:-320px;width:640px;border-radius:var(--r-xl) var(--r-xl) 0 0}
-  .center{width:340px}
-  #timer{left:50%;right:auto;margin-left:-260px;width:520px;bottom:112px}
-  /* 520px fits the clock, the bar and all three controls on one line again */
+  .sheet.in{transform:translate(-50%,-50%)}
+  .center{width:380px}
+
+  /* The rest timer follows the content column, not the whole viewport. */
+  #timer{
+    left:calc(var(--rail) + var(--gutter));right:auto;margin-left:0;
+    width:min(520px,calc(100vw - var(--rail) - var(--gutter) * 2));
+    bottom:26px;
+  }
   #timer.rest{flex-direction:row;align-items:center;gap:14px}
   #timer.rest .head{flex:1;min-width:0}
+
   .exmedia img{height:380px}
   .hm-wrap{display:flex;flex-direction:column;align-items:center}
+}
+
+/* Between phone and workstation: keep the thumb rail, widen the column. */
+@media (min-width:700px) and (max-width:999px){
+  #app{max-width:680px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .cols>*{min-width:0}
 }
 
 /* ------------------------------ food logging ----------------------------- */

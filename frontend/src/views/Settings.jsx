@@ -149,11 +149,19 @@ export default function Settings() {
       <Row icon="moon" iconTint="var(--indigo)" title={t('Theme')}>
         <Segmented
           className="seg-inline"
-          options={[{ value: 'dark', icon: 'moon', label: t('Dark') }, { value: 'light', icon: 'sun', label: t('Light') }]}
-          value={S.theme === 'light' ? 'light' : 'dark'}
+          options={[
+            { value: 'auto', label: t('Auto') },
+            { value: 'light', icon: 'sun', label: t('Light') },
+            { value: 'dark', icon: 'moon', label: t('Dark') },
+          ]}
+          value={S.theme === 'light' || S.theme === 'dark' ? S.theme : 'auto'}
           onChange={v => update(s => { s.theme = v })}
         />
       </Row>
+      {/* Auto is the default, so it is the one that has to explain itself. */}
+      {!(S.theme === 'light' || S.theme === 'dark') && (
+        <Row title={t('Follows your phone — dark at night if your phone is.')} className="rowsub" />
+      )}
       {/* Purely how the muscle map is drawn — nothing else in the app reads this. */}
       <Row icon="figureStrength" iconTint="var(--teal)" title={t('Body diagram')}>
         <Segmented

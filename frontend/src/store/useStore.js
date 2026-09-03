@@ -10,7 +10,7 @@ import { withDefaults as fill } from '../lib/withDefaults.js'
 const KEY = 'gym_state_v1'
 export const DEF = {
   unit: 'kg', restSec: 90, sound: true, keepAwake: true, lang: 'en',
-  theme: 'light', accent: 'ember', body: 'male', targetW: null,
+  theme: 'auto', accent: 'ember', body: 'male', targetW: null,
   bodyweight: [], routines: [], week: {}, dayPlan: {},
   exWeights: {}, workouts: [], active: null, customEx: [],
   /*

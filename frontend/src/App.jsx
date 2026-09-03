@@ -1,3 +1,4 @@
+import { resolveTheme, watchSystemTheme } from './lib/theme.js'
 import { Suspense, lazy, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from './store/useStore.js'
@@ -46,8 +47,14 @@ bindUI(useUI)   // lets the shared controls open sheets without importing the st
 
 function applyPrefs(theme, accent) {
   const de = document.documentElement
-  de.dataset.theme = theme === 'light' ? 'light' : 'dark'
+  de.dataset.theme = resolveTheme(theme)
   de.dataset.accent = ACCENTS[accent] ? accent : 'ember'
+
+  /*
+   * The browser's own chrome — the status bar in a home-screen app — is
+   * painted from this, so it has to move with the theme or the app sits under
+   * a bar from the other one.
+   */
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.content = de.dataset.theme === 'light' ? '#efeeeb' : '#0e0e0d'
 }
@@ -60,6 +67,15 @@ function Shell() {
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
   useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
+  /*
+   * Following the system means following it *while the app is open*, not only
+   * at startup — a phone on a sunset schedule flips under a running app, and an
+   * app that only checked once would be the one wrong thing on the screen.
+   */
+  useEffect(() => {
+    if (S.theme === 'light' || S.theme === 'dark') return
+    return watchSystemTheme(() => applyPrefs(S.theme, S.accent))
+  }, [S.theme, S.accent])
   useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
   useEffect(() => { document.documentElement.lang = S.lang || 'en' }, [langV, S.lang])
   // every tab/route change starts at the top of the page

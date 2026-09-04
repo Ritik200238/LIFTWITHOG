@@ -22,6 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { first, evidence, PATTERNS } from './countsParse.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -41,24 +42,21 @@ const run = (command, args, cwd) => {
   }
 };
 
-const first = (text, pattern, fallback = null) => {
-  const match = text.match(pattern);
-  return match ? Number(match[1]) : fallback;
-};
 
 const out = {};
 
 const frontend = run('npx', ['vitest', 'run'], 'frontend');
-out.frontend = first(frontend, /Tests\s+(\d+) passed/);
-out.frontendFailed = first(frontend, /Tests\s+.*?(\d+) failed/, 0);
+out.frontend = first(frontend, PATTERNS.frontendPassed);
+out.frontendFailed = first(frontend, PATTERNS.frontendFailed, 0);
 
 const server = run('node', ['--test'], 'server');
-out.server = first(server, /^# pass (\d+)/m);
-out.serverFailed = first(server, /^# fail (\d+)/m, 0);
+out.server = first(server, PATTERNS.serverPassed);
+out.serverFailed = first(server, PATTERNS.serverFailed, 0);
 
 const contracts = run('forge', ['test'], 'contracts');
-out.contracts = first(contracts, /(\d+) tests passed/);
-out.contractsFailed = first(contracts, /tests passed, (\d+) failed/, 0);
+out.contracts = first(contracts, PATTERNS.contractsPassed);
+out.contractsFailed = first(contracts, PATTERNS.contractsFailed, 0);
+out.contractsSkipped = first(contracts, PATTERNS.contractsSkipped, 0);
 
 const total = (out.frontend ?? 0) + (out.server ?? 0) + (out.contracts ?? 0);
 const failed = (out.frontendFailed ?? 0) + (out.serverFailed ?? 0) + (out.contractsFailed ?? 0);
@@ -68,6 +66,10 @@ console.log(`  frontend   ${out.frontend}`);
 console.log(`  server     ${out.server}`);
 console.log(`  contracts  ${out.contracts}`);
 console.log(`  total      ${total}${failed ? `   (${failed} FAILING)` : ''}`);
+// A skipped test is not a passing test, and a count that quietly loses four of
+// them in one environment and not another is the kind of difference that is
+// invisible until a document disagrees with a machine somebody else is on.
+if (out.contractsSkipped) console.log(`  (${out.contractsSkipped} contract tests skipped)`);
 
 /*
  * The documents, checked against what just ran.
@@ -103,6 +105,42 @@ if (process.argv.includes('--check')) {
     [/^(\d+) in total\./gm, 'total'],
   ];
 
+  /*
+   * A count it could not read is not a document that is wrong.
+   *
+   * When the colour stripping was missing, `out.frontend` came back null and
+   * this reported "README says 577 frontend, the suites say null" — which
+   * blames the prose for a parsing bug in this file and sends whoever reads it
+   * to edit the wrong thing. Refuse to compare instead, and say so.
+   */
+  const unreadable = Object.entries(expected)
+    .filter(([, value]) => typeof value !== 'number' || Number.isNaN(value))
+    .map(([name]) => name);
+
+  /*
+   * Where each number came from.
+   *
+   * Printed only when something is wrong, because a report nobody can check is
+   * how this script spent every CI run reporting `frontend null` while exiting
+   * 0. A failure in a log you cannot re-run has to carry its own evidence.
+   */
+  const showWorking = () => {
+    console.log();
+    console.log('The lines these numbers came from:');
+    console.log(`  frontend   ${evidence(frontend, PATTERNS.frontendPassed)}`);
+    console.log(`  server     ${evidence(server, PATTERNS.serverPassed)}`);
+    console.log(`  contracts  ${evidence(contracts, PATTERNS.contractsPassed)}`);
+  };
+
+  if (unreadable.length) {
+    console.log();
+    console.log(`Could not count: ${unreadable.join(', ')}. The documents were not checked.`);
+    console.log('That is a failure of this script, not of the documents.');
+    showWorking();
+    process.exitCode = 1;
+    process.exit();
+  }
+
   const wrong = [];
   for (const doc of docs) {
     let text;
@@ -126,6 +164,7 @@ if (process.argv.includes('--check')) {
   if (wrong.length) {
     console.log('These documents disagree with the code:');
     for (const line of wrong) console.log(`  ${line}`);
+    showWorking();
     process.exitCode = 1;
   } else {
     console.log(`Documents agree with the suites (${docs.length} checked).`);
@@ -134,8 +173,8 @@ if (process.argv.includes('--check')) {
 
 if (process.argv.includes('--with-mutations')) {
   const mutations = run('node', ['scripts/mutate.mjs'], '.');
-  const caught = first(mutations, /All (\d+) caught/);
-  const equivalent = first(mutations, /and (\d+) verified equivalent/);
+  const caught = first(mutations, PATTERNS.mutationsCaught);
+  const equivalent = first(mutations, PATTERNS.mutationsEquivalent);
   console.log('\nmutations');
   console.log(`  caught     ${caught}`);
   console.log(`  equivalent ${equivalent}`);

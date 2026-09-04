@@ -227,11 +227,17 @@ export function Slider({ value, min = 0, max = 100, step = 1, onChange, classNam
 
 /* ============================ checkbox ============================ */
 
-export function Check({ checked, onChange, className = '', size }) {
+// `label` for the same reason Switch takes one: this draws a tick and nothing
+// else, and a row of four of them announced as four unnamed checkboxes — on the
+// most-pressed control in the app.
+export function Check({ checked, onChange, className = '', size, label }) {
+  const rowLabel = useRowLabel()
   return (
     <button
       role="checkbox"
       aria-checked={!!checked}
+      aria-label={label || undefined}
+      aria-labelledby={!label && rowLabel ? rowLabel : undefined}
       className={'chk' + (checked ? ' on' : '') + ' ' + className}
       style={size ? { width: size, height: size } : null}
       onClick={() => onChange(!checked)}

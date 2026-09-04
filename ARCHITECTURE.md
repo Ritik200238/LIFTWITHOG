@@ -301,9 +301,9 @@ Same code, two postures: convenience on Vercel, custody on your own box.
 
 ## Engineering discipline
 
-- **796 tests**: 542 frontend (vitest) · 151 server (node:test) · 103 contract
-  (Foundry: 42 unit, 9 fuzz properties, 5 invariants driven through random
-  call sequences, 16 on the ERC-7857 surface).
+- **843 tests**: 575 frontend (vitest) · 157 server (node:test) · 111 contract
+  (Foundry: 91 unit, 15 fuzz properties, 5 invariants driven through random
+  call sequences).
 - **Mutation testing** (`node scripts/mutate.mjs`): 174 deliberate faults —
   constants nudged, guards loosened, signs flipped — across the nutrition
   engine, meal planner, sync merge, plate math, warm-ups and the service

@@ -180,9 +180,9 @@ integration is worse than an absent one.
 ## 20% — Technical quality
 
 ```
-823 tests    555 frontend · 157 server · 111 contract
-             (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 14 verifier)
-174 seeded faults, 172 caught, 5 proven equivalent with measured evidence
+843 tests    575 frontend · 157 server · 111 contract
+             (91 unit, 15 fuzz, 5 invariant)
+174 seeded faults, 169 caught, 5 proven equivalent with measured evidence
 ```
 
 Both numbers come from `node scripts/counts.mjs` and `node scripts/mutate.mjs`.

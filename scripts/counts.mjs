@@ -19,6 +19,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -67,6 +68,69 @@ console.log(`  frontend   ${out.frontend}`);
 console.log(`  server     ${out.server}`);
 console.log(`  contracts  ${out.contracts}`);
 console.log(`  total      ${total}${failed ? `   (${failed} FAILING)` : ''}`);
+
+/*
+ * The documents, checked against what just ran.
+ *
+ * The guard this replaces was a blocklist of numbers that had been wrong once —
+ * `529 frontend`, `641 tests`, `164 seeded`. It could only ever catch a mistake
+ * already made, and it did not: ARCHITECTURE.md sat at "796 tests: 542 frontend
+ * · 151 server · 103 contract" through four refreshes of every other document,
+ * green the whole time, because nobody had thought to add those five numbers to
+ * the list of numbers to look for.
+ *
+ * So this reads the counts out of the prose instead and compares them to the
+ * suites. A number that drifts is caught whether or not anybody predicted it.
+ */
+if (process.argv.includes('--check')) {
+  const docs = ['README.md', 'ARCHITECTURE.md', 'VERIFICATION.md', 'SUBMISSION.md'];
+  const expected = {
+    frontend: out.frontend,
+    server: out.server,
+    contracts: out.contracts,
+    total,
+  };
+
+  // Each pattern names one count. Anything matching has to agree with the run.
+  const patterns = [
+    // The lookbehind is what keeps "the v2 contract" from reading as a count of two.
+    [/(?<![A-Za-z])(\d+)\s+frontend\b/g, 'frontend'],
+    [/(?<![A-Za-z])(\d+)\s+server\b/g, 'server'],
+    [/(?<![A-Za-z])(\d+)\s+contract\b/g, 'contracts'],
+    [/tests-(\d+)%20passing/g, 'total'],
+    [/\*\*(\d+) tests\*\*/g, 'total'],
+    [/^(\d+) tests\s{2,}/gm, 'total'],
+    [/^(\d+) in total\./gm, 'total'],
+  ];
+
+  const wrong = [];
+  for (const doc of docs) {
+    let text;
+    try {
+      text = readFileSync(path.join(root, doc), 'utf8');
+    } catch {
+      continue;
+    }
+    for (const [pattern, key] of patterns) {
+      for (const match of text.matchAll(pattern)) {
+        const claimed = Number(match[1]);
+        if (claimed !== expected[key]) {
+          const line = text.slice(0, match.index).split('\n').length;
+          wrong.push(`${doc}:${line}  says ${claimed} ${key}, the suites say ${expected[key]}`);
+        }
+      }
+    }
+  }
+
+  console.log();
+  if (wrong.length) {
+    console.log('These documents disagree with the code:');
+    for (const line of wrong) console.log(`  ${line}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`Documents agree with the suites (${docs.length} checked).`);
+  }
+}
 
 if (process.argv.includes('--with-mutations')) {
   const mutations = run('node', ['scripts/mutate.mjs'], '.');

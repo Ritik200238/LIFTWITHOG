@@ -111,8 +111,14 @@ check mutation "174 seeded faults are caught" node scripts/mutate.mjs
 # ----------------------------------------------------------------- release
 
 check release "frontend builds" npm --prefix frontend run build
-check release "no document claims a test count by hand" \
-  bash -c '! grep -rnE "\*\*6(41|68) tests|529 frontend|164 (seeded|deliberate)" README.md ARCHITECTURE.md VERIFICATION.md'
+# Was a blocklist of numbers that had been wrong once, which could only catch a
+# mistake somebody had already made — and did not: ARCHITECTURE.md sat at "796
+# tests: 542 frontend · 151 server · 103 contract" through four refreshes of
+# every other document, green the whole time, because nobody had added those
+# five numbers to the list of numbers to look for. This reads the counts out of
+# the prose and compares them to the suites instead.
+check release "every test count in the documents matches the suites" \
+  node scripts/counts.mjs --check
 check release "the security documents exist and name their open risks" \
   bash -c 'grep -q "Open risks" SECURITY.md && grep -q "Non-capabilities" THREAT-MODEL.md'
 check release "the contract still has no admin, pause or upgrade" \

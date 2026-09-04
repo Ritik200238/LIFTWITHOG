@@ -4,8 +4,8 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-823%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
-[![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20172%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
+[![tests](https://img.shields.io/badge/tests-843%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-111%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
 [![0g](https://img.shields.io/badge/0G-Galileo%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)
@@ -321,9 +321,9 @@ sequenceDiagram
 | Corrupt stored data can't invite an overwrite | "no data" and "unreadable" are different answers | [`server/store.test.js`](server/store.test.js) |
 | A leaked session key can't come back | recognised **by hash** at boot, rotated, everyone signed out | [`server/store.js`](server/store.js) |
 | Offline actually works | app shell precached at install, named by build hash | [`frontend/src/lib/swShell.js`](frontend/src/lib/swShell.js) + tests — measured by killing the server |
-| Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 172 caught, 5 proven equivalent |
+| Wrong numbers can't reach a diet or a bar | 174 seeded faults must all be caught | `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**823 tests**: 555 frontend · 157 server · 111 contract (42 unit, 9 fuzz, 5 invariant, 20 ERC-7857, 20 verifier, 13 clone).
+**843 tests**: 575 frontend · 157 server · 111 contract (91 unit, 15 fuzz, 5 invariant — across CoachAgent, ERC-7857, the verifier and clone lineage).
 Every number here is printed by `node scripts/counts.mjs`, which runs the suites rather than
 trusting a document — the previous set disagreed with itself in three places.
 

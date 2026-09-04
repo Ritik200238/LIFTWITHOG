@@ -58,6 +58,18 @@ describe('how old a coach is', () => {
 })
 
 describe('the history line', () => {
+  it('says nothing about age when the mint is outside the log window', () => {
+    /*
+     * The market read the creation time from a bounded range of blocks, so a
+     * coach minted before it had none — and `ageInDays(null)` is 0, which
+     * rendered as "Created today" on every older coach. The market's argument
+     * is that time cannot be faked; the market was faking it.
+     */
+    expect(historyLine({ createdAt: null, version: 3 }, NOW)).toBe('Learned 2 times')
+    expect(historyLine({ createdAt: undefined, version: 1 }, NOW)).toBe('Has not learned yet')
+    expect(historyLine({ createdAt: null, version: 3 }, NOW)).not.toMatch(/today|old/)
+  })
+
   it('says what a long-lived coach actually has behind it', () => {
     const line = historyLine({ createdAt: NOW - 240 * DAY, version: 14 }, NOW)
 

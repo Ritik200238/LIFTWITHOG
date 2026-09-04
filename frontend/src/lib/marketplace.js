@@ -54,8 +54,21 @@ export function ageInDays(createdAtMs, now = Date.now()) {
  * an explorer; "elite programming" is a thing anybody can type.
  */
 export function historyLine(coach, now = Date.now()) {
-  const days = ageInDays(coach.createdAt, now)
   const versions = coach.version ?? 1
+  const learned = versions > 1 ? `learned ${versions - 1} times` : 'has not learned yet'
+
+  /*
+   * Unknown is not zero.
+   *
+   * The creation time comes from the mint log over a bounded block window, so
+   * a coach minted before that window has no known age. `ageInDays(null)` is 0,
+   * and 0 rendered as "Created today" — which put a false sentence on every
+   * coach in the market older than the window, on the one screen whose whole
+   * argument is that you cannot fake time. Say nothing about age instead.
+   */
+  if (coach.createdAt == null) return learned[0].toUpperCase() + learned.slice(1)
+
+  const days = ageInDays(coach.createdAt, now)
 
   const age =
     days >= 60
@@ -63,8 +76,6 @@ export function historyLine(coach, now = Date.now()) {
       : days >= 1
         ? `${days} ${days === 1 ? 'day' : 'days'}`
         : 'today'
-
-  const learned = versions > 1 ? `learned ${versions - 1} times` : 'has not learned yet'
 
   return days === 0 ? `Created today · ${learned}` : `${age} old · ${learned}`
 }

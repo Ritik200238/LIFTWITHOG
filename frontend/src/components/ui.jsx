@@ -13,9 +13,24 @@
 //   · :active gives a scale/tint response so touch feels acknowledged
 //   · focus-visible draws a ring; pointer interaction never does
 
-import { useRef, useState, useEffect, useCallback, forwardRef } from 'react'
+import { useRef, useState, useEffect, useCallback, forwardRef, createContext, useContext, useId } from 'react'
 import Icon from './Icon.jsx'
 import { t } from '../lib/i18n.js'
+
+/* ============================ naming ============================ */
+
+// A Row already draws the name of the thing its control changes — "Sounds",
+// "Keep screen awake". A screen reader could not see it: the switch is a
+// sibling of that text, not labelled by it, so every toggle in Settings
+// announced as "switch, on" with no indication of what it toggles.
+//
+// The row publishes the id of its own title, and a control inside it points at
+// that id. The spoken name is therefore the visible name by construction — it
+// cannot drift when the title is reworded, which is exactly what happens when
+// each call site repeats the string into an aria-label.
+const RowLabel = createContext(null)
+
+export function useRowLabel() { return useContext(RowLabel) }
 
 /* ============================ text ============================ */
 
@@ -77,11 +92,16 @@ export function SearchField({ value, onChange, onClear, ...rest }) {
 
 /* ============================ switch ============================ */
 
-export function Switch({ checked, onChange, disabled }) {
+// `label` is only needed for a switch that sits outside a Row. Inside one it is
+// named by the row's own title — see RowLabel.
+export function Switch({ checked, onChange, disabled, label }) {
+  const rowLabel = useRowLabel()
   return (
     <button
       role="switch"
       aria-checked={!!checked}
+      aria-label={label || undefined}
+      aria-labelledby={!label && rowLabel ? rowLabel : undefined}
       disabled={disabled}
       className={'sw' + (checked ? ' on' : '')}
       onClick={() => onChange(!checked)}
@@ -118,14 +138,24 @@ export function Segmented({ options, value, onChange, className = '' }) {
 
 export function Stepper({ value, step = 1, onChange, decimal = true, className = '', label, unit }) {
   const set = v => onChange(Math.max(0, Math.round((v || 0) * 100) / 100))
+  // "Decrease" on its own is useless when four steppers sit in one sheet — every
+  // button across Sets/Reps/Weight/Speed announced the same two words. The label
+  // the stepper already draws is the only thing that tells them apart.
+  const rowLabel = useRowLabel()
   const inner = (
     <div className={'stp ' + className}>
-      <button onClick={() => set((+value || 0) - step)} aria-label={t('Decrease')}><Icon name="minus" /></button>
+      <button onClick={() => set((+value || 0) - step)}
+        aria-label={label ? t('Decrease {0}', label) : t('Decrease')}
+        aria-describedby={!label && rowLabel ? rowLabel : undefined}><Icon name="minus" /></button>
       <span className="val">
-        <NumberField value={value} decimal={decimal} onChange={onChange} />
+        <NumberField value={value} decimal={decimal} onChange={onChange}
+          aria-label={label || undefined}
+          aria-labelledby={!label && rowLabel ? rowLabel : undefined} />
         {unit && <i>{unit}</i>}
       </span>
-      <button onClick={() => set((+value || 0) + step)} aria-label={t('Increase')}><Icon name="plus" /></button>
+      <button onClick={() => set((+value || 0) + step)}
+        aria-label={label ? t('Increase {0}', label) : t('Increase')}
+        aria-describedby={!label && rowLabel ? rowLabel : undefined}><Icon name="plus" /></button>
     </div>
   )
   if (!label) return inner
@@ -228,14 +258,15 @@ export function Section({ title, footer, children, className = '' }) {
 
 export function Row({ icon, iconTint, title, subtitle, value, accessory = 'none', onClick, danger, children, className = '' }) {
   const Tag = onClick ? 'button' : 'div'
+  const titleId = useId()
   return (
     <Tag className={'lrow' + (onClick ? ' tap' : '') + (danger ? ' danger' : '') + ' ' + className} onClick={onClick}>
       {icon && <span className="lrow-i" style={iconTint ? { '--tint': iconTint } : null}><Icon name={icon} /></span>}
       <span className="lrow-m">
-        <span className="lrow-t">{title}</span>
+        <span className="lrow-t" id={titleId}>{title}</span>
         {subtitle && <span className="lrow-s">{subtitle}</span>}
       </span>
-      {children}
+      <RowLabel.Provider value={titleId}>{children}</RowLabel.Provider>
       {value != null && <span className="lrow-v">{value}</span>}
       {accessory === 'chevron' && <Icon name="chevronRight" className="lrow-c" />}
       {accessory === 'check' && <Icon name="check" className="lrow-k" />}

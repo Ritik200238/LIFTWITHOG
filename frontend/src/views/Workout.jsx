@@ -158,15 +158,22 @@ function ExerciseBlock({ entryIdx, compact, onToggle, onField, onAddSet, onRemov
 
   // Uses the shared stepper markup so a set row picks up the same control styling
   // as every other +/- field in the app.
-  const cell = (s, i, col, cls) => (
-    <div className={'stp ' + cls}>
-      <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
-      {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
-      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
-        onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
-      <button aria-label={t('Increase')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
-    </div>
-  )
+  // A set row has two or three of these side by side and a session has a dozen
+  // rows, so an unnamed field reads as "edit text, blank" thirty times over. The
+  // column header is drawn once above the grid; every cell repeats it, with the
+  // set number, because that is the only thing that locates the field.
+  const cell = (s, i, col, cls) => {
+    const name = t('Set {0} {1}', i + 1, col.hd)
+    return (
+      <div className={'stp ' + cls}>
+        <button aria-label={t('Decrease {0}', name)} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>
+        {/* a typed effort is capped — there is no RPE 12, and 12 reps in reserve is a warm-up */}
+        <span className="val"><NumberField aria-label={name} decimal={col.dec} nullable={col.opt} value={s[col.f] ?? ''}
+          onChange={v => onField(i, col.f, col.eff ? capEffort(col.eff, v) : v)} /></span>
+        <button aria-label={t('Increase {0}', name)} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>
+      </div>
+    )
+  }
   return <>
     <Media ex={ex} key={entry.id} compact={compact} minimizable />
     <div className="row between" style={{ marginBottom: 6 }}>

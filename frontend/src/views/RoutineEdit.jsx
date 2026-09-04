@@ -67,7 +67,7 @@ export default function RoutineEdit() {
           * screen disagreed with the saved one until the view remounted. Same
           * shape as the nutrition fields: hold the draft, commit when done.
           */}
-        <input className="input" value={draftName} style={{ fontWeight: 600, fontSize: 20, letterSpacing: '-.021em' }}
+        <input className="input" aria-label={t('Routine name')} value={draftName} style={{ fontWeight: 600, fontSize: 20, letterSpacing: '-.021em' }}
           onChange={e => setDraftName(e.target.value)}
           onBlur={() => {
             const name = draftName.trim() || t('Routine')

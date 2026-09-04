@@ -101,6 +101,8 @@ check guards "importing a module writes nothing to disk" \
   bash -c 'cd server && node --test storePath.test.js'
 check guards "the 0G Compute SDK actually loads" \
   bash -c 'cd server && node --test computeSdk.test.js'
+check guards "every control a person can operate has a name" \
+  bash -c 'cd frontend && npx vitest run src/lib/controlNames.test.js'
 
 # ---------------------------------------------------------------- mutation
 

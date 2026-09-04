@@ -496,6 +496,7 @@ function LogAnything({ onLog }) {
             <input
               className="numin"
               inputMode="numeric"
+              aria-label={t('Grams')}
               autoFocus
               style={{ width: 90 }}
               value={grams}

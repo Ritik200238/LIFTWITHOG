@@ -155,14 +155,29 @@ async function publishProfileRelayed(profile, signer, memory) {
  */
 export async function mintCoachRelayed(state, opts = {}) {
   const now = opts.now ?? Date.now()
+  /*
+   * A mint is four network round trips and takes the better part of half a
+   * minute — 26 s on the deploy this was measured against. The button said
+   * "Creating…" for all of it, which is indistinguishable from a hang, and the
+   * one thing somebody does when a button looks hung is press it again.
+   *
+   * `onStep` is optional, so nothing that calls this without a UI has to care.
+   * The steps are named after what is actually happening on the wire rather
+   * than after the code, because they are read by the person waiting.
+   */
+  const step = typeof opts.onStep === 'function' ? opts.onStep : () => {}
+
+  step('key')
   const profile = buildCoachProfile(state, { now })
   const { signer, address } = await deviceSigner()
 
   // A coach's first memory: what it knew the day it was made.
   const memory = rememberVersion([], memoryEntry({ version: 1, at: now, before: null, after: profile, nameOf: liftName }))
 
+  step('storage')
   const { configHash, configURI } = await publishProfileRelayed(profile, signer, memory)
 
+  step('sign')
   const deadline = deadlineFromNow(opts.now ?? Date.now())
   const nonce = await currentNonce(address)
 
@@ -174,6 +189,8 @@ export async function mintCoachRelayed(state, opts = {}) {
     deadline,
   })
 
+  // The relayer submits and waits for the receipt, so this is the long one.
+  step('chain')
   const result = await post('/api/coach/mint', {
     owner: address,
     configHash,

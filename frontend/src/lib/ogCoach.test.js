@@ -132,6 +132,46 @@ describe('minting a coach through the relayer', () => {
     expect(Array.from(bytes.subarray(0, 5))).toEqual([0x4c, 0x57, 0x4f, 0x47, 0x31])
   })
 
+  it('says what it is doing, in the order it does it', async () => {
+    /*
+     * A mint is four round trips and took 26 s on the deployment this was
+     * measured against, behind a button that said "Creating…" for all of it.
+     * That is indistinguishable from a hang, and the reflex when a button looks
+     * hung is to press it again.
+     *
+     * The order is asserted, not just the set: the point of the caption is that
+     * it tells somebody how far along they are, and steps that arrive in the
+     * wrong order say the storage upload finished before it started.
+     */
+    postMock.mockImplementation(async (url) => {
+      if (url.endsWith('/store')) return ok({ rootHash: '0xroot' })
+      if (url.endsWith('/mint')) return ok({ tokenId: '42' })
+      throw new Error(`unexpected ${url}`)
+    })
+
+    const seen = []
+    const { mintCoachRelayed } = await load()
+    await mintCoachRelayed(STATE, { now: 1000, onStep: (s) => seen.push(s) })
+
+    expect(seen).toEqual(['key', 'storage', 'sign', 'chain'])
+  })
+
+  it('mints for a caller that does not want to be told', async () => {
+    // Every other caller of this — the seed script, the tests above — passes no
+    // callback, and a mint that throws because nobody is watching is worse than
+    // a silent one.
+    postMock.mockImplementation(async (url) => {
+      if (url.endsWith('/store')) return ok({ rootHash: '0xroot' })
+      if (url.endsWith('/mint')) return ok({ tokenId: '42' })
+      throw new Error(`unexpected ${url}`)
+    })
+
+    const { mintCoachRelayed } = await load()
+    await expect(mintCoachRelayed(STATE, { now: 1000 })).resolves.toMatchObject({ tokenId: '42' })
+    await expect(mintCoachRelayed(STATE, { now: 1000, onStep: 'not a function' }))
+      .resolves.toMatchObject({ tokenId: '42' })
+  })
+
   it('names the owner inside the signed message, so the relayer cannot redirect', async () => {
     /*
      * The one property the whole gasless design rests on. A relayer that wanted

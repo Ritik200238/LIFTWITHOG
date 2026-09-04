@@ -27,6 +27,21 @@ import { askTheCoach, defaultQuestion } from '../lib/askFlow.js'
 import { effectiveRoutine } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
 
+/*
+ * Named after what is on the wire, not after the functions.
+ *
+ * "Signing" and "Uploading" would be the code's words. These are the person's:
+ * they say which of the three things this app claims — a key that is yours,
+ * storage on 0G, a token on 0G Chain — is being done right now, so the wait
+ * itself is the explanation.
+ */
+const MINT_STEPS = {
+  key: 'Making a key on this device…',
+  storage: 'Encrypting your coach and storing it on 0G…',
+  sign: 'Signing it with your key…',
+  chain: 'Waiting for 0G Chain to confirm…',
+}
+
 export default function CoachCard() {
   const S = useStore((s) => s.S)
   const coach = useCoach()
@@ -72,9 +87,9 @@ export default function CoachCard() {
   const mint = async () => {
     try {
       await coach.mint(S)
-      toast('Your coach exists now, and it is yours.')
+      toast(t('Your coach exists now, and it is yours.'))
     } catch (error) {
-      toast(error.message || 'Could not create the coach.')
+      toast(error.message || t('Could not create the coach.'))
     }
   }
 
@@ -160,8 +175,25 @@ export default function CoachCard() {
             </div>
           )}
           <Button variant="primary" icon="sparkles" disabled={coach.busy} onClick={mint}>
-            {coach.busy ? 'Creating…' : 'Create my coach'}
+            {coach.busy ? t('Creating…') : t('Create my coach')}
           </Button>
+          {/*
+            * What is actually happening, while it happens.
+            *
+            * A mint is four round trips and took 26 seconds on the deployment
+            * this was measured against — a button reading "Creating…" for that
+            * long is indistinguishable from a hang, and the reflex when a
+            * button looks hung is to press it again. (The store refuses the
+            * second press; that is not the same as the person knowing why.)
+            *
+            * aria-live so it is spoken as it changes rather than sitting there
+            * as text nobody is told about.
+            */}
+          {coach.busy && (
+            <div className="muted small" role="status" aria-live="polite" style={{ marginTop: 8 }}>
+              {MINT_STEPS[coach.step] ? t(MINT_STEPS[coach.step]) : t('Working…')}
+            </div>
+          )}
         </>
       )}
 

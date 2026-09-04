@@ -64,6 +64,12 @@ function save(coach) {
 export const useCoach = create((set, get) => ({
   ...load(),
   busy: false,
+  /**
+   * Which part of a mint is running: 'key' | 'storage' | 'sign' | 'chain'.
+   * null when nothing is. The card renders the word; the store only carries it,
+   * so the wording can change without touching the chain layer.
+   */
+  step: null,
   error: null,
   /** This device's address, once it has one. Shown on the proof screen. */
   address: null,
@@ -98,9 +104,10 @@ export const useCoach = create((set, get) => ({
      */
     if (get().busy) return { alreadyRunning: true }
 
-    set({ busy: true, error: null })
+    set({ busy: true, step: 'key', error: null })
     try {
-      const { tokenId, version, profile, memory, address } = await (await chain()).mintCoachRelayed(S)
+      const { tokenId, version, profile, memory, address } =
+        await (await chain()).mintCoachRelayed(S, { onStep: (step) => set({ step }) })
 
       const next = {
         tokenId,
@@ -114,10 +121,10 @@ export const useCoach = create((set, get) => ({
         sessionsAtLastEvolve: (S.workouts ?? []).length,
       }
       save(next)
-      set({ ...next, busy: false })
+      set({ ...next, busy: false, step: null })
       return next
     } catch (error) {
-      set({ busy: false, error: error.message || String(error) })
+      set({ busy: false, step: null, error: error.message || String(error) })
       throw error
     }
   },

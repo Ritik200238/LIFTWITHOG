@@ -52,7 +52,27 @@ jobs:
         with:
           node-version: 22
 
+      # Pinned, not "whatever shipped this morning".
+      #
+      # Unpinned, this quietly upgraded from 1.7.x to 1.8.1 and the contract
+      # count in every document went from agreeing with CI to disagreeing with
+      # it by four — because 1.8 runs a suite's invariants as one shared
+      # campaign and reports the campaign as a single test. Nothing was
+      # uncovered and nothing failed; the arithmetic moved underneath a claim
+      # the repository makes in writing.
+      #
+      # `counts.mjs` no longer depends on that (it counts what `forge test
+      # --list` names, which is the same on both), but the toolchain that
+      # compiles and runs a contract holding somebody's coach should still be a
+      # property of this repository rather than of the day.
       - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.8.1
+
+      # Printed so the next divergence is visible in the log rather than
+      # inferred from a number four short.
+      - name: Toolchain versions
+        run: forge --version && node --version
 
       - name: Install
         run: |

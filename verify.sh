@@ -65,6 +65,12 @@ check unit "the counts the documents quote" node scripts/counts.mjs
 check contracts "forge test" bash -c 'cd contracts && forge test'
 check contracts "the interface control is asserted in Solidity too" \
   bash -c 'grep -q "0xdeadbeef" contracts/test/*.t.sol'
+# CI counted 107 contract tests where this repository counts 111 — same commit,
+# same six suites, none reported skipped, forge green on both. A suite that is
+# green while four of its tests quietly do not run is worse than a red one, and
+# the number alone gave no way to find out which four.
+check contracts "every contract test that is written is also run" \
+  node scripts/contractTests.mjs
 
 # ------------------------------------------------------------------ guards
 #

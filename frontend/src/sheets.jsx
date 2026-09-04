@@ -1087,6 +1087,126 @@ export function vaultBackupSheet() {
   return h
 }
 
+/* ============================ the coach's key ============================ */
+
+/*
+ * The twelve words, given to the person who owns them.
+ *
+ * The key was generated on this device, stored in this browser, and never
+ * shown. Everything else in this product follows from it: the coach belongs to
+ * that address, the contract has no owner, and there is no admin who can hand
+ * it back. Which means clearing site data destroyed a coach permanently, and
+ * the app had never once mentioned it.
+ *
+ * The phrase is standard BIP-39 on the standard path — the same words open the
+ * same account in any wallet. deviceKey.js says that is the point ("what
+ * somebody is given has to be worth something outside this app"), and until
+ * this sheet existed, nothing gave it to them.
+ *
+ * Hidden behind a tap rather than drawn on open: this sheet is reached from a
+ * settings list and from a nudge after minting, and neither is a moment where
+ * somebody has chosen to expose their key to whoever is next to them.
+ */
+function CoachKey({ close }) {
+  const [phrase, setPhrase] = useState(null)
+  const [address, setAddress] = useState(null)
+  const [shown, setShown] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let gone = false
+    ;(async () => {
+      const { storedPhrase, deviceAddressIfAny } = await import('./lib/deviceKey.js')
+      const existing = storedPhrase()
+      const addr = await deviceAddressIfAny().catch(() => null)
+      if (gone) return
+      setPhrase(existing)
+      setAddress(addr)
+    })()
+    return () => { gone = true }
+  }, [])
+
+  const restore = () => {
+    const words = typed.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    if (words.length !== 12) { toast(t('A recovery phrase is twelve words.')); return }
+
+    confirmSheet({
+      title: t('Use these words on this device?'),
+      message: phrase
+        ? t('This device already holds a key. Restoring replaces it, and the coach it owns will no longer be reachable here unless you have its words written down.')
+        : t('This device will sign as the key these words belong to, and pick up the coach it owns.'),
+      confirmText: t('Restore'),
+      danger: !!phrase,
+      onConfirm: async () => {
+        setBusy(true)
+        try {
+          const res = await useCoach.getState().adopt(words.join(' '))
+          close()
+          toast(res.tokenId
+            ? t('Restored. Coach #{0} is on this device.', res.tokenId)
+            : t('Key restored. There is no coach on it yet.'))
+        } catch (e) {
+          setBusy(false)
+          toast(e.message || t('Those words could not be used.'))
+        }
+      },
+    })
+  }
+
+  return <>
+    <h3>{t('Your coach’s key')}</h3>
+    <div className="muted small" style={{ lineHeight: 1.5 }}>
+      {t('Your coach belongs to a key this app made on this device. There is no owner of the contract and no account to recover from — these twelve words are the only way back in.')}
+    </div>
+
+    {address && <>
+      <div style={{ height: 12 }} />
+      <div className="muted small">{t('This device signs as')}</div>
+      <div className="field" style={{ wordBreak: 'break-all', fontSize: 13, lineHeight: 1.5 }}>{address}</div>
+    </>}
+
+    {phrase && <>
+      <div style={{ height: 12 }} />
+      {!shown ? (
+        <Button icon="key" onClick={() => setShown(true)}>{t('Show my twelve words')}</Button>
+      ) : <>
+        {/* Written out in a grid because twelve words as a paragraph is
+            twelve chances to copy one down wrong. */}
+        <div className="keywords">
+          {phrase.split(' ').map((w, i) => (
+            <span key={i}><i>{i + 1}</i>{w}</span>
+          ))}
+        </div>
+        <div style={{ height: 10 }} />
+        <Button icon={copied ? 'check' : 'clipboard'} onClick={async () => {
+          try { await navigator.clipboard.writeText(phrase); setCopied(true) }
+          catch { toast(t('Could not copy — write them down from the list above.')) }
+        }}>{copied ? t('Copied') : t('Copy the words')}</Button>
+        <div className="muted small" style={{ marginTop: 8, lineHeight: 1.5 }}>
+          {t('Anybody holding these words owns the coach. Write them on paper; a screenshot is a copy in your photo library.')}
+        </div>
+      </>}
+    </>}
+
+    <div style={{ height: 16 }} />
+    <div className="muted small">{t('Coming from another device? Paste its twelve words.')}</div>
+    <TextArea rows={2} value={typed} spellCheck={false} autoCapitalize="none"
+      aria-label={t('Recovery phrase')}
+      placeholder={t('twelve words, separated by spaces')}
+      onChange={e => setTyped(e.target.value)} />
+    <div style={{ height: 8 }} />
+    <Button disabled={busy || !typed.trim()} onClick={restore}>
+      {busy ? t('Restoring…') : t('Restore from these words')}
+    </Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Close')}</Button>
+  </>
+}
+
+export const coachKeySheet = () => ui().openSheet(close => <CoachKey close={close} />)
+
 function VaultBackup({ close }) {
   const [phase, setPhase] = useState('working')
   const [hash, setHash] = useState(null)

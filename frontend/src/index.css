@@ -610,6 +610,27 @@ h4.sec{
   line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);
 }
 
+/* --- recovery phrase ---
+   Numbered cells rather than a paragraph. Twelve words run together is twelve
+   chances to copy one down wrong, and this is the one thing in the app that
+   cannot be recovered if it is written down wrong. Two columns on a phone,
+   three where there is room; the number is what makes a missed word visible. */
+.keywords{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:6px;
+  background:var(--surface);border-radius:var(--r);padding:12px;
+}
+@media (min-width:430px){ .keywords{grid-template-columns:repeat(3,1fr)} }
+.keywords>span{
+  display:flex;align-items:baseline;gap:7px;font-size:16px;
+  letter-spacing:-.01em;color:var(--label);
+  /* A phrase is exact text; a proportional font makes rn/m and l/1 a guess. */
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+.keywords>span>i{
+  font-style:normal;font-size:12px;color:var(--label-3);
+  min-width:15px;text-align:right;font-variant-numeric:tabular-nums;
+}
+
 /* --- search field --- */
 .searchf{position:relative;display:flex;align-items:center}
 .searchf .lead{

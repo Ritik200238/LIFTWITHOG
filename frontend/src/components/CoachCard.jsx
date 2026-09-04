@@ -24,6 +24,7 @@ import Icon from './Icon.jsx'
 import Logo from './Logo.jsx'
 import { Button } from './ui.jsx'
 import { askTheCoach, defaultQuestion } from '../lib/askFlow.js'
+import { confirmSheet, coachKeySheet } from '../sheets.jsx'
 import { effectiveRoutine } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
 
@@ -87,7 +88,23 @@ export default function CoachCard() {
   const mint = async () => {
     try {
       await coach.mint(S)
-      toast(t('Your coach exists now, and it is yours.'))
+      /*
+       * A sheet, not a toast.
+       *
+       * "It is yours" was true and was the whole message, which left out the
+       * part that costs somebody their coach: it is held by a key in this
+       * browser, the contract has no admin, and clearing site data ends it.
+       * A toast that says so scrolls away in three seconds; this is the one
+       * moment the sentence is worth interrupting for, because it is the
+       * moment it becomes true.
+       */
+      confirmSheet({
+        title: t('Coach #{0} is yours', useCoach.getState().tokenId),
+        message: t('It is owned by a key this app made on this device — no company account, and no admin who can give it back. Save the twelve words now and you can reach it from any device.'),
+        confirmText: t('Show my twelve words'),
+        cancelText: t('Later'),
+        onConfirm: coachKeySheet,
+      })
     } catch (error) {
       toast(error.message || t('Could not create the coach.'))
     }

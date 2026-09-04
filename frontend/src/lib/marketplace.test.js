@@ -212,3 +212,117 @@ describe('reading the market off the chain', () => {
     await expect(creationTimes(['1'], { provider, contract })).resolves.toEqual({})
   })
 })
+
+/*
+ * Restoring onto a second device.
+ *
+ * The key alone is not the coach: every later call is addressed by token id, so
+ * a device holding the right twelve words and no id owns something it can never
+ * name. These pin the two things that make the lookup trustworthy rather than
+ * convenient — that it asks the node to do the filtering, and that it believes
+ * the chain about who owns the coach now rather than the log about who made it.
+ */
+describe('finding the coach an address still owns', () => {
+  const ME = '0xAAaaAAaaAAaaAAaaAAaaAAaaAAaaAAaaAAaaAAaa'
+
+  const fakeChain = ({ minted = [], owners = {}, throwOnQuery = false } = {}) => {
+    const seen = { filters: [], ranges: [], ownerOf: [] }
+    return {
+      seen,
+      contract: {
+        filters: {
+          CoachMinted: (tokenId, owner) => { seen.filters.push([tokenId, owner]); return { tokenId, owner } },
+        },
+        queryFilter: async (filter, from, to) => {
+          seen.ranges.push([from, to])
+          if (throwOnQuery) throw new Error('query returned more than 10000 results')
+          // The node filters by the indexed owner topic; the fake honours that,
+          // otherwise the test would pass on an implementation that pulls every
+          // mint on the chain and sifts them in the browser.
+          return minted
+            .filter((m) => !filter.owner || m.owner.toLowerCase() === String(filter.owner).toLowerCase())
+            .map((m) => ({ args: { tokenId: BigInt(m.tokenId) } }))
+        },
+        ownerOf: async (id) => {
+          seen.ownerOf.push(String(id))
+          const owner = owners[String(id)]
+          if (!owner) throw new Error('nonexistent token')
+          return owner
+        },
+      },
+    }
+  }
+
+  const provider = { getBlockNumber: async () => 900_000 }
+
+  it('finds the coach this key minted', async () => {
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract, seen } = fakeChain({
+      minted: [{ tokenId: 23, owner: ME }],
+      owners: { 23: ME },
+    })
+
+    await expect(coachOwnedBy(ME, { provider, contract })).resolves.toBe('23')
+    // Filtered by the node, on the indexed topic.
+    expect(seen.filters[0][1]).toBe(ME)
+  })
+
+  it('does not hand back a coach that has since been sold', async () => {
+    // The log is a record of who minted, permanently. Ownership is not.
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract } = fakeChain({
+      minted: [{ tokenId: 23, owner: ME }],
+      owners: { 23: '0xBBbbBBbbBBbbBBbbBBbbBBbbBBbbBBbbBBbbBBbb' },
+    })
+
+    await expect(coachOwnedBy(ME, { provider, contract })).resolves.toBeNull()
+  })
+
+  it('returns the one being trained when a key minted twice', async () => {
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract } = fakeChain({
+      minted: [{ tokenId: 7, owner: ME }, { tokenId: 41, owner: ME }],
+      owners: { 7: ME, 41: ME },
+    })
+
+    await expect(coachOwnedBy(ME, { provider, contract })).resolves.toBe('41')
+  })
+
+  it('skips a coach it cannot read rather than failing the restore', async () => {
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract } = fakeChain({
+      minted: [{ tokenId: 7, owner: ME }, { tokenId: 41, owner: ME }],
+      owners: { 7: ME }, // 41 reverts
+    })
+
+    await expect(coachOwnedBy(ME, { provider, contract })).resolves.toBe('7')
+  })
+
+  it('asks for a bounded window of blocks', async () => {
+    // Same cap as the market's own log read: a public RPC refuses a query that
+    // spans more blocks than it allows, and the chain only gets longer.
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract, seen } = fakeChain({ minted: [], owners: {} })
+
+    await coachOwnedBy(ME, { provider, contract })
+
+    const [from, to] = seen.ranges[0]
+    expect(from).toBeGreaterThan(0)
+    expect(to - from).toBeLessThanOrEqual(45_000)
+  })
+
+  it('answers null rather than throwing when the node refuses the query', async () => {
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract } = fakeChain({ throwOnQuery: true })
+
+    await expect(coachOwnedBy(ME, { provider, contract })).resolves.toBeNull()
+  })
+
+  it('asks nothing at all without an address', async () => {
+    const { coachOwnedBy } = await import('./marketplace.js')
+    const { contract, seen } = fakeChain({})
+
+    await expect(coachOwnedBy(null, { provider, contract })).resolves.toBeNull()
+    expect(seen.ranges).toHaveLength(0)
+  })
+})

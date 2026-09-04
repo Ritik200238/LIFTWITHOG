@@ -244,6 +244,9 @@ What the installed app does that a tab doesn't:
   screens, in both themes, not eyeballed.
 - 🔑 **Your coach minted from the phone itself.** The device key that owns your on-chain
   coach is generated on the phone and never leaves it — the mobile install *is* the wallet.
+  It is BIP-39 on the standard path, so the twelve words open the same account in any
+  wallet: Settings → *Your coach's key* shows them, and pasting them onto a second device
+  finds the coach that address still owns and pulls its record back from 0G.
 
 **Honest limitations, so nothing surprises you:**
 

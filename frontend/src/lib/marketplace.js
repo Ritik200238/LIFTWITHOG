@@ -241,3 +241,61 @@ export async function creationTimes(tokenIds, opts = {}) {
 
   return times
 }
+
+/**
+ * The coach an address still owns, for a device that has just been given its key.
+ *
+ * Restoring onto a new phone hands the app twelve words and nothing else. The
+ * key alone is not the coach: every later call — evolve, list, ask — is
+ * addressed by token id, and a device that does not know its id owns something
+ * it can never name.
+ *
+ * Found from the mint log rather than by scanning ids, because `owner` is an
+ * indexed topic there and the node does the filtering. Ownership is then
+ * re-read from the chain: the log says who minted, and a coach that has since
+ * been sold must not come back to the person who made it.
+ *
+ * Bounded to the same window as `creationTimes`, and for the same reason — a
+ * public RPC caps how many blocks one log query may span. A coach minted before
+ * the window is not found, which is honest and recoverable (the id can be typed
+ * in); a query that is refused outright finds nothing at all.
+ *
+ * @returns {Promise<string|null>} the newest token id this address still owns.
+ */
+export async function coachOwnedBy(address, opts = {}) {
+  if (!COACH_ADDRESS || !address) return null
+
+  const provider = opts.provider ?? readProvider()
+  const contract = opts.contract ?? coachContract(provider)
+
+  const latest = await provider.getBlockNumber().catch(() => null)
+  if (latest === null) return null
+  const from = Math.max(0, latest - (opts.blockWindow ?? MINT_LOG_WINDOW))
+
+  let events = []
+  try {
+    events = await contract.queryFilter(contract.filters.CoachMinted(null, address), from, latest)
+  } catch {
+    return null
+  }
+
+  // Newest first: somebody who minted twice wants the coach they have been
+  // training, which is the later one.
+  const ids = events
+    .map((event) => event.args?.tokenId)
+    .filter((id) => id !== undefined && id !== null)
+    .map(String)
+    .sort((a, b) => Number(b) - Number(a))
+
+  for (const id of ids) {
+    try {
+      const owner = await contract.ownerOf(id)
+      if (String(owner).toLowerCase() === String(address).toLowerCase()) return id
+    } catch {
+      // Burned, or an id this node cannot read. Try the next one rather than
+      // failing a restore over one bad row.
+    }
+  }
+
+  return null
+}

@@ -11,7 +11,7 @@ import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
-import { loadStarterPlan, confirmSheet, importFromApp, vaultBackupSheet, vaultRestoreSheet } from '../sheets.jsx'
+import { loadStarterPlan, confirmSheet, importFromApp, vaultBackupSheet, vaultRestoreSheet, coachKeySheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
 
@@ -221,6 +221,20 @@ export default function Settings() {
           : t('From this device, or a code from another')}
         accessory="chevron"
         onClick={vaultRestoreSheet} />
+      {/*
+        * The backup above carries the training. This carries the ownership,
+        * and they are not the same thing: restoring a backup onto a new phone
+        * gives you your workouts and a different key, which owns nothing.
+        *
+        * Last in the section because it is the most dangerous row in the app —
+        * and present at all because the contract has no owner and no admin, so
+        * these words are the only way back to a coach. The app generated them
+        * on first use and had never shown them to anybody.
+        */}
+      <Row icon="key" iconTint="var(--yellow)" title={t('Your coach’s key')}
+        subtitle={t('The twelve words that own it. Write them down.')}
+        accessory="chevron"
+        onClick={coachKeySheet} />
     </Section>
 
     {/* ---------- data: fill it, bring things over, back it up, wipe it ---------- */}

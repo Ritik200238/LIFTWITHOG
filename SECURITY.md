@@ -32,6 +32,12 @@ Stated here so reports can point at the gap between this policy and the code:
 - **The device key never leaves the device.** It is generated in the browser,
   stored locally per profile, and signs EIP-712 messages; the server and
   relayer see signatures, never the key.
+- **Its owner can read it, and nobody else is asked to.** The key is BIP-39 on
+  the standard path, so the same twelve words open the same account in any
+  wallet. Settings → *Your coach's key* shows them behind a deliberate tap, and
+  the same sheet adopts a phrase from another device. This is the one credential
+  in the product with no recovery path — the contract has no admin — so the app
+  offers it at the moment a coach is minted rather than waiting to be asked.
 - **Vault backups are encrypted before they travel.** AES-256-GCM under a key
   derived on the device; 0G Storage holds ciphertext only.
 - **Session cookies are HMAC-signed** with a per-instance secret. A session
@@ -205,3 +211,14 @@ fixed is marketing.
    replication for one on our own storage.
 6. **`mint()` is permissionless.** The market read is bounded now; the id space
    is not.
+7. **A lost recovery phrase is a lost coach, and always will be.** There is no
+   admin, no reset and no support address that can move a token — that is the
+   design, not a gap. What was a gap until now is that the app generated the
+   phrase on first use and never showed it to anybody: the only credential that
+   matters was one the owner could not write down. It is now shown, copyable
+   and adoptable. The residual risk is unchanged and unfixable: somebody who
+   clears their browser without saving it has lost the coach.
+8. **Restore finds a coach from the mint log, over a bounded block window.** A
+   coach minted before that window, or bought rather than minted, is not found
+   automatically. Ownership is re-read from the chain before anything is
+   restored, so the log can never hand back a coach that has since been sold.

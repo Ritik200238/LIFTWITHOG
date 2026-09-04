@@ -294,6 +294,59 @@ export const useCoach = create((set, get) => ({
     }
   },
 
+  /**
+   * Take over an identity from twelve words — restoring onto another device.
+   *
+   * The key alone is not the coach. Every later call is addressed by token id,
+   * so a device given the phrase and nothing else holds something it can never
+   * name: it can sign, and it has no idea what to sign about. So this does the
+   * whole thing — adopt the key, ask the chain which coach that address still
+   * owns, read its version, and pull the coaching record back from 0G.
+   *
+   * Finding nothing is not an error. A key with no coach on this contract is
+   * exactly what a person has before they mint, and telling them the restore
+   * failed would be wrong.
+   */
+  adopt: async (phrase) => {
+    if (get().busy) return { alreadyRunning: true }
+    set({ busy: true, step: null, error: null })
+    try {
+      const { adoptPhrase } = await import('../lib/deviceKey.js')
+      const { address } = await adoptPhrase(phrase)
+
+      const { coachOwnedBy, readProvider } = await import('../lib/marketplace.js')
+      const tokenId = await coachOwnedBy(address)
+
+      if (!tokenId) {
+        // The key is real and now belongs to this device; there is simply no
+        // coach on it. Saved so the next mint uses it rather than making a
+        // second key nobody asked for.
+        set({ ...get(), address, busy: false })
+        return { address, tokenId: null }
+      }
+
+      const onChain = await (await chain()).readCoach(readProvider(), tokenId)
+      const next = {
+        ...get(),
+        address,
+        tokenId,
+        version: onChain.version,
+        // Not known on this device, and not guessed. `refresh` pulls the record
+        // from 0G Storage, and until it does the screens show their own empty
+        // state rather than a profile invented here.
+        memory: [],
+      }
+      save(next)
+      set({ ...next, busy: false })
+
+      await get().recallMemory()
+      return { address, tokenId, version: onChain.version }
+    } catch (error) {
+      set({ busy: false, error: error.message || String(error) })
+      throw error
+    }
+  },
+
   /** Forget the local cache. Ownership is unaffected — that lives on chain. */
   forget: () => {
     const cleared = { tokenId: null, version: 0, profile: null, sessionsAtLastEvolve: 0 }

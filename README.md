@@ -4,7 +4,7 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-845%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-846%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-111%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
@@ -38,7 +38,7 @@ Every line below has a command, a transaction, or a test behind it. Not one is a
 | 🔒 | **Advice that proves where it ran, or refuses.** Every answer is TEE-attested on 0G Compute, attestation checked per response. No attested provider — the coach says so. There is no unattested fallback, and a test fails if one is added. | [`coachCompute.test.js`](server/coachCompute.test.js) |
 | 🛡️ | **A contract with no owner, no pause, no upgrade, no admin key.** Nobody — including us — can freeze your coach or rewrite the rules under you. One grep proves the absence. | [below](#what-this-contract-cannot-do-to-you) |
 | 💸 | **Trainers earn without holding a token.** `rent()` grants access and pays the trainer in the same transaction. `clone()` builds a lineage that pays each generation. The contract's balance is always zero — an invariant drives thousands of random calls to prove it. | [`CoachAgentFuzz.t.sol`](contracts/test/CoachAgentFuzz.t.sol) |
-| 🧪 | **The numbers regenerate themselves.** 845 tests, 174 seeded faults, and a check that fails CI if any document disagrees with the suites. | `node scripts/counts.mjs --check` |
+| 🧪 | **The numbers regenerate themselves.** 846 tests, 174 seeded faults, and a check that fails CI if any document disagrees with the suites. | `node scripts/counts.mjs --check` |
 
 ---
 
@@ -213,11 +213,48 @@ Diagrams, flows and the trust model: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 | Nothing sensitive reaches 0G Storage in the clear | [`ogVault.test.js`](frontend/src/lib/ogVault.test.js) — *"sends ciphertext, never the training history"* |
 | Wrong numbers cannot reach a diet or a bar | 174 seeded faults; `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**845 tests**: 577 frontend · 157 server · 111 contract (91 unit, 15 fuzz, 5 invariant).
+**846 tests**: 578 frontend · 157 server · 111 contract (91 unit, 15 fuzz, 5 invariant).
 Every number in this file is printed by `node scripts/counts.mjs`, and CI fails if a document
 disagrees with the suites. **[SECURITY.md](SECURITY.md)** lists ten findings we fixed with the
 test that closed each, and the risks still open. **[THREAT-MODEL.md](THREAT-MODEL.md)** says
 what an attacker cannot do, and why.
+
+---
+
+## Who this is for, and why they stay
+
+Serious lifters already pay for a tracker, and every one of those trackers is a rented seat:
+the history lives in a company's database and the "coach" is a feature that ships when the
+company does. LIFTWITHOG is the tracker first — the thing a person opens six times a week in a
+basement gym with no signal — and the ownership is what makes leaving cost nothing and staying
+worth something. A trainer's method becomes an asset they rent out and clone. An athlete's coach
+becomes a record they carry. Nobody is asked to learn a wallet to get either.
+
+India first, because that is where the team trains: IFCT food data, protein by reference weight,
+plate math in kilograms, Hindi among the eleven languages, and safety bounds a dietician would
+recognise. Everything else works anywhere.
+
+## Four questions people ask
+
+**Can you read my training?**
+No. The coach's method is sealed on your device with ECDH + AES-256-GCM before it leaves; the
+server relays ciphertext it holds no key for. Backups are encrypted on the device too. A test
+fails if a workout or a number appears in what leaves the browser — [`ogVault.test.js`](frontend/src/lib/ogVault.test.js).
+
+**What happens if LIFTWITHOG disappears?**
+Your coach is a token on 0G Chain owned by a key on your phone; its brain is on 0G Storage,
+anchored by hash. Any ERC-7857 reader can find it, and the twelve words in Settings open the same
+account in any wallet. The tracker itself works with no server at all.
+
+**What do you actually own?**
+The ERC-7857 Agentic ID, its full version history, the encrypted brain, the rental income and
+the clone lineage. Not a licence to them — the contract has no admin, no pause and no upgrade,
+so there is nobody who can take them back. Including us.
+
+**What will the coach not do?**
+Answer without an attested enclave. Improvise on a torn meniscus, a pregnancy, a hormone dose or
+chest pain — it hands off to a specialist before the model runs. Break the nutrition floors and
+caps, which are published and anchored on chain so a broken promise would be public.
 
 ---
 

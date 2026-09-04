@@ -54,6 +54,16 @@ cd contracts && forge test     # 111 tests — 91 unit · 15 fuzz · 5 invariant
 is where every number in this repository's documents comes from — the previous
 set was typed by hand and disagreed with itself in three places.
 
+One number needs a footnote, because forge's own summary disagrees with it.
+Foundry 1.8 runs a suite's invariants as **one shared campaign** — a single
+sequence of random calls with every invariant asserted after each step — and
+reports that campaign as one test. So our five invariants count as five under
+1.7.1 and as one under 1.8.1, and `forge test` prints "107 tests passed" where
+this document says 111. All five run and pass on both; only the arithmetic
+moved. The count here comes from `forge test --list`, which names every test
+function that will run and answers the same on either version — a number in a
+document must not depend on which morning the toolchain was installed.
+
 ## The one that matters most
 
 ```bash

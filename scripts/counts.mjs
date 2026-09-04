@@ -53,8 +53,24 @@ const server = run('node', ['--test'], 'server');
 out.server = first(server, PATTERNS.serverPassed);
 out.serverFailed = first(server, PATTERNS.serverFailed, 0);
 
+/*
+ * The contract count comes from what forge discovers, not from its summary.
+ *
+ * Foundry 1.8 runs a suite's invariants as one shared campaign — one sequence
+ * of random calls with every invariant asserted after each step — and reports
+ * that campaign as a single test. So our five invariants count as five on 1.7.1
+ * and as one on 1.8.1, and the same commit reports 111 here and 107 in CI. All
+ * five run and pass on both; only the arithmetic moved.
+ *
+ * A number in a document must not depend on which morning the toolchain was
+ * installed. `--list` names every test function that will run, is the same on
+ * both versions, and is what a reader means by "how many tests are there".
+ *
+ * `forge test` still runs, because a count of tests that would fail is not a
+ * count worth printing.
+ */
 const contracts = run('forge', ['test'], 'contracts');
-out.contracts = first(contracts, PATTERNS.contractsPassed);
+out.contracts = (run('forge', ['test', '--list'], 'contracts').match(/^ {4}(?:test|invariant)[A-Za-z0-9_]*$/gm) ?? []).length || null;
 out.contractsFailed = first(contracts, PATTERNS.contractsFailed, 0);
 out.contractsSkipped = first(contracts, PATTERNS.contractsSkipped, 0);
 
@@ -130,6 +146,7 @@ if (process.argv.includes('--check')) {
     console.log(`  frontend   ${evidence(frontend, PATTERNS.frontendPassed)}`);
     console.log(`  server     ${evidence(server, PATTERNS.serverPassed)}`);
     console.log(`  contracts  ${evidence(contracts, PATTERNS.contractsPassed)}`);
+    console.log('             (the count itself is from forge test --list; see the note above it)');
   };
 
   if (unreadable.length) {

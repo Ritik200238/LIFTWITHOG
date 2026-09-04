@@ -101,3 +101,31 @@ test('evidence shows the tail when nothing matched', () => {
   assert.match(evidence(out, PATTERNS.contractsPassed), /it crashed/);
   assert.equal(evidence('', PATTERNS.contractsPassed), '(no output)');
 });
+
+test('a forge summary is not what the contract count is taken from', () => {
+  /*
+   * Foundry 1.8 runs a suite's invariants as one shared campaign and reports it
+   * as a single test, so the same commit summarises as 111 on 1.7.1 and 107 on
+   * 1.8.1 with all five invariants passing on both. counts.mjs therefore counts
+   * what `forge test --list` names instead. The summary pattern stays, because
+   * a failing report still has to quote the line — but it answers a different
+   * question, and this pins that they are not interchangeable.
+   */
+  const v17 = 'Ran 6 test suites in 4.11s: 111 tests passed, 0 failed, 0 skipped (111 total tests)';
+  const v18 = 'Ran 6 test suites in 2.46s: 107 tests passed, 0 failed, 0 skipped (107 total tests)';
+  assert.equal(first(v17, PATTERNS.contractsPassed), 111);
+  assert.equal(first(v18, PATTERNS.contractsPassed), 107);
+
+  // What the documents quote: every test function forge says it will run. Same
+  // listing format, and the same answer, on both versions.
+  const listing = [
+    'test/CoachAgentFuzz.t.sol',
+    '  CoachAgentInvariantTest',
+    '    invariant_ContractNeverHoldsFunds',
+    '    invariant_EveryCoachHasAVersion',
+    '  CoachAgentFuzzTest',
+    '    testFuzz_RentCostIsExactlyPriceTimesDays',
+  ].join('\n');
+  const listed = listing.match(/^ {4}(?:test|invariant)[A-Za-z0-9_]*$/gm);
+  assert.equal(listed.length, 3);
+});

@@ -14,6 +14,32 @@ import { ageInDays, costFor, formatPrice, historyLine } from './marketplace.js'
 const DAY = 86_400_000
 const NOW = 1_700_000_000_000
 
+/*
+ * The contract address, stubbed rather than inherited — for every block in this
+ * file, not for one of them.
+ *
+ * Everything reading the chain here returns nothing when no contract is
+ * configured, which is right for a fork somebody just cloned and useless as a
+ * test: it asserts the behaviour it was written for on a machine where the
+ * variable happens to be set, and asserts nothing at all on a clean checkout.
+ *
+ * It was scoped to a single describe, and the very next block added to this
+ * file forgot it and went red in CI having been green locally — the same
+ * failure, in the same file, caught by the same CI run, a second time. At file
+ * level a new block cannot forget.
+ */
+beforeEach(() => {
+  vi.stubEnv('VITE_COACH_ADDRESS', '0x' + '11'.repeat(20))
+  // Reset before, not only after. The static import at the top of this file
+  // already loaded the module — and its address — before any stub existed, so
+  // without this the first test reads the cached copy.
+  vi.resetModules()
+})
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.resetModules()
+})
+
 describe('how old a coach is', () => {
   it('counts from when it was created', () => {
     expect(ageInDays(NOW - 30 * DAY, NOW)).toBe(30)
@@ -101,27 +127,6 @@ describe('what it costs', () => {
 })
 
 describe('reading the market off the chain', () => {
-  /*
-   * The contract address, stubbed rather than inherited.
-   *
-   * `listRentableCoaches` returns an empty list when no contract is configured,
-   * which is right for a fork somebody just cloned. These tests passed on a
-   * machine where the variable happened to be set in the environment and
-   * returned nothing on a clean checkout — so they asserted the behaviour they
-   * were written for locally, and asserted nothing at all in CI. It took the
-   * first CI run to notice, which is the whole argument for having one.
-   */
-  beforeEach(() => {
-    vi.stubEnv('VITE_COACH_ADDRESS', '0x' + '11'.repeat(20))
-    // Reset before, not only after. The static import at the top of this file
-    // already loaded the module — and its address — before any stub existed, so
-    // without this the first test in the block reads the cached copy.
-    vi.resetModules()
-  })
-  afterEach(() => {
-    vi.unstubAllEnvs()
-    vi.resetModules()
-  })
 
   /**
    * `mint` is permissionless, so the id space is whatever anybody has made of

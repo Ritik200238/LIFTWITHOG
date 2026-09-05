@@ -55,12 +55,12 @@ Every line below has a command, a transaction, or a test behind it. Not one is a
 <table>
   <tr>
     <td><img src="assets/app/home.png" alt="Home — the week, your coach, body-weight trend and streak" width="100%"/></td>
-    <td><img src="assets/app/workout.png" alt="Active workout — plate math on the bar, warm-up ramp, per-set tracking" width="100%"/></td>
+    <td><img src="assets/app/workout.png" alt="Active workout — set logged, rest timer running, per-set tracking" width="100%"/></td>
     <td><img src="assets/app/nutrition.png" alt="Nutrition — targets computed from your own weigh-ins" width="100%"/></td>
   </tr>
   <tr>
-    <td align="center"><em>Your coach lives on the home screen, learning from every session</em></td>
-    <td align="center"><em>Plate math (<code>25 + 15 /side</code>), one-tap warm-up ramps, rest timer</em></td>
+    <td align="center"><em>Your coach lives on the home screen — created in one tap, no wallet, then learning from every session</em></td>
+    <td align="center"><em>Mid-set: 80 kg logged, set ticked, rest timer running — one hand, plate math and warm-up ramps a tap away</em></td>
     <td align="center"><em>Mifflin-St Jeor targets, hard safety bounds, IFCT foods</em></td>
   </tr>
   <tr>

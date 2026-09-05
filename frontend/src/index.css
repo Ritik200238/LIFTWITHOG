@@ -610,6 +610,22 @@ h4.sec{
   line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);
 }
 
+/* --- the coach's answer ---
+   Left-aligned prose with real structure. It was a centred paragraph in a
+   300px dialog, markdown asterisks included. */
+.answer-meta{
+  display:flex;gap:8px;align-items:flex-start;font-size:13px;line-height:1.4;
+  color:var(--label-3);margin:-6px 0 14px;
+}
+.answer-meta svg{width:15px;height:15px;flex:none;margin-top:1px;color:var(--acc)}
+.answer{font-size:16px;line-height:1.5;color:var(--label);text-align:left}
+.answer h4{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:16px 0 6px;color:var(--label)}
+.answer h4:first-child{margin-top:0}
+.answer p{margin:0 0 10px;color:var(--label-2)}
+.answer li{list-style:none;position:relative;padding-left:16px;margin:0 0 6px;color:var(--label-2)}
+.answer li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--acc)}
+.answer b{font-weight:600;color:var(--label)}
+
 /* --- recovery phrase ---
    Numbered cells rather than a paragraph. Twelve words run together is twelve
    chances to copy one down wrong, and this is the one thing in the app that

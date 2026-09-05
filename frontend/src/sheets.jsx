@@ -21,6 +21,7 @@ import { buildPlanBundle, parsePlan, mergePlan, printPlan } from './lib/plan-sha
 import { estimate1RM, best1RM, is1RMRecord, REP_CAP } from './lib/onerm.js'
 import { nextPrescription, applyPrescription, policyFor, defaultIncrement, POLICIES_FOR, POLICY_NAME, POLICY_DESC, MAX_BW_SETS } from './lib/progression.js'
 import { MOBILE, shareExport } from './lib/mobile.js'
+import { parseAnswer } from './lib/markdownLite.js'
 
 const S = () => useStore.getState().S
 const update = (...a) => useStore.getState().update(...a)
@@ -1086,6 +1087,44 @@ export function vaultBackupSheet() {
   const h = ui().openSheet(close => <VaultBackup close={close} />)
   return h
 }
+
+/* ============================ the coach's answer ============================ */
+
+/*
+ * The answer, as a page rather than a pop-up.
+ *
+ * It went through confirmSheet: a 300px centred dialog with centred text and
+ * no scrolling, built for "Delete this workout?". A coaching answer is four
+ * hundred words of headings and bullets, so the dialog overflowed the screen
+ * top and bottom, opened on its middle, and drew the model's markdown as
+ * literal asterisks — on the one screen whose job is to show off 0G Compute.
+ *
+ * A bottom sheet scrolls. The markup becomes structure. And the line at the
+ * top is true by construction: the server refuses to return an answer that no
+ * attested enclave produced, so an answer on screen is an attested one.
+ */
+function CoachAnswer({ answer, close }) {
+  const blocks = parseAnswer(answer)
+  return <>
+    <h3>{t('Your coach says')}</h3>
+    <div className="answer-meta">
+      <Icon name="shield" />
+      <span>{t('Answered inside a TEE on 0G Compute. The attestation was checked before this reached you.')}</span>
+    </div>
+    <div className="answer">
+      {blocks.map((b, i) => {
+        const runs = b.runs.map((r, j) => r.bold ? <b key={j}>{r.text}</b> : <span key={j}>{r.text}</span>)
+        if (b.type === 'heading') return <h4 key={i}>{runs}</h4>
+        if (b.type === 'bullet') return <li key={i}>{runs}</li>
+        return <p key={i}>{runs}</p>
+      })}
+    </div>
+    <div style={{ height: 8 }} />
+    <Button variant="primary" onClick={close}>{t('Got it')}</Button>
+  </>
+}
+
+export const coachAnswerSheet = answer => ui().openSheet(close => <CoachAnswer answer={answer} close={close} />)
 
 /* ============================ the coach's key ============================ */
 

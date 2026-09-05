@@ -28,7 +28,7 @@ import { deviceSigner } from '../lib/deviceKey.js'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import { t } from '../lib/i18n.js'
-import { confirmSheet } from '../sheets.jsx'
+import { confirmSheet, coachAnswerSheet } from '../sheets.jsx'
 
 const RENTAL_DAYS = 30
 
@@ -96,7 +96,7 @@ export default function Market() {
         coach.tokenId,
         'Based on my training history, what should I work on next?',
       )
-      confirmSheet({ title: t('Your coach says'), message: answer, confirmText: t('Got it'), onConfirm: () => {} })
+      coachAnswerSheet(answer)
     } catch (e) {
       toast(e.message || t('That coach could not answer.'))
     } finally {

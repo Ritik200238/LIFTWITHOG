@@ -4,7 +4,7 @@
 
 <br/>
 
-[![tests](https://img.shields.io/badge/tests-846%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
+[![tests](https://img.shields.io/badge/tests-853%20passing-30d158?style=flat-square)](VERIFICATION.md#the-test-suites)
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-111%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
@@ -38,7 +38,7 @@ Every line below has a command, a transaction, or a test behind it. Not one is a
 | 🔒 | **Advice that proves where it ran, or refuses.** Every answer is TEE-attested on 0G Compute, attestation checked per response. No attested provider — the coach says so. There is no unattested fallback, and a test fails if one is added. | [`coachCompute.test.js`](server/coachCompute.test.js) |
 | 🛡️ | **A contract with no owner, no pause, no upgrade, no admin key.** Nobody — including us — can freeze your coach or rewrite the rules under you. One grep proves the absence. | [below](#what-this-contract-cannot-do-to-you) |
 | 💸 | **Trainers earn without holding a token.** `rent()` grants access and pays the trainer in the same transaction. `clone()` builds a lineage that pays each generation. The contract's balance is always zero — an invariant drives thousands of random calls to prove it. | [`CoachAgentFuzz.t.sol`](contracts/test/CoachAgentFuzz.t.sol) |
-| 🧪 | **The numbers regenerate themselves.** 846 tests, 174 seeded faults, and a check that fails CI if any document disagrees with the suites. | `node scripts/counts.mjs --check` |
+| 🧪 | **The numbers regenerate themselves.** 853 tests, 174 seeded faults, and a check that fails CI if any document disagrees with the suites. | `node scripts/counts.mjs --check` |
 
 ---
 
@@ -213,7 +213,7 @@ Diagrams, flows and the trust model: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 | Nothing sensitive reaches 0G Storage in the clear | [`ogVault.test.js`](frontend/src/lib/ogVault.test.js) — *"sends ciphertext, never the training history"* |
 | Wrong numbers cannot reach a diet or a bar | 174 seeded faults; `node scripts/mutate.mjs` — 169 caught, 5 proven equivalent |
 
-**846 tests**: 578 frontend · 157 server · 111 contract (91 unit, 15 fuzz, 5 invariant).
+**853 tests**: 585 frontend · 157 server · 111 contract (91 unit, 15 fuzz, 5 invariant).
 Every number in this file is printed by `node scripts/counts.mjs`, and CI fails if a document
 disagrees with the suites. **[SECURITY.md](SECURITY.md)** lists ten findings we fixed with the
 test that closed each, and the risks still open. **[THREAT-MODEL.md](THREAT-MODEL.md)** says

@@ -1,7 +1,7 @@
 import { askCoach, deviceSignerForAsk } from './coachAsk.js'
 import { useCoach } from '../store/useCoach.js'
 import { useUI } from '../store/useUI.js'
-import { confirmSheet } from '../sheets.jsx'
+import { confirmSheet, coachAnswerSheet } from '../sheets.jsx'
 import { nav } from './nav.js'
 import { t } from './i18n.js'
 
@@ -45,12 +45,7 @@ export async function askTheCoach(question) {
     const signer = await deviceSignerForAsk()
     const answer = await askCoach(signer, tokenId, question)
 
-    confirmSheet({
-      title: t('Your coach says'),
-      message: answer,
-      confirmText: t('Got it'),
-      onConfirm: () => {},
-    })
+    coachAnswerSheet(answer)
   } catch (e) {
     if (e.referral) {
       const named = e.referral.specialists?.length

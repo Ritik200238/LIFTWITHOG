@@ -9,7 +9,7 @@
 [![contract](https://img.shields.io/badge/contract-111%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
 [![erc8004](https://img.shields.io/badge/ERC--8004-agent%20%23382-a78bfa?style=flat-square)](https://liftwithog.vercel.app/agent-card.json)
-[![0g](https://img.shields.io/badge/0G%20Chain-23%20coaches%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)
+[![0g](https://img.shields.io/badge/0G%20Chain-24%20coaches%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)
 [![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
 
 # The AI coach you own.
@@ -286,7 +286,7 @@ are never reported together again. Full list of every claim and how to check it:
 
 | | |
 |---|---|
-| Contract + explorer | [`0x0253…0025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) · 23 coaches minted, versions climbing, rentals and clones on chain |
+| Contract + explorer | [`0x0253…0025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) · 24 coaches minted, versions climbing, rentals and clones on chain |
 | Criterion-by-criterion | **[SUBMISSION.md](SUBMISSION.md)** — in order of weight, a command or transaction behind every claim, and a section naming what is not done |
 | Proof of integration | `supportsInterface` answered by deployed bytecode with a control · `npm run evidence` · [/#/verify](https://liftwithog.vercel.app/#/verify) |
 | Architecture · Security · Threats | [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) · [THREAT-MODEL.md](THREAT-MODEL.md) |

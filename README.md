@@ -270,6 +270,20 @@ npm --prefix frontend run dev             # app on :5173
 docker compose up -d                      # or: your own box, one origin, passkeys, media local
 ```
 
+**Or run the API on somebody else's box, in one click:**
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Ritik200238/LIFTWITHOG)
+
+That reads [`render.yaml`](render.yaml) — checked in, and checked by a test that builds nothing
+but proves the blueprint points at a Dockerfile that exists, in a context that holds every file
+it copies. It exists because the blueprint once pointed at a path that had moved and failed
+every build in silence for five days, which is what a deploy target with nothing downstream
+does when nobody is watching it.
+
+Two honest notes: set `RELAYER_PRIVATE_KEY` and `COACH_SERVICE_KEY` in the dashboard, never in
+the file — and the free plan has no disk, so accounts live until the next restart. Attach one,
+or point `DATABASE_URL` at Postgres, for anything real.
+
 ```bash
 ./verify.sh              # suites · contracts · guards · release checks
 ./verify.sh live         # the deployed contract and site, over RPC — nothing local counts

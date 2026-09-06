@@ -25,9 +25,9 @@ No wallet. No seed phrase. No extension. Open it on a phone and you have a coach
 
 <br/>
 
-<video src="https://raw.githubusercontent.com/Ritik200238/LIFTWITHOG/main/assets/demo/liftwithog-demo.mp4" poster="assets/demo/poster.png" controls width="100%"></video>
+[![Watch the demo — 2:29](assets/demo/poster.png)](https://raw.githubusercontent.com/Ritik200238/LIFTWITHOG/main/assets/demo/liftwithog-demo.mp4)
 
-**[▶ Watch the demo — 2:29](https://github.com/Ritik200238/LIFTWITHOG/raw/main/assets/demo/liftwithog-demo.mp4)**
+**[▶ Watch the demo — 2:29](https://raw.githubusercontent.com/Ritik200238/LIFTWITHOG/main/assets/demo/liftwithog-demo.mp4)** &nbsp;·&nbsp; <sub>8.8 MB mp4 · plays in any player</sub>
 
 *Every frame is the live app. A coach minted on camera in 28 seconds, a TEE-attested answer,
 and `0xdeadbeef` returning false on the verify page — nothing staged, nothing mocked.*

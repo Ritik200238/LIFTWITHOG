@@ -25,7 +25,7 @@ No wallet. No seed phrase. No extension. Open it on a phone and you have a coach
 
 <br/>
 
-[![Watch the demo — 2:29](assets/demo/poster.png)](https://github.com/Ritik200238/LIFTWITHOG/raw/main/assets/demo/liftwithog-demo.mp4)
+<video src="https://raw.githubusercontent.com/Ritik200238/LIFTWITHOG/main/assets/demo/liftwithog-demo.mp4" poster="assets/demo/poster.png" controls width="100%"></video>
 
 **[▶ Watch the demo — 2:29](https://github.com/Ritik200238/LIFTWITHOG/raw/main/assets/demo/liftwithog-demo.mp4)**
 

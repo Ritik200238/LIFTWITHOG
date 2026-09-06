@@ -13,8 +13,20 @@ services:
     # `runtime`, not `env`: Render replaced that field, and a blueprint using
     # the old name fails to create the service at all.
     runtime: docker
-    dockerfilePath: ./api/Dockerfile
-    dockerContext: ./api
+    # `server/`, not `api/`.
+    #
+    # These pointed at ./api/Dockerfile, which was moved to server/ when the
+    # server was made stateless and api/ became the single-file Vercel entry
+    # point. This file was not updated, so every autoDeploy since has failed
+    # at "Exited with status 1" — five days of red builds nobody saw, because
+    # the live app is served entirely by Vercel and nothing here is on its
+    # path. A deploy target in the repository that cannot build is a claim
+    # this project does not keep, so it is fixed rather than deleted.
+    #
+    # The context is server/ because the Dockerfile's first COPY takes
+    # package.json and package-lock.json from the directory it is given.
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
     plan: free
     healthCheckPath: /api/health
     autoDeploy: true

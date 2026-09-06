@@ -10,6 +10,7 @@
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
 [![erc8004](https://img.shields.io/badge/ERC--8004-agent%20%23382-a78bfa?style=flat-square)](https://liftwithog.vercel.app/agent-card.json)
 [![0g](https://img.shields.io/badge/0G%20Chain-24%20coaches%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)
+[![demo](https://img.shields.io/badge/demo-2%3A29%20·%20watch-e8452c?style=flat-square)](assets/demo/liftwithog-demo.mp4)
 [![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
 
 # The AI coach you own.
@@ -21,6 +22,15 @@ a TEE on 0G Compute. Delete the app — your coach, its history and its rental i
 ### ▶ **[liftwithog.vercel.app](https://liftwithog.vercel.app)** &nbsp;·&nbsp; Prove it from your own browser: **[/#/verify](https://liftwithog.vercel.app/#/verify)**
 
 No wallet. No seed phrase. No extension. Open it on a phone and you have a coach on 0G in thirty seconds.
+
+<br/>
+
+[![Watch the demo — 2:29](assets/demo/poster.png)](https://github.com/Ritik200238/LIFTWITHOG/raw/main/assets/demo/liftwithog-demo.mp4)
+
+**[▶ Watch the demo — 2:29](https://github.com/Ritik200238/LIFTWITHOG/raw/main/assets/demo/liftwithog-demo.mp4)**
+
+*Every frame is the live app. A coach minted on camera in 28 seconds, a TEE-attested answer,
+and `0xdeadbeef` returning false on the verify page — nothing staged, nothing mocked.*
 
 </div>
 

@@ -12,7 +12,9 @@ inside a TEE-attested enclave on 0G Compute.
 - **Live:** [liftwithog.vercel.app](https://liftwithog.vercel.app) · **Verify:** [/#/verify](https://liftwithog.vercel.app/#/verify)
 - **CoachAgent:** [`0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5) (0G Aristotle mainnet, 16661)
 - **AttestedTransferVerifier:** [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E)
-- **ERC-8004 Trustless Agent:** #382 on 0G's Identity Registry
+- **ERC-8004 Trustless Agent:** [#3568516](https://chainscan.0g.ai/tx/0xb8e3f824a7f2d5ea847ca7ff613f5380ade59805cc2e9fe6a8dedbc8ff673d7a) on 0G's mainnet Identity Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+- **Deployed here, not migrated in:** [CoachAgent](https://chainscan.0g.ai/tx/0xc2cc554f9ce486a11af5cec2d92142111c782ee702cdaaefaada77cc5a017ede) · [verifier](https://chainscan.0g.ai/tx/0x4e5578dae6a1b407100750936c7b4f1682c28ddda9e87e5afe5dba91537b8c6f), both in block 43752560
+- **On-chain activity, not an empty deployment:** 7 coaches minted, 1 listed for rent, [1 transferred](https://chainscan.0g.ai/tx/0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2), [3 clone generations](https://chainscan.0g.ai/tx/0x3f7efde8d1f185e9f5b5faf6c1cda5c34d0b3bfad0e4a31ec5ab366f94eaba57), [a coach evolved to version 3](https://chainscan.0g.ai/tx/0xa575820404690b5e22e42ca34a2c823fd83101fb17040259768775610695dd3d) — every one of those owners holds 0.0 0G
 
 ---
 

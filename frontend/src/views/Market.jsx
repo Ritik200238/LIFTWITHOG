@@ -27,6 +27,7 @@ import { COACH_ADDRESS, coachContract } from '../lib/ogCoach.js'
 import { deviceSigner } from '../lib/deviceKey.js'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
+import { OG_NETWORK } from '../lib/ogNetwork.js'
 import { t } from '../lib/i18n.js'
 import { confirmSheet, coachAnswerSheet } from '../sheets.jsx'
 
@@ -419,7 +420,9 @@ export default function Market() {
         {/* The same honesty the proof screen carries, where somebody is about
             to spend something. It was only stated on a screen nobody has to
             open. */}
-        {t('0G Galileo is a test network: this moves test tokens, not real money.')}
+        {OG_NETWORK.testnet
+          ? t('0G Galileo is a test network: this moves test tokens, not real money.')
+          : t('This moves real 0G on 0G mainnet. The payment reaches the trainer in the same transaction.')}
       </div>
       <div style={{ height: 24 }} />
     </div>

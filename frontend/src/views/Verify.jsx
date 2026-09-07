@@ -14,6 +14,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { COACH_ADDRESS } from '../lib/coachConfig.js'
+import { OG_NETWORK } from '../lib/ogNetwork.js'
 import { t } from '../lib/i18n.js'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
@@ -185,7 +186,7 @@ export default function Verify() {
 
       {/* Live, before anything else: this page proves itself as it loads. */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 8px' }}>{t('0G Galileo, read live just now')}</h3>
+        <h3 style={{ margin: '0 0 8px' }}>{t('{0}, read live just now', OG_NETWORK.name)}</h3>
         {error ? (
           <div className="muted small">
             {t('Could not reach 0G right now:')} {error}
@@ -316,7 +317,9 @@ npm --prefix api test`}</Command>
 
       <div className="card">
         <div className="muted small" style={{ lineHeight: 1.5 }}>
-          {t('0G Galileo is a test network, so rentals move test tokens rather than money.')}{' '}
+          {OG_NETWORK.testnet
+            ? t('0G Galileo is a test network, so rentals move test tokens rather than money.')
+            : t('Rentals and clones move real 0G on mainnet.')}{' '}
           {t('A signature proves a device agreed to something; it cannot prove the person holding that device lifted what they typed.')}{' '}
           {t('Attested inference proves where a model ran and that nobody could read the input — not that its advice is good.')}{' '}
           {t('This project is built on the open-source openGym tracker; the training, nutrition and 0G work described here is ours.')}

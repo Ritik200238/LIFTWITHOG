@@ -194,8 +194,9 @@ export default function Proof() {
           after the fact.
           <br />
           <br />
-          0G Galileo is a testnet. Rentals move test tokens — the mechanism is real, the money is
-          not, until mainnet.
+          {OG_NETWORK.testnet
+            ? '0G Galileo is a testnet. Rentals move test tokens — the mechanism is real, the money is not.'
+            : 'Running on 0G Aristotle mainnet: rentals and clones move real 0G, and every transaction above is on the public chain.'}
         </div>
       </div>
 

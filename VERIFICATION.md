@@ -6,7 +6,7 @@ version of this page is public at
 **[liftwithog.vercel.app/#/verify](https://liftwithog.vercel.app/#/verify)**
 and reads the chain live from *your* browser.
 
-Network today: **0G Galileo testnet** (chain id `16602`). The mainnet
+Network today: **0G Aristotle mainnet** (chain id `16661`). The mainnet
 (Aristotle, `16661`) deployment lands under the same process; this file gains
 the address the day it does.
 
@@ -16,20 +16,20 @@ the address the day it does.
 
 | Claim | Check |
 |---|---|
-| `CoachAgent` (ERC-7857) is deployed and readable | [`0x0253fb92F9e88E82Fb0632C076C88204e4400025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) on the 0G explorer |
-| It answers for both 7857 interfaces **on chain** | `cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc-testnet.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
+| `CoachAgent` (ERC-7857) is deployed and readable | [`0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5) on the 0G explorer |
+| It answers for both 7857 interfaces **on chain** | `cast call 0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
 | …and says **no** to an interface nothing implements | same call with `0xdeadbeef` → `false`. This is the row that makes the two above it mean anything: a stub answering `true` to everything passes them and fails only this. |
-| The ERC-7857 transfer actually transfers | `node --env-file=server/.env scripts/prove-transfer.mjs` — mints, re-keys for a fresh buyer, calls `iTransferFrom`, then shows a replayed attestation and one signed for a different buyer both refused. [transfer tx](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea) |
-| The transfer verifier is what the coach says it is | `cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 "transferVerifier()(address)"` → [`0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B`](https://chainscan-galileo.0g.ai/address/0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B), read off the contract doing the guarding rather than configured here |
-| Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc-testnet.0g.ai` — non-zero, and grows as the app is used |
+| The ERC-7857 transfer actually transfers | `node --env-file=server/.env scripts/prove-transfer.mjs` — mints, re-keys for a fresh buyer, calls `iTransferFrom`, then shows a replayed attestation and one signed for a different buyer both refused. [transfer tx](https://chainscan.0g.ai/tx/0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2) |
+| The transfer verifier is what the coach says it is | `cast call 0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5 "transferVerifier()(address)"` → [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E), read off the contract doing the guarding rather than configured here |
+| Coaches exist and evolve | `cast call <addr> "totalMinted()(uint256)" --rpc-url https://evmrpc.0g.ai` — non-zero, and grows as the app is used |
 | The brain is hash-anchored | `getIntelligentDatas(tokenId)` returns the keccak256 the server verifies ciphertext against before every answer |
 | The contract never holds funds | read its balance on the explorer — zero — then see the invariant that keeps it so: `invariant_ContractNeverHoldsFunds` in `contracts/test/CoachAgentFuzz.t.sol` |
 | A trainer lists without holding a token | list a coach in the app, then `cast call <addr> "rentalPrice(uint256)(uint256)" <id>` — non-zero, set by an owner whose balance is 0 |
 | The coach records what it learned | open **What it knows** in the app: each version's sentences travelled inside the payload whose hash `coachOf(tokenId)` returns |
-| The coach is a registered ERC-8004 Trustless Agent | agent **#382** on 0G's Identity Registry — `cast call 0x8004A818BFB912233c491871b3d84c89A494BD9e "tokenURI(uint256)(string)" 382 --rpc-url https://evmrpc-testnet.0g.ai` returns our agent card, and `ownerOf(382)` returns the wallet that registered it |
+| The coach is a registered ERC-8004 Trustless Agent | agent **#3568516** on 0G's Identity Registry — `cast call 0x8004A818BFB912233c491871b3d84c89A494BD9e "tokenURI(uint256)(string)" 382 --rpc-url https://evmrpc.0g.ai` returns our agent card, and `ownerOf(382)` returns the wallet that registered it |
 | Its agent card is public and served by the app | [liftwithog.vercel.app/agent-card.json](https://liftwithog.vercel.app/agent-card.json) — capabilities, standards, and the limitations we refuse to hide |
 | No admin can touch your coach | read the source: no owner role, no pause, no upgrade hook, `transferVerifier` immutable |
-| The rules the coach follows are public, and fixed to a moment | the literal system prompt and every nutrition bound are published unencrypted on 0G Storage at root `0x8ce20d59…a9630c`, sha256 `0x76cc63fc…f4e3df`, with a commitment binding the two [anchored on chain](https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa). `node --env-file=server/.env scripts/publish-policy.mjs` recomputes the same hash from the code. See [`policy-provenance.json`](policy-provenance.json). |
+| The rules the coach follows are public, and fixed to a moment | the literal system prompt and every nutrition bound are published unencrypted on 0G Storage at root `0x8ce20d59…a9630c`, sha256 `0x76cc63fc…f4e3df`, with a commitment binding the two [anchored on chain](https://chainscan.0g.ai/tx/0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a). `node --env-file=server/.env scripts/publish-policy.mjs` recomputes the same hash from the code. See [`policy-provenance.json`](policy-provenance.json). |
 
 ## One command, most of the claims
 
@@ -82,10 +82,10 @@ number that reaches a person's diet or a loaded bar."
 `node --env-file=server/.env scripts/prove-gasless.mjs` generates a key on the
 spot, funds it with nothing, and drives both actions through the relayer. From a
 run of it: coach **#5**, owner
-[`0x885715F1f33aFfBaD28b21C7a048be40336da42e`](https://chainscan-galileo.0g.ai/address/0x885715F1f33aFfBaD28b21C7a048be40336da42e),
+[`0xF82915a4d6B05D0700949d0a6e0c4a6b70c64c35`](https://chainscan.0g.ai/address/0xF82915a4d6B05D0700949d0a6e0c4a6b70c64c35),
 listed at 0.0003 0G/day, balance **0.0 0G** —
-[mint](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1)
-· [listing](https://chainscan-galileo.0g.ai/tx/0x2f73ae2b66167c9877ef6de816e2d1b5da1e9c776b5ce9154b02ae4a9584b2a1).
+[mint](https://chainscan.0g.ai/tx/0xf1df10c55fa5cef58436f99dde949ddd43bfd377e61bddfa5f40e590c8735c25)
+· [listing](https://chainscan.0g.ai/tx/0x350484f7b255ca10cc004e2adcc22a159dd1ab113ef5a9d0830c0daf2e9076a1).
 
 Or do it by hand: mint a coach in the app (no wallet involved), open
 **Settings → Proof**, and read the owner address it shows on the explorer. The EIP-712 domain the device signs under is pinned in

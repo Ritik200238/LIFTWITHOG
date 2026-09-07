@@ -8,8 +8,8 @@
 [![mutation](https://img.shields.io/badge/mutation-174%20faults%20·%20169%20caught-30d158?style=flat-square)](scripts/mutate.mjs)
 [![contract](https://img.shields.io/badge/contract-111%20Foundry%20·%20fuzz%20%2B%20invariants-4b9fd1?style=flat-square)](contracts/test)
 [![erc7857](https://img.shields.io/badge/ERC--7857-verified%20on--chain-a78bfa?style=flat-square)](VERIFICATION.md#the-contract)
-[![erc8004](https://img.shields.io/badge/ERC--8004-agent%20%23382-a78bfa?style=flat-square)](https://liftwithog.vercel.app/agent-card.json)
-[![0g](https://img.shields.io/badge/0G%20Chain-24%20coaches%20live-e0655f?style=flat-square)](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025)
+[![erc8004](https://img.shields.io/badge/ERC--8004-agent%20%233568516-a78bfa?style=flat-square)](https://liftwithog.vercel.app/agent-card.json)
+[![0g](https://img.shields.io/badge/0G%20Chain-live%20on%20mainnet-e0655f?style=flat-square)](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5)
 [![demo](https://img.shields.io/badge/demo-2%3A29%20·%20watch-e8452c?style=flat-square)](assets/demo/liftwithog-demo.mp4)
 [![pwa](https://img.shields.io/badge/PWA-offline--first-d9a94a?style=flat-square)](frontend/public/sw.js)
 
@@ -44,7 +44,7 @@ Every line below has a command, a transaction, or a test behind it. Not one is a
 |---|---|---|
 | 🏋️ | **A complete gym product first.** 1,324 animated exercises, plate math, warm-up ramps, an India-first nutrition engine, 11 languages, offline-first. People would use this with the chain switched off. | [Open it](https://liftwithog.vercel.app) |
 | 🧠 | **The coach learns, and you can read what it learned.** Every ten sessions it re-derives itself from your real training, writes down *what changed*, re-encrypts, and `evolve()`s on chain. Version 12 is twelve sentences about you. | [`coach-runtime.js`](server/coach-runtime.js) |
-| 🔑 | **Owned from a phone with no wallet and no gas — and still yours.** A device key signs; our relayer pays. The owner's address is *inside* the signed message, so the relayer can pay but cannot redirect. Coach `#4`'s owner has never held a coin. | [tx](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1) · [owner](https://chainscan-galileo.0g.ai/address/0x885715F1f33aFfBaD28b21C7a048be40336da42e) |
+| 🔑 | **Owned from a phone with no wallet and no gas — and still yours.** A device key signs; our relayer pays. The owner's address is *inside* the signed message, so the relayer can pay but cannot redirect. Coach `#1`'s owner has never held a coin. | [tx](https://chainscan.0g.ai/tx/0xf1df10c55fa5cef58436f99dde949ddd43bfd377e61bddfa5f40e590c8735c25) · [owner](https://chainscan.0g.ai/address/0xF82915a4d6B05D0700949d0a6e0c4a6b70c64c35) |
 | 🔒 | **Advice that proves where it ran, or refuses.** Every answer is TEE-attested on 0G Compute, attestation checked per response. No attested provider — the coach says so. There is no unattested fallback, and a test fails if one is added. | [`coachCompute.test.js`](server/coachCompute.test.js) |
 | 🛡️ | **A contract with no owner, no pause, no upgrade, no admin key.** Nobody — including us — can freeze your coach or rewrite the rules under you. One grep proves the absence. | [below](#what-this-contract-cannot-do-to-you) |
 | 💸 | **Trainers earn without holding a token.** `rent()` grants access and pays the trainer in the same transaction. `clone()` builds a lineage that pays each generation. The contract's balance is always zero — an invariant drives thousands of random calls to prove it. | [`CoachAgentFuzz.t.sol`](contracts/test/CoachAgentFuzz.t.sol) |
@@ -102,15 +102,15 @@ and restores on any device.
 ## The proof — read the chain, not this file
 
 `CoachAgent` is deployed at
-[`0x0253fb92F9e88E82Fb0632C076C88204e4400025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025),
+[`0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5),
 wired to an immutable transfer verifier at
-[`0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B`](https://chainscan-galileo.0g.ai/address/0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B).
+[`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E).
 Ask the bytecode — not us — whether it speaks ERC-7857:
 
 ```bash
 $ for id in 0x4b396f04 0x35d39512 0xd79f01c7 0xdeadbeef; do
-    cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 \
-      "supportsInterface(bytes4)(bool)" $id --rpc-url https://evmrpc-testnet.0g.ai
+    cast call 0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5 \
+      "supportsInterface(bytes4)(bool)" $id --rpc-url https://evmrpc.0g.ai
   done
 true     # 0x4b396f04  ERC-7857
 true     # 0x35d39512  ERC-7857 Authorize
@@ -126,10 +126,10 @@ The same four are read live, in your browser, on [/#/verify](https://liftwithog.
 
 | | What happened | On chain |
 |---|---|---|
-| Gasless mint | A key generated on the spot, funded with nothing, owns coach `#4` and listed it for rent | [mint](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1) · [listing](https://chainscan-galileo.0g.ai/tx/0x2f73ae2b66167c9877ef6de816e2d1b5da1e9c776b5ce9154b02ae4a9584b2a1) |
-| Intelligent transfer | Brain re-encrypted to the buyer, attestor signs the hand-over, `iTransferFrom` moves it. The same attestation replayed — **refused**. Signed for somebody else — **refused**. | [transfer](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea) |
-| Clone lineage | `#15 → #16 → #17`, three generations, each parent paid in full, `generationOf(17) → 3`. Not one address in the line has ever held a coin. | [gen 2](https://chainscan-galileo.0g.ai/tx/0xdda37f7b0c09d900f6224ac4c27c1dc225335b55509a2a88b790a67c03aae21c) · [gen 3](https://chainscan-galileo.0g.ai/tx/0x69b752d7d4cce130cbdf482511891e6a8513ec7876f039d1fb555aa8d86a7d0a) |
-| Published rules | The literal system prompt and every nutrition bound, as a blob on 0G Storage with its hash anchored on chain. If the coach ever breaks its own rules, the rule is public and timestamped. | [anchor](https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa) |
+| Gasless mint | A key generated on the spot, funded with nothing, owns coach `#4` and listed it for rent | [mint](https://chainscan.0g.ai/tx/0xf1df10c55fa5cef58436f99dde949ddd43bfd377e61bddfa5f40e590c8735c25) · [listing](https://chainscan.0g.ai/tx/0x350484f7b255ca10cc004e2adcc22a159dd1ab113ef5a9d0830c0daf2e9076a1) |
+| Intelligent transfer | Brain re-encrypted to the buyer, attestor signs the hand-over, `iTransferFrom` moves it. The same attestation replayed — **refused**. Signed for somebody else — **refused**. | [transfer](https://chainscan.0g.ai/tx/0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2) |
+| Clone lineage | `#4 → #5 → #6`, three generations, each parent paid in full, `generationOf(6) → 3`. Not one address in the line has ever held a coin. | [gen 2](https://chainscan.0g.ai/tx/0x7b5411fe36804f4e9a23e48d3c96e5dfbb66fda798caf9a77fbcf51dc04122c3) · [gen 3](https://chainscan.0g.ai/tx/0x3f7efde8d1f185e9f5b5faf6c1cda5c34d0b3bfad0e4a31ec5ab366f94eaba57) |
+| Published rules | The literal system prompt and every nutrition bound, as a blob on 0G Storage with its hash anchored on chain. If the coach ever breaks its own rules, the rule is public and timestamped. | [anchor](https://chainscan.0g.ai/tx/0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a) |
 
 ```bash
 npm run evidence     # re-reads every one of the above from 0G, live
@@ -180,7 +180,7 @@ Attestations carry a signed deadline for the same reason — one that never expi
   Ordinary questions are untouched, and there is a test for each side.
 - **A coach another agent can hire.** `GET /api/coach/5/service` answers **HTTP 402** with price,
   payee and the call that pays it. Payment is verified against *our own* `Rented` event, not a
-  forgeable token transfer. Registered as **ERC-8004 agent #382** with a public
+  forgeable token transfer. Registered as **ERC-8004 agent #3568516** with a public
   [agent card](https://liftwithog.vercel.app/agent-card.json).
 - **A progress card a stranger can verify.** Signed by the owner, published to 0G Storage, and
   every claim on it re-derived from the chain — including what it does *not* prove: *"that a
@@ -198,7 +198,7 @@ Attestations carry a signed deadline for the same reason — one that never expi
 | **0G Chain** | [`CoachAgent.sol`](contracts/src/CoachAgent.sol) | The coach as property: ERC-7857 + ERC-721, versioned intelligent data, expiring rentals with atomic payout, clone lineage, grants voided on sale, EIP-712 relayed mint / evolve / list |
 | **0G Compute** | [`coach-runtime.js`](server/coach-runtime.js) | TEE-attested inference, attestation verified per response, **fail-closed** — no attested provider means an honest error, never a downgrade |
 | **0G Storage** | [`coach-runtime.js`](server/coach-runtime.js) · [`ogVault.js`](frontend/src/lib/ogVault.js) | The coach's encrypted brain, keccak256-anchored on chain and tamper-checked on every ask; the user's AES-256-GCM vault backups, encrypted **on the device** |
-| **ERC-8004** | [`register-agent.mjs`](scripts/register-agent.mjs) | Agent **#382** on 0G's Identity Registry — discoverable by any 8004 indexer while ownership stays governed by 7857 |
+| **ERC-8004** | [`register-agent.mjs`](scripts/register-agent.mjs) | Agent **#3568516** on 0G's Identity Registry — discoverable by any 8004 indexer while ownership stays governed by 7857 |
 | **ERC-7857** | [`contracts/src/interfaces/`](contracts/src/interfaces) | Interfaces vendored **verbatim** from 0G's `agenticID-examples`, so selectors match the ecosystem byte for byte |
 | **0G DA** | — | **Deliberately not used.** Nothing here is a high-throughput stream, and a decorative integration is worse than an absent one |
 
@@ -310,7 +310,7 @@ are never reported together again. Full list of every claim and how to check it:
 
 | | |
 |---|---|
-| Contract + explorer | [`0x0253…0025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) · 24 coaches minted, versions climbing, rentals and clones on chain |
+| Contract + explorer | [`0x0253…0025`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5) · 6 coaches minted, transferred and cloned, rentals and clones on chain |
 | Criterion-by-criterion | **[SUBMISSION.md](SUBMISSION.md)** — in order of weight, a command or transaction behind every claim, and a section naming what is not done |
 | Proof of integration | `supportsInterface` answered by deployed bytecode with a control · `npm run evidence` · [/#/verify](https://liftwithog.vercel.app/#/verify) |
 | Architecture · Security · Threats | [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) · [THREAT-MODEL.md](THREAT-MODEL.md) |

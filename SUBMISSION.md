@@ -10,8 +10,8 @@ generated, with an encrypted brain on 0G Storage and advice that runs only
 inside a TEE-attested enclave on 0G Compute.
 
 - **Live:** [liftwithog.vercel.app](https://liftwithog.vercel.app) · **Verify:** [/#/verify](https://liftwithog.vercel.app/#/verify)
-- **CoachAgent:** [`0x0253fb92F9e88E82Fb0632C076C88204e4400025`](https://chainscan-galileo.0g.ai/address/0x0253fb92F9e88E82Fb0632C076C88204e4400025) (0G Galileo, 16602)
-- **AttestedTransferVerifier:** [`0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B`](https://chainscan-galileo.0g.ai/address/0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B)
+- **CoachAgent:** [`0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5) (0G Aristotle mainnet, 16661)
+- **AttestedTransferVerifier:** [`0x70c4dE9D0edbE53733821558Bf6b14b64451e56E`](https://chainscan.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E)
 - **ERC-8004 Trustless Agent:** #382 on 0G's Identity Registry
 
 ---
@@ -39,7 +39,7 @@ the product's central loop did not work, and fixing that before anything else.
 |---|---|---|
 | **Ask your coach** | Returned **422 for every coach a real person created.** The device sealed the payload with its own key in WebCrypto's byte layout; the server tried a key from `COACH_SERVICE_KEY` in node's layout. Two independent mismatches. Only the three seeded house coaches worked. | One implementation of the seal, imported by both halves. Verified by reverting the server and watching the round-trip test fail. |
 | **Attestation** | Five documents and the on-chain agent card said "verified per response". The code read a marketplace flag once, before the request, and never checked the reply. The same call settles the fee — so inference was unpaid too. | `processResponse` on every answer, only `true` accepted, no unattested fallback. |
-| **ERC-7857 transfer** | `address(0)` verifier, so `iTransferFrom` reverted on every call ever made, immutably. | [Moves a coach on chain](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea), with a replayed attestation and one signed for another buyer both refused. |
+| **ERC-7857 transfer** | `address(0)` verifier, so `iTransferFrom` reverted on every call ever made, immutably. | [Moves a coach on chain](https://chainscan.0g.ai/tx/0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2), with a replayed attestation and one signed for another buyer both refused. |
 | **Rate limits** | Keyed on an address the caller chooses, and on the client-writable half of `X-Forwarded-For`. A fresh keypair per request drained the relayer. | Whole-service daily ceiling; caller identified by a header the caller cannot write. |
 | **Storage** | No timeout and no second copy. A node dropping a blob left a coach whose on-chain pointer resolved to nothing, forever. | Timeouts both directions, plus a mirror — hash-checked against the chain exactly like a download. |
 | **Market page** | Walked every token id and scanned logs from block 0 on every load. `mint` is permissionless. | Bounded, newest-first, batched. |
@@ -55,7 +55,7 @@ the product's central loop did not work, and fixing that before anything else.
   next to any sealed key, including the one the seller still holds.
 - **The published coaching policy** — the literal system prompt and every
   nutrition bound, unencrypted on 0G Storage, with a commitment
-  [anchored on chain](https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa).
+  [anchored on chain](https://chainscan.0g.ai/tx/0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a).
   The numbers are read out of the module enforcing them, so the document cannot
   drift from the code.
 - **Coaching record recovery** — the record lived in one browser's local
@@ -135,8 +135,8 @@ verbatim from 0G's own `agenticID-examples`. Ask the bytecode:
 
 ```bash
 $ for id in 0x4b396f04 0x35d39512 0x80ac58cd 0xdeadbeef; do
-    cast call 0x0253fb92F9e88E82Fb0632C076C88204e4400025 \
-      "supportsInterface(bytes4)(bool)" $id --rpc-url https://evmrpc-testnet.0g.ai
+    cast call 0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5 \
+      "supportsInterface(bytes4)(bool)" $id --rpc-url https://evmrpc.0g.ai
   done
 true  true  true  false
 ```
@@ -147,13 +147,13 @@ before it. The same control is pinned in Foundry and read live on `/verify`.
 
 - **All three 7857 mechanisms work** — transfer, authorize, and the intelligent
   data surface. No stubs, nothing disabled.
-- **Gasless both ways.** [Coach #4](https://chainscan-galileo.0g.ai/address/0x885715F1f33aFfBaD28b21C7a048be40336da42e)
+- **Gasless both ways.** [Coach #4](https://chainscan.0g.ai/address/0xF82915a4d6B05D0700949d0a6e0c4a6b70c64c35)
   is owned and listed for rent by an address holding **0.0 0G**
-  ([mint](https://chainscan-galileo.0g.ai/tx/0xc6e4c9688b4b77cb15be6dfc390d5a3b2f8b64ba205159ecd1338c27fea54cc1) ·
-  [listing](https://chainscan-galileo.0g.ai/tx/0x2f73ae2b66167c9877ef6de816e2d1b5da1e9c776b5ce9154b02ae4a9584b2a1)).
+  ([mint](https://chainscan.0g.ai/tx/0xf1df10c55fa5cef58436f99dde949ddd43bfd377e61bddfa5f40e590c8735c25) ·
+  [listing](https://chainscan.0g.ai/tx/0x350484f7b255ca10cc004e2adcc22a159dd1ab113ef5a9d0830c0daf2e9076a1)).
 - **No admin.** No owner role, no pause, no proxy, no withdraw. The verifier
   address is immutable.
-- **ERC-8004** agent #382, agent card served by the app.
+- **ERC-8004** agent #3568516, agent card served by the app.
 
 ### 0G Compute
 
@@ -219,7 +219,7 @@ And the run prints what it does not automate.
 
 ### Not done, stated rather than omitted
 
-- **Mainnet.** The relayer holds 0.46 0G on Galileo and nothing on Aristotle.
+- **Mainnet.** The relayer holds 0.46 0G on Aristotle and nothing on Aristotle.
   `npm run go-mainnet` is written and waiting on funding.
 - **CI.** The workflow is written; pushing `.github/workflows/` needs a token
   scope the repository owner has to grant.

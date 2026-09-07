@@ -138,7 +138,7 @@ check release "the contract still has no admin, pause or upgrade" \
 # different owners for token #1, and it is invisible to every other check here
 # because they all read the chain rather than the prose.
 check release "no stale contract address survives in the documents" \
-  bash -c '! grep -rni "0x640eecC824D54d7ECF05fa423E18673E70342809\|0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A\|0x70c4dE9D0edbE53733821558Bf6b14b64451e56E\|0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2\|0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B" README.md VERIFICATION.md ARCHITECTURE.md SECURITY.md SUBMISSION.md frontend/public/agent-card.json scripts/evidence.mjs render.yaml server/.env.example'
+  bash -c '! grep -rni "0x0253fb92F9e88E82Fb0632C076C88204e4400025\|0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B\|0x640eecC824D54d7ECF05fa423E18673E70342809\|0xE6CAcDcf1D370E64041Ac9e42D0550A78014259A\|0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2\|0xc0d95348dA0eD829f400FA3eF04fDb7e67A5a12B" README.md VERIFICATION.md ARCHITECTURE.md SECURITY.md SUBMISSION.md frontend/public/agent-card.json scripts/evidence.mjs render.yaml server/.env.example'
 
 # -------------------------------------------------------------------- live
 #
@@ -146,8 +146,8 @@ check release "no stale contract address survives in the documents" \
 # answering, or answers differently, these fail — which is the entire reason
 # they are not folded into the suites above.
 
-RPC="${OG_RPC_URL:-https://evmrpc-testnet.0g.ai}"
-COACH="${COACH_ADDRESS:-0x0253fb92F9e88E82Fb0632C076C88204e4400025}"
+RPC="${OG_RPC_URL:-https://evmrpc.0g.ai}"
+COACH="${COACH_ADDRESS:-0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5}"
 
 rpc_call() {
   curl -s --max-time 20 -X POST "$RPC" \

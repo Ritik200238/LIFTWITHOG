@@ -76,8 +76,10 @@ const deployed = execFileSync(
     'script', 'script/Deploy.s.sol:Deploy',
     '--rpc-url', MAINNET.rpc,
     '--broadcast',
-    '--with-gas-price', '3gwei',
-    '--priority-gas-price', '2gwei',
+    // Mainnet's floor is 4 gwei, measured the day this first ran. The old
+    // 3 gwei was carried over from Galileo and would have sat unmined.
+    '--with-gas-price', '6gwei',
+    '--priority-gas-price', '5gwei',
   ],
   { cwd: path.join(root, 'contracts'), encoding: 'utf8', env: { ...process.env, PRIVATE_KEY: key }, shell: process.platform === 'win32' },
 );

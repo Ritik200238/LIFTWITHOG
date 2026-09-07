@@ -181,8 +181,8 @@ rather than continuing under a published key. `LEAKED_SECRET_SHA256` in
 ## Current evidence
 
 ```
-CoachAgent                 0x0253fb92F9e88E82Fb0632C076C88204e4400025   (0G Galileo, 16602)
-AttestedTransferVerifier   0xAb4553bA4C93E6e332580FA69af1E77E1d15E44B
+CoachAgent                 0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5   (0G Aristotle mainnet, 16661)
+AttestedTransferVerifier   0x70c4dE9D0edbE53733821558Bf6b14b64451e56E
 ```
 
 ```bash

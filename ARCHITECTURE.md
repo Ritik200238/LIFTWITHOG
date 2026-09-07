@@ -93,7 +93,7 @@ That correction matters more than it sounds. This paragraph previously said
 the repository saying something ten times smaller. The argument survives; it was
 simply being made an order of magnitude harder than it needed to be.
 
-Measured on 0G Galileo from this project's own relayer wallet:
+Measured on 0G Aristotle mainnet from this project's own relayer wallet:
 
 | | measured |
 |---|---|
@@ -152,7 +152,7 @@ arithmetic above is the answer.
 | `authorizeUsage / revokeAuthorization` | open-ended executor grants (7857) |
 | `rent()` | paid, **expiring** access: payment reaches the trainer in the same transaction that grants it |
 | epoch counter | a sale voids every grant in **constant gas** — a coach with a thousand renters must never become impossible to sell |
-| `iTransferFrom` + immutable verifier | transfer with a re-encryption proof that binds the sealed key, the recipient's public key and a nonce that is spent — [proven on chain](https://chainscan-galileo.0g.ai/tx/0x8c60c34aa35f1685c6c7c74ee0ce7f0d875168613a9933666b8f06f3b46318ea), with a replayed attestation and one signed for another buyer both refused |
+| `iTransferFrom` + immutable verifier | transfer with a re-encryption proof that binds the sealed key, the recipient's public key and a nonce that is spent — [proven on chain](https://chainscan.0g.ai/tx/0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2), with a replayed attestation and one signed for another buyer both refused |
 
 Design positions worth naming: the contract holds no funds and has no
 withdraw, owner, admin, pause or upgrade path. Nobody — including us — can

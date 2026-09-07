@@ -4,7 +4,7 @@ What an attacker can do to this system, what stops them, and — the part most
 documents leave out — what is still open.
 
 Written against the code at `0xe0bd5144dd254422c1fE4eA8a62A23C3ca52AfB2` on 0G
-Galileo. Every Evidence cell points at a file and line, or a command you can run.
+Aristotle. Every Evidence cell points at a file and line, or a command you can run.
 
 ---
 
@@ -50,7 +50,7 @@ without the service key.
    current deployment **they are the same key**, which is a finding, not a design.
 2. A user's device key never leaves the device and is not backed up anywhere we
    can read.
-3. `evmrpc-testnet.0g.ai` may be slow, wrong, or absent at any time.
+3. `evmrpc.0g.ai` may be slow, wrong, or absent at any time.
 4. Anybody can call any public function on the contract, in any order, from any
    address, as many times as they can pay for.
 5. The attestor signing transfer proofs is software, not hardware.

@@ -23,7 +23,7 @@ run, tested, or read on chain. Nothing is listed because it is planned.
   calls against a cap of 12 allow exactly 12.
 - **Reminders reach the hosted app** via a scheduled sweep, guarded by a shared
   secret, with the free plan's once-a-day limit stated rather than discovered.
-- `CoachAgent` v3 on Galileo: `0x0253fb92F9e88E82Fb0632C076C88204e4400025`.
+- `CoachAgent` v3 on Aristotle: `0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`.
 - 668 tests (529 frontend, 67 server, 72 contract) · 174 mutations, 169 caught.
 
 ## 2.2.0 — ERC-7857 Agentic ID, and a server that runs anywhere *(31 Aug 2026)*
@@ -40,7 +40,7 @@ run, tested, or read on chain. Nothing is listed because it is planned.
   backends: files for a self-hosted box, Postgres (Neon) when `DATABASE_URL`
   is set. The same server runs long-lived under Docker or as a single Vercel
   function; accounts survive every deploy.
-- **Network is a switch, not a constant.** Galileo (16602) and Aristotle
+- **Network is a switch, not a constant.** Aristotle (16661) and Aristotle
   mainnet (16661) profiles on both halves; the chain id follows the RPC so a
   signature can never be for a chain nobody is on.
 - **/verify** — a public page for somebody who does not believe us: live chain
@@ -72,7 +72,7 @@ run, tested, or read on chain. Nothing is listed because it is planned.
 
 ## 2.0.0 — A coach you own, on 0G *(Aug 2026)*
 
-- **`CoachAgent` on 0G Galileo** (`0x0253fb92F9e88E82Fb0632C076C88204e4400025`,
+- **`CoachAgent` on 0G Aristotle mainnet** (`0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`,
   v1): an ERC-721 where each token is one person's coach — its encrypted
   configuration hash, its 0G Storage URI, a version that only climbs.
 - **Owning it needs no wallet**: a key generated on the device signs EIP-712

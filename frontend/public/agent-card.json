@@ -27,7 +27,7 @@
       "supported": true,
       "note": "Genuine ERC-7857 Agentic ID. supportsInterface(0x4b396f04) and supportsInterface(0x35d39512) both return true on the deployed contract.",
       "contract": {
-        "16602": "0x0253fb92F9e88E82Fb0632C076C88204e4400025"
+        "16661": "0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5"
       }
     },
     "erc721": {
@@ -42,7 +42,7 @@
   "trust": {
     "custody": "No owner role, no pause, no upgrade path, and an immutable transfer verifier. Nobody — including the operator — can freeze, reassign or alter a coach.",
     "funds": "The contract holds no balance and has no withdraw function; an invariant test asserts this across random call sequences.",
-    "limitations": "0G Galileo is a test network today, so rentals move test tokens. Attestation proves where a model ran and that the channel was sealed — not that its advice is wise."
+    "limitations": "0G Aristotle mainnet is a test network today, so rentals move test tokens. Attestation proves where a model ran and that the channel was sealed — not that its advice is wise."
   },
   "interfaces": [
     {

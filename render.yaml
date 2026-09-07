@@ -51,9 +51,9 @@ services:
       - key: RP_NAME
         value: LIFTWITHOG
 
-      # The deployed CoachAgent on 0G Galileo.
+      # The deployed CoachAgent on 0G Aristotle mainnet.
       - key: COACH_ADDRESS
-        value: "0x0253fb92F9e88E82Fb0632C076C88204e4400025"
+        value: "0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5"
 
       # Set by hand in the Render dashboard, never in this file: the key that
       # pays gas so nobody using the app needs a wallet, and the key the coach

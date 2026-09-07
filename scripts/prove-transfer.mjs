@@ -116,7 +116,18 @@ console.log(`  ${EXPLORER}/tx/${mintReceipt.hash}\n`);
 const rekeyed = await sealForService(profile, buyer.signingKey.compressedPublicKey);
 const sealedKey = ethers.hexlify(rekeyed.slice(0, 64));
 const targetPublicKey = buyer.signingKey.compressedPublicKey;
-const nonce = BigInt(Date.now());
+/*
+ * The nonce carries the attestation's expiry in its top 64 bits — see
+ * NONCE_BITS in AttestedTransferVerifier. `Date.now()` alone is about 41 bits,
+ * so it shifts down to an expiry of zero, which the verifier refuses rather
+ * than reading as "never expires". This script predated that hardening and was
+ * only ever run against a verifier that did not have it; on the mainnet
+ * deployment it reverted with TransferProofRejected, which is the check
+ * working.
+ */
+const EXPIRY_SHIFT = 192n;
+const validUntil = BigInt(Math.floor(Date.now() / 1000) + 15 * 60);
+const nonce = (validUntil << EXPIRY_SHIFT) | BigInt(Date.now());
 
 process.stdout.write('transferring… ');
 const transferTx = await coach.iTransferFrom(

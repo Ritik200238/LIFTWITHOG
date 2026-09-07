@@ -7,5 +7,14 @@
     "txHash": "0x540938b91eb7b58301d7dd6da4dbe27deb1f3360515fdd42cdf508441d1a734c",
     "owner": "0x495FBf0cc100dE43473003A9385651af5363744D",
     "registeredAt": "2026-09-01T02:29:43.337Z"
+  },
+  "mainnet": {
+    "agentId": "3568516",
+    "agentURI": "https://liftwithog.vercel.app/agent-card.json",
+    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "chainId": 16661,
+    "txHash": "0xb8e3f824a7f2d5ea847ca7ff613f5380ade59805cc2e9fe6a8dedbc8ff673d7a",
+    "owner": "0x495FBf0cc100dE43473003A9385651af5363744D",
+    "registeredAt": "2026-09-07T11:00:40.432Z"
   }
 }

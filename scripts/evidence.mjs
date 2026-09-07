@@ -13,10 +13,10 @@
 
 import { ethers } from 'ethers'
 
-const RPC = process.env.OG_RPC_URL || 'https://evmrpc-testnet.0g.ai'
-const CHAIN_ID = 16602
-const EXPLORER = 'https://chainscan-galileo.0g.ai'
-const COACH = process.env.COACH_ADDRESS || '0x0253fb92F9e88E82Fb0632C076C88204e4400025'
+const RPC = process.env.OG_RPC_URL || 'https://evmrpc.0g.ai'
+const CHAIN_ID = 16661
+const EXPLORER = 'https://chainscan.0g.ai'
+const COACH = process.env.COACH_ADDRESS || '0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5'
 
 const ABI = [
   'function name() view returns (string)',
@@ -50,7 +50,7 @@ try {
   const block = await provider.getBlockNumber()
 
   if (Number(network.chainId) === CHAIN_ID) {
-    pass('reachable, and is 0G Galileo', `chain id ${network.chainId}`)
+    pass('reachable, and is 0G Aristotle mainnet', `chain id ${network.chainId}`)
   } else {
     fail('wrong chain', `expected ${CHAIN_ID}, got ${network.chainId}`)
   }

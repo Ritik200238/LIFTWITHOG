@@ -44,3 +44,12 @@ fail_on_revert = false
 [rpc_endpoints]
 og_testnet = "https://evmrpc-testnet.0g.ai"
 og_mainnet = "https://evmrpc.0g.ai"
+
+# Foundry 1.8 lints on every build, and `deny = "warnings"` above turns every lint
+# note into a build failure — so a fresh clone could not run `forge build` at all,
+# while `forge test` (which does not lint) stayed green and hid it. `deny` is kept
+# for what it was written for: compiler warnings. The linter still runs on demand
+# with `forge lint`. None of this changes the bytecode, and the deployment check
+# compares that byte for byte against mainnet.
+[lint]
+lint_on_build = false

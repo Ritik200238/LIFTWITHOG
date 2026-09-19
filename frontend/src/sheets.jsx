@@ -1140,8 +1140,11 @@ export const coachAnswerSheet = answer => ui().openSheet(close => <CoachAnswer a
  *
  * Both sides, at the same weight. Only the upside ("yours forever!") is a sales
  * pitch; only the risks makes a good design read like a warning label. The last
- * line is there because the fear a person actually has — "will I lose my
- * workouts?" — is the one thing this does not put at risk.
+ * line answers the fear a person actually has — "will I lose my workouts?" —
+ * and says only what is true: the coach changes nothing about how they are
+ * kept. It does not say they survive a lost phone, because a guest's don't
+ * unless they were backed up, and that sentence sits right under "lose the
+ * phone".
  */
 function BeforeYouCreate({ close, onConfirm }) {
   return <>
@@ -1163,8 +1166,8 @@ function BeforeYouCreate({ close, onConfirm }) {
         {t('If something ever goes wrong with the contract, we can’t fix it in place. We could only launch a new one, and you’d choose whether to move.')}
       </li>
       <li className="safe">
-        <b>{t('Your workouts are not at risk.')}</b>{' '}
-        {t('They stay on this phone either way. This is only about the coach.')}
+        <b>{t('Your workouts don’t depend on it.')}</b>{' '}
+        {t('They’re kept the same way with or without a coach. Back them up any time in Settings.')}
       </li>
     </ul>
     <div className="muted small" style={{ lineHeight: 1.5, marginTop: 12 }}>

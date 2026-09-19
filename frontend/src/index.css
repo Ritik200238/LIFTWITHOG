@@ -626,6 +626,49 @@ h4.sec{
 .answer li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--acc)}
 .answer b{font-weight:600;color:var(--label)}
 
+/* --- what "no admin" means, before the coach exists ---
+   One row per consequence, marked by what kind it is rather than by colour
+   alone: a tick for the upside, a warning for the cost, a shield for what is
+   not at risk. Read in order they are a trade someone agrees to. */
+.tradeoffs{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.tradeoffs li{
+  position:relative;padding:11px 13px 11px 40px;border-radius:var(--r);
+  background:var(--surface);font-size:14.5px;line-height:1.45;color:var(--label-2);
+}
+.tradeoffs li b{color:var(--label);font-weight:600}
+.tradeoffs li::before{
+  position:absolute;left:13px;top:11px;width:18px;height:18px;border-radius:50%;
+  display:grid;place-items:center;font-size:11px;font-weight:700;line-height:1;
+}
+.tradeoffs li.good::before{content:"✓";background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green)}
+.tradeoffs li.cost::before{content:"!";background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc)}
+.tradeoffs li.safe::before{content:"✓";background:var(--surface-2);color:var(--label-3)}
+
+/* --- backup state: one line, always paired with an icon and words --- */
+.backup-state{
+  display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:var(--r);
+  font-size:14px;line-height:1.4;
+}
+.backup-state svg{width:17px;height:17px;flex:none;margin-top:1px}
+.backup-state.ok{background:color-mix(in srgb,var(--green) 12%,transparent);color:var(--label)}
+.backup-state.ok svg{color:var(--green)}
+.backup-state.warn{background:color-mix(in srgb,var(--acc) 11%,transparent);color:var(--label)}
+.backup-state.warn svg{color:var(--acc)}
+
+/* on the coach card the warning carries its own button, so the fix sits next to the problem */
+.coachcard-backup{align-items:center;margin:10px 0 4px}
+.coachcard-backup span{flex:1}
+.coachcard-backup .btn{flex:none}
+
+/* --- the two-word check --- */
+.word-check{margin-bottom:14px}
+.word-check-q{font-size:15px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
+.word-check-choices{display:flex;flex-wrap:wrap;gap:8px}
+.word-check-choices .chip{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;
+  min-height:40px;padding:0 14px;
+}
+
 /* --- recovery phrase ---
    Numbered cells rather than a paragraph. Twelve words run together is twelve
    chances to copy one down wrong, and this is the one thing in the app that

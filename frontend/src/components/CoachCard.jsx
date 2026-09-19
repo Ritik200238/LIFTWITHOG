@@ -24,7 +24,7 @@ import Icon from './Icon.jsx'
 import Logo from './Logo.jsx'
 import { Button } from './ui.jsx'
 import { askTheCoach, defaultQuestion } from '../lib/askFlow.js'
-import { confirmSheet, coachKeySheet } from '../sheets.jsx'
+import { confirmSheet, coachKeySheet, beforeYouCreateSheet } from '../sheets.jsx'
 import { effectiveRoutine } from '../lib/history.js'
 import { todayISO } from '../lib/format.js'
 
@@ -54,6 +54,8 @@ export default function CoachCard() {
     // The chain is the authority on the version; the local copy is a cache that
     // is wrong the moment somebody uses another device.
     if (coach.tokenId) void coach.refresh()
+    // And the address, so the card knows whether this key has been backed up.
+    if (coach.tokenId) void coach.loadAddress()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coach.tokenId])
 
@@ -85,25 +87,33 @@ export default function CoachCard() {
   // The newest sentence the coach wrote about this person, if it has written any.
   const latestNote = coach.memory?.[0]?.notes?.[0]?.text ?? null
 
-  const mint = async () => {
+  /*
+   * Explained first, created second.
+   *
+   * The consequences of "no admin" — nobody can take the coach, and nobody can
+   * give it back — used to be mentioned once the coach already existed. They
+   * are now agreed to before it does: "Create my coach" opens that explanation,
+   * and only its confirm button creates anything.
+   */
+  const mint = () => beforeYouCreateSheet(createCoach)
+
+  const createCoach = async () => {
     try {
       await coach.mint(S)
       /*
-       * A sheet, not a toast.
+       * A sheet, not a toast, and it leads straight into the backup.
        *
-       * "It is yours" was true and was the whole message, which left out the
-       * part that costs somebody their coach: it is held by a key in this
-       * browser, the contract has no admin, and clearing site data ends it.
-       * A toast that says so scrolls away in three seconds; this is the one
-       * moment the sentence is worth interrupting for, because it is the
-       * moment it becomes true.
+       * The person agreed a minute ago that a lost key is a lost coach. This is
+       * the moment that becomes true, so the words open already shown — one
+       * less tap between "created" and "safe" — and the check that follows is
+       * what clears the "not backed up" line on the card.
        */
       confirmSheet({
         title: t('Coach #{0} is yours', useCoach.getState().tokenId),
-        message: t('It is owned by a key this app made on this device — no company account, and no admin who can give it back. Save the twelve words now and you can reach it from any device.'),
-        confirmText: t('Show my twelve words'),
+        message: t('Now back it up. Write down 12 words — it takes a minute, and it’s the only way back in if you lose this phone.'),
+        confirmText: t('Back it up now'),
         cancelText: t('Later'),
-        onConfirm: coachKeySheet,
+        onConfirm: () => coachKeySheet({ reveal: true }),
       })
     } catch (error) {
       toast(error.message || t('Could not create the coach.'))
@@ -212,6 +222,20 @@ export default function CoachCard() {
             </div>
           )}
         </>
+      )}
+
+      {/*
+        * Until the words are confirmed saved, the card says so — every time
+        * the home screen opens, not once in a sheet somebody closed. With no
+        * admin, a lost phone and no words is a coach nobody can return, and
+        * that is the one risk here the person can remove in a minute.
+        */}
+      {coach.tokenId && !coach.backedUp && (
+        <div className="backup-state warn coachcard-backup">
+          <Icon name="info" />
+          <span>{t('Not backed up. If you lose this phone, nobody can recover this coach.')}</span>
+          <Button size="sm" onClick={() => coachKeySheet({ reveal: true })}>{t('Back up')}</Button>
+        </div>
       )}
 
       {coach.tokenId && (

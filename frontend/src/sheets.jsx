@@ -1126,33 +1126,88 @@ function CoachAnswer({ answer, close }) {
 
 export const coachAnswerSheet = answer => ui().openSheet(close => <CoachAnswer answer={answer} close={close} />)
 
+/* ============================ before you create it ============================ */
+
+/*
+ * What "no admin" means, said before anything happens rather than after.
+ *
+ * The coach contract has no owner, no pause and no upgrade. That is the whole
+ * promise — nobody can take a coach away — and it has a cost the app used to
+ * mention only once the coach existed, in one sentence on the sheet after
+ * minting. A reviewer asked for it to be explained plainly during onboarding,
+ * which is right: an irreversible trade-off is something to agree to, not to
+ * be told about afterwards.
+ *
+ * Both sides, at the same weight. Only the upside ("yours forever!") is a sales
+ * pitch; only the risks makes a good design read like a warning label. The last
+ * line is there because the fear a person actually has — "will I lose my
+ * workouts?" — is the one thing this does not put at risk.
+ */
+function BeforeYouCreate({ close, onConfirm }) {
+  return <>
+    <h3>{t('Before you create it')}</h3>
+    <div className="muted small" style={{ lineHeight: 1.5, marginBottom: 14 }}>
+      {t('Your coach will belong to you, not to us. There is no admin key — nobody who can step in. That cuts both ways:')}
+    </div>
+    <ul className="tradeoffs">
+      <li className="good">
+        <b>{t('Nobody can take it.')}</b>{' '}
+        {t('Not us, not anyone. We can’t freeze it, delete it or change its rules.')}
+      </li>
+      <li className="cost">
+        <b>{t('Nobody can give it back.')}</b>{' '}
+        {t('It’s owned by a key on this phone. Lose the phone without your 12 backup words and the coach is gone for good. There’s no “forgot password”.')}
+      </li>
+      <li className="cost">
+        <b>{t('Nobody can pause it.')}</b>{' '}
+        {t('If something ever goes wrong with the contract, we can’t fix it in place. We could only launch a new one, and you’d choose whether to move.')}
+      </li>
+      <li className="safe">
+        <b>{t('Your workouts are not at risk.')}</b>{' '}
+        {t('They stay on this phone either way. This is only about the coach.')}
+      </li>
+    </ul>
+    <div className="muted small" style={{ lineHeight: 1.5, marginTop: 12 }}>
+      {t('Right after it’s created, we’ll ask you to write down 12 words. It takes a minute.')}
+    </div>
+    <div style={{ height: 14 }} />
+    <Button variant="primary" onClick={() => { close(); onConfirm() }}>{t('I understand — create my coach')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" className="dim" onClick={close}>{t('Not now')}</Button>
+  </>
+}
+
+export const beforeYouCreateSheet = onConfirm => ui().openSheet(close => <BeforeYouCreate close={close} onConfirm={onConfirm} />)
+
 /* ============================ the coach's key ============================ */
 
 /*
- * The twelve words, given to the person who owns them.
+ * Three steps: see the words, show you kept them, done.
  *
- * The key was generated on this device, stored in this browser, and never
- * shown. Everything else in this product follows from it: the coach belongs to
- * that address, the contract has no owner, and there is no admin who can hand
- * it back. Which means clearing site data destroyed a coach permanently, and
- * the app had never once mentioned it.
+ * Showing the words was never the same as backing them up — a person who
+ * tapped "show" and closed the sheet has saved nothing, and the app could not
+ * tell the difference. So backing up ends in a short check, the way wallets
+ * that take this seriously do it: pick two of your words, by their number,
+ * from four choices. It is not a memory test; the words belong on paper. It
+ * checks the paper exists. Until it passes, the coach card says so.
  *
  * The phrase is standard BIP-39 on the standard path — the same words open the
- * same account in any wallet. deviceKey.js says that is the point ("what
- * somebody is given has to be worth something outside this app"), and until
- * this sheet existed, nothing gave it to them.
- *
- * Hidden behind a tap rather than drawn on open: this sheet is reached from a
- * settings list and from a nudge after minting, and neither is a moment where
- * somebody has chosen to expose their key to whoever is next to them.
+ * same account in any wallet — and it is hidden behind a tap, because neither
+ * way into this sheet is a moment somebody chose to show their key to whoever
+ * is next to them.
  */
-function CoachKey({ close }) {
+function CoachKey({ close, reveal = false }) {
   const [phrase, setPhrase] = useState(null)
   const [address, setAddress] = useState(null)
-  const [shown, setShown] = useState(false)
+  const [shown, setShown] = useState(reveal)
   const [copied, setCopied] = useState(false)
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState('view')            // view · check · done
+  const [challenge, setChallenge] = useState([])
+  const [answers, setAnswers] = useState([])
+  const [missed, setMissed] = useState(false)
+  const backedUp = useCoach(s => s.backedUp)
 
   useEffect(() => {
     let gone = false
@@ -1166,6 +1221,26 @@ function CoachKey({ close }) {
     })()
     return () => { gone = true }
   }, [])
+
+  const newChallenge = async (afterMiss) => {
+    const { pickChallenge } = await import('./lib/keyBackup.js')
+    setChallenge(pickChallenge(phrase))
+    setAnswers([])
+    setMissed(afterMiss)
+    setPhase('check')
+  }
+
+  const submitCheck = async () => {
+    const { passesChallenge } = await import('./lib/keyBackup.js')
+    if (passesChallenge(challenge, answers)) {
+      useCoach.getState().confirmBackup(address)
+      setPhase('done')
+      return
+    }
+    // A different pair after a miss, so guessing through every combination is
+    // no faster than looking at the paper.
+    newChallenge(true)
+  }
 
   const restore = () => {
     const words = typed.trim().toLowerCase().split(/\s+/).filter(Boolean)
@@ -1194,11 +1269,65 @@ function CoachKey({ close }) {
     })
   }
 
+  /* ---- step 3: done ---- */
+  if (phase === 'done') return <>
+    <h3>{t('Backed up')}</h3>
+    <div className="backup-state ok">
+      <Icon name="checkCircle" />
+      <span>{t('Your coach can now be recovered on any device with those 12 words.')}</span>
+    </div>
+    <div className="muted small" style={{ lineHeight: 1.5, marginTop: 12 }}>
+      {t('Keep the paper somewhere safe. Anyone who finds it can take the coach — and nobody, including us, can take it back.')}
+    </div>
+    <div style={{ height: 16 }} />
+    <Button variant="primary" onClick={close}>{t('Done')}</Button>
+  </>
+
+  /* ---- step 2: show the words were kept ---- */
+  if (phase === 'check') {
+    const complete = challenge.length > 0 && challenge.every((_, i) => answers[i])
+    return <>
+      <h3>{t('Check you have them')}</h3>
+      <div className="muted small" style={{ lineHeight: 1.5, marginBottom: 14 }}>
+        {t('Look at the words you wrote down, and pick these two.')}
+      </div>
+      {missed && (
+        <div className="backup-state warn" role="alert">
+          <Icon name="info" />
+          <span>{t('That’s not it. Look at your paper again — here are two different words.')}</span>
+        </div>
+      )}
+      {challenge.map((q, i) => (
+        <div key={`${q.position}-${i}`} className="word-check">
+          <div className="word-check-q" id={`wc-${i}`}>{t('Word #{0}', q.position)}</div>
+          <div className="word-check-choices" role="group" aria-labelledby={`wc-${i}`}>
+            {q.choices.map(word => (
+              <button key={word} className={'chip' + (answers[i] === word ? ' on' : '')}
+                aria-pressed={answers[i] === word}
+                onClick={() => setAnswers(a => { const next = a.slice(); next[i] = word; return next })}>
+                {word}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <div style={{ height: 8 }} />
+      <Button variant="primary" disabled={!complete} onClick={submitCheck}>{t('Confirm')}</Button>
+      <div style={{ height: 8 }} />
+      <Button variant="ghost" className="dim" onClick={() => { setPhase('view'); setShown(true) }}>{t('Show the words again')}</Button>
+    </>
+  }
+
+  /* ---- step 1: the words ---- */
   return <>
     <h3>{t('Your coach’s key')}</h3>
     <div className="muted small" style={{ lineHeight: 1.5 }}>
-      {t('Your coach belongs to a key this app made on this device. There is no owner of the contract and no account to recover from — these twelve words are the only way back in.')}
+      {t('Your coach belongs to a key this app made on this phone. There is no company account and no admin — these 12 words are the only way back in if you lose the phone.')}
     </div>
+
+    {phrase && (backedUp
+      ? <div className="backup-state ok" style={{ marginTop: 12 }}><Icon name="checkCircle" /><span>{t('Backed up — you’ve shown you have the words.')}</span></div>
+      : <div className="backup-state warn" style={{ marginTop: 12 }}><Icon name="info" /><span>{t('Not backed up yet.')}</span></div>)}
 
     {address && <>
       <div style={{ height: 12 }} />
@@ -1218,14 +1347,18 @@ function CoachKey({ close }) {
             <span key={i}><i>{i + 1}</i>{w}</span>
           ))}
         </div>
+        <div className="muted small" style={{ marginTop: 8, lineHeight: 1.5 }}>
+          {t('Write them on paper, in order. Anybody holding these words owns the coach — and a screenshot is a copy in your photo library.')}
+        </div>
         <div style={{ height: 10 }} />
+        {!backedUp && <>
+          <Button variant="primary" icon="check" onClick={() => newChallenge(false)}>{t('I’ve written them down')}</Button>
+          <div style={{ height: 8 }} />
+        </>}
         <Button icon={copied ? 'check' : 'clipboard'} onClick={async () => {
           try { await navigator.clipboard.writeText(phrase); setCopied(true) }
           catch { toast(t('Could not copy — write them down from the list above.')) }
         }}>{copied ? t('Copied') : t('Copy the words')}</Button>
-        <div className="muted small" style={{ marginTop: 8, lineHeight: 1.5 }}>
-          {t('Anybody holding these words owns the coach. Write them on paper; a screenshot is a copy in your photo library.')}
-        </div>
       </>}
     </>}
 
@@ -1244,7 +1377,11 @@ function CoachKey({ close }) {
   </>
 }
 
-export const coachKeySheet = () => ui().openSheet(close => <CoachKey close={close} />)
+/**
+ * `reveal` opens straight onto the words — used from "your coach is created,
+ * back it up now", where one more tap to show them is one more place to stop.
+ */
+export const coachKeySheet = (opts = {}) => ui().openSheet(close => <CoachKey close={close} reveal={!!opts.reveal} />)
 
 function VaultBackup({ close }) {
   const [phase, setPhase] = useState('working')

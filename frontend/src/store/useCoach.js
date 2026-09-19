@@ -27,6 +27,7 @@ const chain = () => import('../lib/ogCoach.js')
 import { deviceAddressIfAny } from '../lib/deviceKey.js'
 import { shouldEvolve } from '../lib/flywheel.js'
 import { readScoped, writeScoped } from '../lib/profileScope.js'
+import { isBackedUp, markBackedUp } from '../lib/keyBackup.js'
 
 const KEY = 'gym_coach_v1'
 
@@ -77,7 +78,25 @@ export const useCoach = create((set, get) => ({
   /** Look up the device address without creating one. */
   loadAddress: async () => {
     const address = await deviceAddressIfAny()
-    if (address) set({ address })
+    if (address) set({ address, backedUp: isBackedUp(address) })
+  },
+
+  /**
+   * Whether the twelve words that own this coach have been confirmed saved.
+   *
+   * Held in the store rather than read from storage at render so the coach
+   * card's warning disappears the moment the check passes, not on the next
+   * reload. Keyed by address in storage — see lib/keyBackup.js. Read from
+   * there at start rather than from the cached coach, which is only a cache.
+   */
+  backedUp: isBackedUp(load()?.address),
+
+  /** The backup check passed, or the words were just typed in on restore. */
+  confirmBackup: (address = get().address) => {
+    if (!address) return false
+    markBackedUp(address)
+    set({ backedUp: true })
+    return true
   },
 
   /** Whether the coach contract is deployed and wired up at all. */
@@ -313,6 +332,9 @@ export const useCoach = create((set, get) => ({
     try {
       const { adoptPhrase } = await import('../lib/deviceKey.js')
       const { address } = await adoptPhrase(phrase)
+      // Somebody who just typed all twelve words onto this device has them.
+      markBackedUp(address)
+      set({ backedUp: true })
 
       const { coachOwnedBy, readProvider } = await import('../lib/marketplace.js')
       const tokenId = await coachOwnedBy(address)

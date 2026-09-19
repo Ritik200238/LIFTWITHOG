@@ -180,6 +180,12 @@ check live "every claim npm run evidence makes still holds" node scripts/evidenc
 check live "the mainnet deployment record matches the chain and the source" \
   node scripts/verify-deployment.mjs 16661
 
+# Every transaction, contract and commit the documents link to is real. Twice a
+# document linked something that was not there: Galileo hashes under the
+# mainnet explorer after the move, and a commit hash typed from memory.
+check live "every transaction and contract the documents link to exists" \
+  node scripts/doc-links.mjs
+
 # The deployed app, not the repository.
 #
 # `VITE_COACH_ADDRESS` is baked in at build time, and when it is missing the

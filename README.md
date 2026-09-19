@@ -127,6 +127,7 @@ The same four are read live, in your browser, on [/#/verify](https://liftwithog.
 | | What happened | On chain |
 |---|---|---|
 | Gasless mint | A key generated on the spot, funded with nothing, owns coach `#1` and listed it for rent | [mint](https://chainscan.0g.ai/tx/0xf1df10c55fa5cef58436f99dde949ddd43bfd377e61bddfa5f40e590c8735c25) · [listing](https://chainscan.0g.ai/tx/0x350484f7b255ca10cc004e2adcc22a159dd1ab113ef5a9d0830c0daf2e9076a1) |
+| Rental, paid inside it | Coach `#1` rented for a day. The owner — a wallet holding **0.0 0G** — went to exactly the price, 0.0003 0G, in the transaction that granted access; the contract stayed at zero. Balances read before and after, not inferred from the event. | [rent](https://chainscan.0g.ai/tx/0xc361ef9e1c39733dba39386b0e53dbea78f6caf1ccbb6ba2d96620dc15b7f9a6) |
 | Intelligent transfer | Brain re-encrypted to the buyer, attestor signs the hand-over, `iTransferFrom` moves it. The same attestation replayed — **refused**. Signed for somebody else — **refused**. | [transfer](https://chainscan.0g.ai/tx/0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2) |
 | Clone lineage | `#4 → #5 → #6`, three generations, each parent paid in full, `generationOf(6) → 3`. Not one address in the line has ever held a coin. | [gen 2](https://chainscan.0g.ai/tx/0x7b5411fe36804f4e9a23e48d3c96e5dfbb66fda798caf9a77fbcf51dc04122c3) · [gen 3](https://chainscan.0g.ai/tx/0x3f7efde8d1f185e9f5b5faf6c1cda5c34d0b3bfad0e4a31ec5ab366f94eaba57) |
 | It learns, on chain | Coach `#7` minted then evolved twice by a device holding **0.0 0G** — `coachOf(7)` reads back version 3. This is the flywheel, not a description of it. | [v2](https://chainscan.0g.ai/tx/0x987e12489a122403dee9073f7889761fb8c0e5d5a68ba5ded272a5acabb47222) · [v3](https://chainscan.0g.ai/tx/0xa575820404690b5e22e42ca34a2c823fd83101fb17040259768775610695dd3d) |
@@ -136,9 +137,18 @@ The same four are read live, in your browser, on [/#/verify](https://liftwithog.
 | Published rules | The literal system prompt and every nutrition bound, as a blob on 0G Storage with its hash anchored on chain. If the coach ever breaks its own rules, the rule is public and timestamped. | [anchor](https://chainscan.0g.ai/tx/0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a) |
 
 ```bash
-npm run evidence     # re-reads every one of the above from 0G, live
-./verify.sh live     # the deployed contract and the deployed site — no local file counts
+node scripts/verify-deployment.mjs 16661   # rebuilds the source and compares it to mainnet, byte for byte
+npm run evidence                           # re-reads every one of the above from 0G, live
+./verify.sh live                           # the deployed contract and the deployed site — no local file counts
 ```
+
+**Reproducible deployment.** Both contracts show verified source on the explorer, and
+[`deployments/16661.json`](deployments/16661.json) records every address, deploy transaction and
+constructor argument — generated from forge's broadcast and the chain, not typed. The first command
+above rebuilds this repository with the pinned compiler and checks each deploy transaction is exactly
+that code plus exactly those arguments, then accounts for every immutable in the deployed bytecode.
+Run from a fresh clone of this repo, it ends in `Every check passed`. How, and what it does not
+prove: **[DEPLOYMENTS.md](DEPLOYMENTS.md)**.
 
 The refusals are half the proof. A transfer that always succeeds is not a check.
 Stated plainly, in the verifier's own source: the attestor is a software key held by the
@@ -314,7 +324,8 @@ are never reported together again. Full list of every claim and how to check it:
 
 | | |
 |---|---|
-| Contract + explorer | [`0x0253…0025`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5) · 6 coaches minted, transferred and cloned, rentals and clones on chain |
+| Contract + explorer | [`0x94Ce…19B5`](https://chainscan.0g.ai/address/0x94Ce4680890ab16B52E3F1A9CDf25C1B01e119B5#code), source verified · minted, evolved, rented, transferred and cloned on chain, counted from events in [`deployments/16661.json`](deployments/16661.json) |
+| Reproduce the deployment | **[DEPLOYMENTS.md](DEPLOYMENTS.md)** — one command rebuilds the source and checks it against mainnet byte for byte |
 | Criterion-by-criterion | **[SUBMISSION.md](SUBMISSION.md)** — in order of weight, a command or transaction behind every claim, and a section naming what is not done |
 | Proof of integration | `supportsInterface` answered by deployed bytecode with a control · `npm run evidence` · [/#/verify](https://liftwithog.vercel.app/#/verify) |
 | Architecture · Security · Threats | [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) · [THREAT-MODEL.md](THREAT-MODEL.md) |

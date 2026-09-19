@@ -16,6 +16,7 @@ the address the day it does.
 
 | Claim | Check |
 |---|---|
+| The deployment is reproducible from this repository | `node scripts/verify-deployment.mjs 16661` — rebuilds the source with the pinned compiler, checks each deploy transaction is exactly that code plus the recorded constructor arguments, accounts for every immutable, and confirms the source is verified on the explorer. Reads [`deployments/16661.json`](deployments/16661.json), which is generated, not typed. See [DEPLOYMENTS.md](DEPLOYMENTS.md). |
 | `CoachAgent` (ERC-7857) is deployed and readable | [`0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5`](https://chainscan.0g.ai/address/0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5) on the 0G explorer |
 | It answers for both 7857 interfaces **on chain** | `cast call 0x94ce4680890ab16b52e3f1a9cdf25c1b01e119b5 "supportsInterface(bytes4)(bool)" 0x4b396f04 --rpc-url https://evmrpc.0g.ai` → `true`; same for `0x35d39512` (`IERC7857Authorize`) |
 | …and says **no** to an interface nothing implements | same call with `0xdeadbeef` → `false`. This is the row that makes the two above it mean anything: a stub answering `true` to everything passes them and fails only this. |

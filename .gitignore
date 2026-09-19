@@ -21,7 +21,16 @@ data/
 # Foundry build output.
 contracts/out/
 contracts/cache/
-contracts/broadcast/
+contracts/broadcast/*
+# Mainnet's broadcast is published: it is forge's own record of the deploy
+# (transactions, receipts, the source commit) and the evidence
+# deployments/16661.json is generated from. Checked for secrets before being
+# un-ignored — it holds none; sensitive values go to contracts/cache/.
+!contracts/broadcast/Deploy.s.sol/
+contracts/broadcast/Deploy.s.sol/*
+!contracts/broadcast/Deploy.s.sol/16661/
+contracts/broadcast/Deploy.s.sol/16661/*
+!contracts/broadcast/Deploy.s.sol/16661/run-latest.json
 
 # OS and editor noise.
 .DS_Store

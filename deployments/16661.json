@@ -1,0 +1,128 @@
+{
+  "_what": "Every contract this project runs on this network, the exact source it was built from, and the transactions that prove it was used. Generated, not typed.",
+  "_verify": "node scripts/verify-deployment.mjs 16661",
+  "_regenerate": "node scripts/deployment-record.mjs 16661",
+  "schemaVersion": 1,
+  "network": {
+    "name": "0G Aristotle mainnet",
+    "chainId": 16661,
+    "rpc": "https://evmrpc.0g.ai",
+    "explorer": "https://chainscan.0g.ai"
+  },
+  "source": {
+    "repository": "https://github.com/Ritik200238/LIFTWITHOG",
+    "commit": "55f46d4421eb7b6d8cae6d1a16eeb70ae9f6f8e1",
+    "compiler": "0.8.28+commit.7893614a",
+    "settings": {
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "viaIR": true,
+      "evmVersion": "cancun"
+    },
+    "toolchain": "forge Version: 1.8.1",
+    "broadcast": "contracts/broadcast/Deploy.s.sol/16661/run-latest.json"
+  },
+  "deployer": "0x495FBf0cc100dE43473003A9385651af5363744D",
+  "contracts": {
+    "AttestedTransferVerifier": {
+      "address": "0x70c4dE9D0edbE53733821558Bf6b14b64451e56E",
+      "deployTx": "0x4e5578dae6a1b407100750936c7b4f1682c28ddda9e87e5afe5dba91537b8c6f",
+      "block": 43752560,
+      "constructorArgs": {
+        "attestor_": "0x495FBf0cc100dE43473003A9385651af5363744D"
+      },
+      "constructorTypes": [
+        "address"
+      ],
+      "runtimeCodeHash": "0x46d00e3b8b10476aa9b63abdf07a37d6c8d98c1b140c84b20be722fa6752e043",
+      "runtimeCodeBytes": 1803,
+      "source": "contracts/src/AttestedTransferVerifier.sol:AttestedTransferVerifier",
+      "explorer": "https://chainscan.0g.ai/address/0x70c4dE9D0edbE53733821558Bf6b14b64451e56E#code"
+    },
+    "CoachAgent": {
+      "address": "0x94Ce4680890ab16B52E3F1A9CDf25C1B01e119B5",
+      "deployTx": "0xc2cc554f9ce486a11af5cec2d92142111c782ee702cdaaefaada77cc5a017ede",
+      "block": 43752560,
+      "constructorArgs": {
+        "verifier": "0x70c4dE9D0edbE53733821558Bf6b14b64451e56E"
+      },
+      "constructorTypes": [
+        "address"
+      ],
+      "runtimeCodeHash": "0xc28cf97d230cca4f0d37fb6806beb598160af461833d681a6dd83ec98e23d470",
+      "runtimeCodeBytes": 15418,
+      "source": "contracts/src/CoachAgent.sol:CoachAgent",
+      "explorer": "https://chainscan.0g.ai/address/0x94Ce4680890ab16B52E3F1A9CDf25C1B01e119B5#code"
+    }
+  },
+  "wiring": {
+    "CoachAgent.transferVerifier": "0x70c4dE9D0edbE53733821558Bf6b14b64451e56E",
+    "AttestedTransferVerifier.attestor": "0x495FBf0cc100dE43473003A9385651af5363744D"
+  },
+  "erc8004": {
+    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "agentId": "3568516",
+    "owner": "0x495FBf0cc100dE43473003A9385651af5363744D",
+    "agentURI": "https://liftwithog.vercel.app/agent-card.json",
+    "tx": "0xb8e3f824a7f2d5ea847ca7ff613f5380ade59805cc2e9fe6a8dedbc8ff673d7a",
+    "block": 43752677
+  },
+  "compute": {
+    "owner": "0x495FBf0cc100dE43473003A9385651af5363744D",
+    "fundings": [
+      {
+        "tx": "0x0d926c6db615a9d5554849dd2ee2633269a376931ed64f847a0f1fbf995a79a2",
+        "block": 43753080,
+        "amount": "3 0G",
+        "at": "2026-09-07T10:55:00.000Z"
+      }
+    ],
+    "ledgerContract": "0x2dE54c845Cd948B72D2e32e39586fe89607074E3"
+  },
+  "policy": {
+    "storageRoot": "0x8ce20d59618c8e14f8b3486fbfe35cf337e6c0328f22aead230fdbad59a9630c",
+    "sha256": "0x76cc63fc2ab84a9d9cd33356a9f659a6f93ffd29906909edc679c483c6f4e3df",
+    "commitment": "0xee224de32c2dbf8c29fdc039be33f1a2ad2a097f1bbf9c9b054e90e7c99378c6",
+    "anchorTx": "0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a",
+    "block": 43753718
+  },
+  "activity": {
+    "minted": 8,
+    "evolved": 2,
+    "highestVersion": 3,
+    "listedForRent": 1,
+    "rented": 1,
+    "intelligentTransfers": 1,
+    "clones": 2,
+    "deepestLineage": 3,
+    "firstOf": {
+      "mint": {
+        "tx": "0xf1df10c55fa5cef58436f99dde949ddd43bfd377e61bddfa5f40e590c8735c25",
+        "block": 43752712
+      },
+      "evolve": {
+        "tx": "0x987e12489a122403dee9073f7889761fb8c0e5d5a68ba5ded272a5acabb47222",
+        "block": 43754095
+      },
+      "listing": {
+        "tx": "0x350484f7b255ca10cc004e2adcc22a159dd1ab113ef5a9d0830c0daf2e9076a1",
+        "block": 43752722
+      },
+      "rent": {
+        "tx": "0xc361ef9e1c39733dba39386b0e53dbea78f6caf1ccbb6ba2d96620dc15b7f9a6",
+        "block": 44754726
+      },
+      "transfer": {
+        "tx": "0x7b4d771bb6a299e18a258ba20050835b83c059420d8d45daac2dd55d618f11b2",
+        "block": 43752832
+      },
+      "clone": {
+        "tx": "0x7b5411fe36804f4e9a23e48d3c96e5dfbb66fda798caf9a77fbcf51dc04122c3",
+        "block": 43752874
+      }
+    },
+    "readThroughBlock": 44755569
+  }
+}

@@ -113,6 +113,8 @@ check guards "every control a person can operate has a name" \
   bash -c 'cd frontend && npx vitest run src/lib/controlNames.test.js'
 check guards "the counts script reads a coloured CI log, not just a plain one" \
   node --test scripts/countsParse.test.mjs
+check guards "the deployment check notices a substituted contract" \
+  node --test scripts/deployment.test.mjs
 
 # ---------------------------------------------------------------- mutation
 
@@ -171,6 +173,12 @@ check live "it answers true for ERC-7857 Authorize" bash -c "$(declare -f rpc_ca
 check live "it answers FALSE for an interface nothing implements" bash -c "$(declare -f rpc_call supports); RPC='$RPC' COACH='$COACH'; supports deadbeef | grep -q '0000000\"'"
 
 check live "every claim npm run evidence makes still holds" node scripts/evidence.mjs
+
+# The mainnet deployment, from its record: both deploy transactions rebuilt
+# from source byte for byte, every immutable accounted for, the source verified
+# on the explorer, the activity re-counted from events. Needs forge.
+check live "the mainnet deployment record matches the chain and the source" \
+  node scripts/verify-deployment.mjs 16661
 
 # The deployed app, not the repository.
 #

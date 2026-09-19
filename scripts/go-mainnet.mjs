@@ -36,8 +36,8 @@ const MAINNET = {
 /**
  * What the sequence needs, measured rather than guessed.
  *
- * A deploy is ~2.5M gas and a registration ~250k; at the 3 gwei floor that is
- * well under a tenth of a token. Asking for 1 0G leaves room for the rental
+ * A deploy is ~4.1M gas (measured on the mainnet run) and a registration
+ * ~250k; at the 6 gwei this pays that is about 0.03 0G. Asking for 1 0G leaves room for the rental
  * round-trip and for gas to be dearer than it was when this was measured.
  */
 const NEEDED = ethers.parseEther('1');
@@ -63,12 +63,46 @@ if (balance < NEEDED) {
   process.exit(1);
 }
 
+/*
+ * Child scripts run as `node <script>` with no shell in between.
+ *
+ * This ran everything through the Windows shell, which splits an unquoted path
+ * on spaces — and node lives in C:\Program Files. Every child call became
+ * "C:\Program" and failed. Nobody saw it because the sequence had never got
+ * past step 1; the first rehearsal that did stopped exactly here. Node needs no
+ * shell to be found (its own path is process.execPath), so it gets none.
+ */
 const run = (cmd, args, opts = {}) =>
-  execFileSync(cmd, args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32', ...opts });
+  execFileSync(cmd, args, { cwd: root, stdio: 'inherit', shell: cmd !== process.execPath && process.platform === 'win32', ...opts });
 
 /* ---------------------------------------------------------- 1. the contract */
 
-console.log('\n[1/3] Deploying CoachAgent…');
+/*
+ * Skipped when the recorded deployment is already live.
+ *
+ * The header of this file has always promised that a second run does nothing
+ * but confirm. For the deploy it was not true: step 1 ran `forge script
+ * --broadcast` unconditionally, so running this twice would have put a second,
+ * unrelated pair of contracts on mainnet — real money, a new address, and every
+ * link in every document pointing at the wrong one. Now the record decides:
+ * if deployments/16661.json names a CoachAgent with code on chain, that is the
+ * deployment, and replacing it takes --redeploy, typed on purpose.
+ */
+const recordPath = path.join(root, 'deployments', `${MAINNET.chainId}.json`);
+const existing = fs.existsSync(recordPath) ? JSON.parse(fs.readFileSync(recordPath, 'utf8')) : null;
+const redeploy = process.argv.includes('--redeploy');
+const live = existing && (await provider.getCode(existing.contracts?.CoachAgent?.address ?? ethers.ZeroAddress)) !== '0x';
+
+let address;
+let verifierAddress;
+
+if (live && !redeploy) {
+  address = existing.contracts.CoachAgent.address;
+  verifierAddress = existing.contracts.AttestedTransferVerifier?.address;
+  console.log('\n[1/5] Already deployed — using the recorded contracts (pass --redeploy to replace them).');
+  console.log(`      ${address}`);
+} else {
+console.log('\n[1/5] Deploying CoachAgent…');
 
 const deployed = execFileSync(
   'forge',
@@ -76,26 +110,43 @@ const deployed = execFileSync(
     'script', 'script/Deploy.s.sol:Deploy',
     '--rpc-url', MAINNET.rpc,
     '--broadcast',
-    // Mainnet's floor is 4 gwei, measured the day this first ran. The old
-    // 3 gwei was carried over from Galileo and would have sat unmined.
+    // Headroom, not a floor. eth_gasPrice suggests 4 gwei on mainnet, but a
+    // 3 gwei transaction has mined there (the policy anchor, block 43753718)
+    // and the base fee is effectively zero. An earlier version of this comment
+    // said 3 gwei "would sit unmined"; that was asserted, not measured, and
+    // it was wrong. 6 gwei costs a fraction of a cent more and never waits.
     '--with-gas-price', '6gwei',
     '--priority-gas-price', '5gwei',
   ],
   { cwd: path.join(root, 'contracts'), encoding: 'utf8', env: { ...process.env, PRIVATE_KEY: key }, shell: process.platform === 'win32' },
 );
 
-const address = /CoachAgent deployed at: (0x[0-9a-fA-F]{40})/.exec(deployed)?.[1];
+/*
+ * The addresses come from forge's broadcast file, not from its console output.
+ *
+ * This used to match /CoachAgent deployed at: …/ against stdout, while
+ * Deploy.s.sol prints "CoachAgent: …". The pattern never matched once. On the
+ * real mainnet run the contracts deployed, the script announced it could not
+ * read the address, and exited — so the "one rehearsed command" had never been
+ * rehearsed past its first step, and the rest was finished by hand. The
+ * broadcast file is what forge writes for exactly this purpose, it carries the
+ * transaction hashes too, and it does not change when somebody edits a log line.
+ */
+void deployed;
+const broadcast = JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'broadcast', 'Deploy.s.sol', String(MAINNET.chainId), 'run-latest.json'), 'utf8'));
+const created = (name) => broadcast.transactions.find((t) => t.transactionType === 'CREATE' && t.contractName === name)?.contractAddress;
+address = created('CoachAgent') && ethers.getAddress(created('CoachAgent'));
+verifierAddress = created('AttestedTransferVerifier');
 if (!address) {
-  console.error('Deployed, but the address could not be read from the output.');
+  console.error('Deployed, but the broadcast file names no CoachAgent. Check contracts/broadcast/.');
   process.exit(1);
 }
 console.log(`      ${address}`);
+}
 
 /* ------------------------------------------------- 2. prove it, before trusting it */
 
-console.log('\n[2/3] Asking the deployed bytecode what it is…');
-
-const verifierAddress = /AttestedTransferVerifier: (0x[0-9a-fA-F]{40})/.exec(deployed)?.[1];
+console.log('\n[2/5] Asking the deployed bytecode what it is…');
 
 const coach = new ethers.Contract(
   address,
@@ -164,23 +215,82 @@ if (attestor === ethers.ZeroAddress) {
 
 /* ------------------------------------------------------ 3. make it discoverable */
 
-console.log('\n[3/3] Registering as an ERC-8004 Trustless Agent…');
+console.log('\n[3/5] Registering as an ERC-8004 Trustless Agent…');
 run(process.execPath, ['scripts/register-agent.mjs', '--mainnet']);
+
+/* --------------------------------------------- 4. publish the source, verified */
+
+/*
+ * Source verification on 0G's own explorer, so anybody reading the contract
+ * there reads Solidity, not bytecode. 0G documents forge's custom verifier
+ * against chainscan's open API. Already-verified contracts are left alone.
+ *
+ * forge's status poll cannot parse this explorer's reply ("guid is required")
+ * even when the submission succeeded, so the poll is not trusted either way:
+ * the explorer is asked directly afterwards, and that answer is the one used.
+ */
+console.log('\n[4/5] Publishing the verified source on the explorer…');
+const artifact = (name) => JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'out', `${name}.sol`, `${name}.json`), 'utf8'));
+const compiler = 'v' + artifact('CoachAgent').metadata.compiler.version;
+const isVerified = async (addr, name) => {
+  const res = await fetch(`${MAINNET.explorer}/open/api?module=contract&action=getsourcecode&address=${addr}`).catch(() => null);
+  const row = (await res?.json().catch(() => null))?.result?.[0];
+  return row?.ContractName === name;
+};
+for (const [name, addr, args] of [
+  ['AttestedTransferVerifier', verifierAddress, [attestor]],
+  ['CoachAgent', address, [wired]],
+]) {
+  if (await isVerified(addr, name)) { console.log(`      ${name}: already verified`); continue; }
+  const encoded = ethers.AbiCoder.defaultAbiCoder().encode(['address'], args);
+  try {
+    execFileSync('forge', [
+      'verify-contract', '--chain-id', String(MAINNET.chainId),
+      '--num-of-optimizations', '200', '--via-ir', '--evm-version', 'cancun',
+      '--compiler-version', compiler,
+      '--verifier', 'custom', '--verifier-api-key', 'PLACEHOLDER',
+      '--verifier-url', `${MAINNET.explorer}/open/api`,
+      '--constructor-args', encoded,
+      addr, `src/${name}.sol:${name}`,
+    ], { cwd: path.join(root, 'contracts'), stdio: 'pipe', shell: process.platform === 'win32' });
+  } catch { /* judged below, from the explorer itself */ }
+  let ok = false;
+  for (let i = 0; i < 12 && !ok; i += 1) { await new Promise((r) => setTimeout(r, 5000)); ok = await isVerified(addr, name); }
+  console.log(`      ${name}: ${ok ? 'verified' : 'NOT verified — rerun, or submit on the explorer by hand'}`);
+}
+
+/* ---------------------------------------- 5. the record, and an independent check */
+
+/*
+ * The deployment record is written from the broadcast and the chain, then
+ * checked by a separate script that trusts none of it: it rebuilds the source,
+ * compares the deploy transaction byte for byte, and accounts for every
+ * immutable. If that check fails, this sequence has not finished.
+ */
+console.log('\n[5/5] Writing the deployment record and checking it against the chain…');
+run(process.execPath, ['scripts/deployment-record.mjs', String(MAINNET.chainId)]);
+try {
+  run(process.execPath, ['scripts/verify-deployment.mjs', String(MAINNET.chainId)]);
+} catch {
+  console.error('\nThe independent check failed. The deployment is not finished until it passes.');
+  process.exit(1);
+}
 
 /* ------------------------------------------------------------------ what next */
 
-const record = JSON.parse(fs.readFileSync(path.join(root, 'agents.json'), 'utf8'));
+const agents = JSON.parse(fs.readFileSync(path.join(root, 'agents.json'), 'utf8'));
 
 console.log('\n──────────────────────────────────────────────');
-console.log('Mainnet is live. Two addresses to put everywhere:\n');
+console.log('Mainnet is live, published and checked:\n');
 console.log(`  CoachAgent      ${address}`);
-console.log(`  ERC-8004 agent  #${record.mainnet?.agentId ?? '?'}`);
-console.log(`  explorer        ${MAINNET.explorer}/address/${address}\n`);
+console.log(`  ERC-8004 agent  #${agents.mainnet?.agentId ?? '?'}`);
+console.log(`  record          deployments/${MAINNET.chainId}.json`);
+console.log(`  explorer        ${MAINNET.explorer}/address/${address}#code\n`);
 console.log('Then, deliberately rather than automatically:');
 console.log('  1. Point the app at it:');
 console.log(`       vercel env add VITE_COACH_ADDRESS production   → ${address}`);
 console.log(`       vercel env add COACH_ADDRESS production        → ${address}`);
 console.log('       vercel env add VITE_OG_NETWORK production      → mainnet');
 console.log('       vercel env add OG_RPC_URL production           → https://evmrpc.0g.ai');
-console.log('  2. Redeploy, then mint one coach and list it, to prove the live path.');
-console.log('  3. Update README.md and VERIFICATION.md with both addresses.');
+console.log('  2. Fund inference: OG_RPC_URL=https://evmrpc.0g.ai node scripts/fund-compute.mjs 3');
+console.log('  3. Redeploy the app, then mint one coach from a phone to prove the live path.');

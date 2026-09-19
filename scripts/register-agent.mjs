@@ -61,7 +61,7 @@ const REGISTRY_ABI = [
 ];
 
 /** 0G's gas floor. Below this the transaction is refused by the node, not mined slowly. */
-const GAS_PRICE = 6_000_000_000n;   // mainnet floor is 4 gwei; 3 would sit unmined
+const GAS_PRICE = 6_000_000_000n;   // headroom: eth_gasPrice suggests 4 gwei, 3 has been seen to mine, the base fee is ~0
 
 const wanted = process.argv.includes('--mainnet') ? 'mainnet' : 'testnet';
 const force = process.argv.includes('--force');

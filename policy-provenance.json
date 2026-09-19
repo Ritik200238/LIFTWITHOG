@@ -3,13 +3,9 @@
   "_why": "\"The coach gives safe advice\" is not a checkable claim, and everyone in this space makes it. The rules it is bound by are checkable, so they are published in full: the literal system prompt, the calorie floors it may not go under, the deficit and rate-of-loss caps, the refusals. Download the blob by its root hash, sha256 it, recompute the commitment, and find it in the anchor transaction. None of that needs us.",
   "_verify": "node --env-file=server/.env scripts/publish-policy.mjs   (dry run — prints the same sha256)",
   "schemaVersion": 1,
-  "network": "0G Galileo",
-  "chainId": 16602,
   "storageRoot": "0x8ce20d59618c8e14f8b3486fbfe35cf337e6c0328f22aead230fdbad59a9630c",
   "sha256": "0x76cc63fc2ab84a9d9cd33356a9f659a6f93ffd29906909edc679c483c6f4e3df",
   "commitment": "0xee224de32c2dbf8c29fdc039be33f1a2ad2a097f1bbf9c9b054e90e7c99378c6",
-  "anchorTx": "0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa",
-  "explorer": "https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa",
   "commitmentIs": "keccak256(JSON.stringify({ storageRoot, sha256, schemaVersion }))",
   "contains": [
     "the literal system prompt the model is given, before anybody's question",
@@ -21,5 +17,19 @@
     "user data of any kind",
     "any trainer's coaching method",
     "anything encrypted, which is why it can be published in full"
-  ]
+  ],
+  "anchors": {
+    "16661": {
+      "network": "0G Aristotle mainnet",
+      "tx": "0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a",
+      "block": 43753718,
+      "explorer": "https://chainscan.0g.ai/tx/0x7b4c890bb58f9c42708a2c79374c7a301ced41020dc8d231f67995b1a7f0897a"
+    },
+    "16602": {
+      "network": "0G Galileo testnet",
+      "tx": "0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa",
+      "block": 52689919,
+      "explorer": "https://chainscan-galileo.0g.ai/tx/0x4d82b9b127953c35d5088030509a5dbbee85b0f94571f63e84ee056569731faa"
+    }
+  }
 }

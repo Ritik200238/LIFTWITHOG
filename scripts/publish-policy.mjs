@@ -23,6 +23,7 @@
  */
 
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { ethers } from 'ethers';
 import { systemPrompt } from '../server/coach-runtime.js';
 
@@ -153,10 +154,34 @@ const tx = await wallet.sendTransaction({
 const receipt = await tx.wait();
 console.log('done');
 
+/*
+ * The record, written by the thing that did the work.
+ *
+ * This script used to print the anchor and stop, and policy-provenance.json was
+ * then updated by hand — or, after the mainnet run, not updated at all: for a
+ * week it named the Galileo anchor under a heading telling reviewers where to
+ * check. Anchors are kept per network, because the same policy published on two
+ * chains is two pieces of evidence, not one that replaces the other.
+ */
+const recordPath = new URL('../policy-provenance.json', import.meta.url);
+const record = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
+record.storageRoot = uploaded.rootHash;
+record.sha256 = sha256;
+record.commitment = commitment;
+record.anchors = record.anchors ?? {};
+record.anchors[String(CHAIN_ID)] = {
+  network: CHAIN_ID === 16661 ? '0G Aristotle mainnet' : '0G Galileo testnet',
+  tx: receipt.hash,
+  block: receipt.blockNumber,
+  explorer: `${EXPLORER}/tx/${receipt.hash}`,
+};
+fs.writeFileSync(recordPath, JSON.stringify(record, null, 2) + '\n');
+
 console.log('\nPROVENANCE');
 console.log(`  storageRoot  ${uploaded.rootHash}`);
 console.log(`  sha256       ${sha256}`);
 console.log(`  commitment   ${commitment}`);
 console.log(`  anchorTx     ${EXPLORER}/tx/${receipt.hash}`);
+console.log('  recorded in  policy-provenance.json');
 console.log('\nAnybody can download the blob by its root hash, sha256 it, recompute the');
 console.log('commitment, and find it in that transaction. No part of this needs us.');

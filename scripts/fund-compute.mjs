@@ -19,6 +19,7 @@
  */
 
 import { ethers } from 'ethers';
+import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,6 +53,23 @@ if (amount !== null && !(amount > 0)) {
 
 const wallet = new ethers.Wallet(key, new ethers.JsonRpcProvider(RPC, undefined, { staticNetwork: true }));
 const balance = await wallet.provider.getBalance(wallet.address);
+
+/*
+ * Every transaction the SDK sends through this wallet, captured as it goes.
+ *
+ * The SDK prints its transaction hash to stdout and returns nothing, so this
+ * script used to finish with the funding on chain and no record of which
+ * transaction it was — the deployment record then had a gap exactly where a
+ * reviewer asked for evidence. ethers contracts send through their runner, so
+ * wrapping the wallet's own sendTransaction sees every one.
+ */
+const sent = [];
+const sendTransaction = wallet.sendTransaction.bind(wallet);
+wallet.sendTransaction = async (tx) => {
+  const response = await sendTransaction(tx);
+  sent.push(response.hash);
+  return response;
+};
 
 console.log('wallet      ', wallet.address);
 console.log('0G balance  ', ethers.formatEther(balance));
@@ -104,5 +122,26 @@ if (balance < ethers.parseEther(String(amount))) {
 console.log(`\n${existing ? 'Adding' : 'Opening the ledger with'} ${amount} 0G…`);
 await (existing ? broker.ledger.depositFund(amount) : broker.ledger.addLedger(amount));
 
-console.log('done —', show(await broker.ledger.getLedger()));
+const after = await broker.ledger.getLedger();
+console.log('done —', show(after));
+
+/*
+ * Written down where the deployment record reads it, keyed by chain. Appended
+ * rather than replaced: a ledger topped up three times has three funding
+ * transactions, and all three are evidence.
+ */
+const { chainId } = await wallet.provider.getNetwork();
+const recordPath = path.join(HERE, '..', 'deployments', 'compute-ledgers.json');
+const ledgers = fs.existsSync(recordPath) ? JSON.parse(fs.readFileSync(recordPath, 'utf8')) : {};
+const entry = ledgers[String(chainId)] ?? { owner: wallet.address, fundings: [] };
+for (const hash of sent) {
+  const receipt = await wallet.provider.getTransactionReceipt(hash);
+  if (!receipt || receipt.status !== 1) continue;
+  entry.ledgerContract = entry.ledgerContract ?? receipt.to;
+  entry.fundings.push({ tx: hash, block: receipt.blockNumber, amount: `${amount} 0G`, at: new Date().toISOString() });
+}
+ledgers[String(chainId)] = entry;
+fs.mkdirSync(path.dirname(recordPath), { recursive: true });
+fs.writeFileSync(recordPath, JSON.stringify(ledgers, null, 2) + '\n');
+console.log(`recorded in deployments/compute-ledgers.json (${sent.length} transaction${sent.length === 1 ? '' : 's'})`);
 console.log('\nAsk the coach a question. It should answer now.');
